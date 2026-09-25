@@ -8,7 +8,7 @@ import { useT } from '../I18nProvider';
 import { Sheet } from '../Sheet';
 import { BabyPicker } from './BabyPicker';
 import { DEFAULT_INPUTS, buildDrafts, type SheetInput, type SheetKind } from './drafts';
-import { DiaperForm } from './forms';
+import { BottleForm, BreastfeedForm, DiaperForm, SleepForm } from './forms';
 import { TimeField } from './TimeField';
 
 interface Props {
@@ -39,12 +39,15 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
   const [time, setTime] = useState(() => toLocalInputValue(Date.now()));
   const [input, setInput] = useState<SheetInput>(() => initialInput(kind));
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   useEffect(() => setError(null), [input, selected, time]);
 
   const isTimer = (input.kind === 'breastfeed' || input.kind === 'sleep') && input.value.durationMin === null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (pending) return;
+    setPending(true);
     const at = fromLocalInputValue(time) ?? Date.now();
     try {
       await logEvents(db, buildDrafts(input, selected, at));
@@ -52,6 +55,8 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
       onClose();
     } catch (failure) {
       setError(messageFor(t, failure));
+    } finally {
+      setPending(false);
     }
   };
 
@@ -59,6 +64,11 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
     <form onSubmit={(event) => void submit(event)} noValidate>
       <BabyPicker babies={babies} selected={selected} onChange={setSelected} />
       <TimeField value={time} onChange={setTime} />
+      {input.kind === 'breastfeed' && (
+        <BreastfeedForm value={input.value} onChange={(value) => setInput({ kind: 'breastfeed', value })} />
+      )}
+      {input.kind === 'bottle' && <BottleForm value={input.value} onChange={(value) => setInput({ kind: 'bottle', value })} />}
+      {input.kind === 'sleep' && <SleepForm value={input.value} onChange={(value) => setInput({ kind: 'sleep', value })} />}
       {input.kind === 'diaper' && <DiaperForm value={input.value} onChange={(value) => setInput({ kind: 'diaper', value })} />}
       {error && (
         <p role="alert" className="status-warn">
@@ -69,7 +79,7 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
         <button type="button" className="btn" onClick={onClose}>
           {t('common.cancel')}
         </button>
-        <button type="submit" className="btn btn-primary">
+        <button type="submit" className="btn btn-primary" disabled={pending}>
           {t(isTimer ? 'sheet.start' : 'common.save')}
         </button>
       </div>

@@ -112,7 +112,10 @@ legend { margin-bottom: 6px; }
 .status dt { color: var(--muted); }
 .status dd { margin: 0; text-align: right; }
 .quick-actions {
-  position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 8px);
+  position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px;
+  background: var(--bg); padding: 8px 0;
 }
 .quick-actions .btn { min-height: 64px; padding: 0 4px; background: var(--surface); }
+.timer-actions { display: flex; gap: 8px; margin-top: 12px; }
+.timer-actions .btn { flex: 1; }

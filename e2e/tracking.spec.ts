@@ -91,4 +91,119 @@ test.describe('diapers', () => {
     const violations = await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
     expect(violations).toEqual([]);
   });
+
+  test('double-clicking "Kaydet" stores only one diaper', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).dblclick();
+    await expect(sheet).toBeHidden();
+
+    const diaperCount = await page.evaluate(
+      () =>
+        new Promise<number>((resolve, reject) => {
+          const request = indexedDB.open('qundaq');
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const db = request.result;
+            const tx = db.transaction('events', 'readonly');
+            const getAll = tx.objectStore('events').getAll();
+            getAll.onsuccess = () => {
+              const events = getAll.result as Array<{ type: string }>;
+              resolve(events.filter((event) => event.type === 'diaper').length);
+            };
+            getAll.onerror = () => reject(getAll.error);
+          };
+        }),
+    );
+    expect(diaperCount).toBe(1);
+  });
+});
+
+test.describe('timers and feeds', () => {
+  test('breastfeeding timer: start on the left, switch, finish', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+
+    await quick(page, 'Emzir').click();
+    const sheet = page.getByRole('dialog', { name: 'Emzirme' });
+    await sheet.getByRole('button', { name: 'Sol', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Başlat', exact: true }).click();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText('Emziriyor · sol · 0 dk');
+
+    await page.clock.fastForward('06:00');
+    await expect(card).toContainText('Emziriyor · sol · 6 dk');
+    await card.getByRole('button', { name: 'Taraf değiştir' }).click();
+    await expect(card).toContainText('Emziriyor · sağ');
+
+    await page.clock.fastForward('04:00');
+    await card.getByRole('button', { name: 'Bitir' }).click();
+    await expect(card).toContainText('10 dk önce · sağ');
+    await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
+  });
+
+  test('a running sleep survives a reload and can be ended', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Uyku').click();
+    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await expect(babyCard(page, 'Ada')).toContainText('Uyuyor · 0 dk');
+
+    await page.reload();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText('Uyuyor');
+    await card.getByRole('button', { name: 'Uyandı' }).click();
+    await expect(card).toContainText('Uyanık · 0 dk');
+  });
+
+  test('a second sleep cannot start while the baby is asleep', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Uyku').click();
+    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await quick(page, 'Uyku').click();
+    const sheet = page.getByRole('dialog', { name: 'Uyku' });
+    await sheet.getByRole('button', { name: 'Başlat', exact: true }).click();
+    await expect(sheet.getByRole('alert')).toHaveText('Bu bebek için zaten devam eden bir kayıt var.');
+  });
+
+  test('a bottle for all babies at once', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await quick(page, 'Biberon').click();
+    const sheet = page.getByRole('dialog', { name: 'Biberon' });
+    await sheet.getByRole('button', { name: 'Hepsi', exact: true }).click();
+    await sheet.getByRole('button', { name: '90', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Mama', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(babyCard(page, 'Ada')).toContainText('az önce · biberon 90 ml');
+    await expect(babyCard(page, 'Can')).toContainText('az önce · biberon 90 ml');
+  });
+
+  test('a feed with a duration is saved as finished, ending at the chosen time', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Emzir').click();
+    const sheet = page.getByRole('dialog', { name: 'Emzirme' });
+    await sheet.getByRole('button', { name: 'Sağ', exact: true }).click();
+    await sheet.getByLabel('Süre (dk) — boş bırakırsanız sayaç başlar').fill('15');
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText('15 dk önce · sağ');
+    await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
+  });
+
+  test('a bottle without an amount is refused', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Biberon').click();
+    const sheet = page.getByRole('dialog', { name: 'Biberon' });
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet.getByRole('alert')).toHaveText('Geçerli bir miktar girin (1–1000 ml).');
+  });
 });
