@@ -1,0 +1,41 @@
+import type { MessageKey } from './tr';
+
+export const en: Record<MessageKey, string> = {
+  'app.name': 'Qundaq',
+  'nav.label': 'Main navigation',
+  'tab.home': 'Home',
+  'tab.log': 'Log',
+  'tab.summary': 'Summary',
+  'tab.sounds': 'Sounds',
+  'tab.settings': 'Settings',
+  'common.comingSoon': 'This section is coming soon.',
+  'settings.language': 'Language',
+  'settings.language.tr': 'Türkçe',
+  'settings.language.en': 'English',
+  'settings.nightMode': 'Night mode',
+  'settings.nightMode.hint': 'Dim red tones that are easy on the eyes in the dark.',
+  'settings.offline.title': 'Offline use',
+  'settings.offline.ready': 'Ready for offline ({version})',
+  'settings.offline.notReady':
+    'Not ready for offline yet. Keep the app open once while online before switching to airplane mode.',
+  'settings.offline.unsupported': 'This browser does not support offline use.',
+  'settings.offline.insecure': 'Offline use requires opening the app from a secure (https) address.',
+  'settings.offline.dev': 'The offline cache is disabled in development mode.',
+  'settings.storage.title': 'Persistent storage',
+  'settings.storage.persisted': 'On: the system will not delete this data to free up space.',
+  'settings.storage.denied': 'Off: the system may delete data to free up space. Back up regularly.',
+  'settings.storage.unsupported': 'This browser does not support persistent storage. Back up regularly.',
+  'settings.update.title': 'Updates',
+  'settings.update.hint':
+    'The app never downloads an update by itself. A new version is downloaded only when you tap this button, and starts when you tap Restart or the next time you open the app.',
+  'settings.update.check': 'Check for updates',
+  'settings.update.checking': 'Checking…',
+  'settings.update.none': 'You are up to date.',
+  'settings.update.ready': 'A new version is ready.',
+  'settings.update.apply': 'Restart',
+  'settings.update.failed': "Couldn't check. Make sure you are online.",
+  'settings.privacy.title': 'Privacy',
+  'settings.privacy.body':
+    'This app never sends any data anywhere. All records are stored only on this device. There is no analytics, tracking or advertising.',
+  'settings.about.version': 'Version {version} ({commit})',
+};

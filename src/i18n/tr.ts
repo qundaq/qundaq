@@ -1,0 +1,41 @@
+export const tr = {
+  'app.name': 'Qundaq',
+  'nav.label': 'Ana gezinme',
+  'tab.home': 'Ana',
+  'tab.log': 'Günlük',
+  'tab.summary': 'Özet',
+  'tab.sounds': 'Sesler',
+  'tab.settings': 'Ayarlar',
+  'common.comingSoon': 'Bu bölüm yakında geliyor.',
+  'settings.language': 'Dil',
+  'settings.language.tr': 'Türkçe',
+  'settings.language.en': 'English',
+  'settings.nightMode': 'Gece modu',
+  'settings.nightMode.hint': 'Karanlıkta göz yormayan kırmızı tonlar.',
+  'settings.offline.title': 'Çevrimdışı kullanım',
+  'settings.offline.ready': 'Çevrimdışı hazır ({version})',
+  'settings.offline.notReady':
+    'Henüz çevrimdışı hazır değil. Uçak moduna geçmeden önce uygulamayı internet açıkken bir kez açık tutun.',
+  'settings.offline.unsupported': 'Bu tarayıcı çevrimdışı kullanımı desteklemiyor.',
+  'settings.offline.insecure': 'Çevrimdışı kullanım için uygulamanın güvenli (https) bir adresten açılması gerekir.',
+  'settings.offline.dev': 'Geliştirme modunda çevrimdışı önbellek kapalı.',
+  'settings.storage.title': 'Kalıcı depolama',
+  'settings.storage.persisted': 'Açık: sistem bu verileri yer açmak için silmez.',
+  'settings.storage.denied': 'Kapalı: sistem yer açmak için verileri silebilir. Düzenli yedek alın.',
+  'settings.storage.unsupported': 'Bu tarayıcı kalıcı depolamayı desteklemiyor. Düzenli yedek alın.',
+  'settings.update.title': 'Güncelleme',
+  'settings.update.hint':
+    "Uygulama güncellemeyi kendiliğinden indirmez. Yeni sürüm yalnızca bu butona bastığınızda indirilir; Yeniden başlat'a bastığınızda ya da uygulamayı bir sonraki açışınızda başlar.",
+  'settings.update.check': 'Güncellemeleri kontrol et',
+  'settings.update.checking': 'Kontrol ediliyor…',
+  'settings.update.none': 'Uygulama güncel.',
+  'settings.update.ready': 'Yeni sürüm hazır.',
+  'settings.update.apply': 'Yeniden başlat',
+  'settings.update.failed': 'Kontrol edilemedi. İnternet bağlantısını kontrol edin.',
+  'settings.privacy.title': 'Gizlilik',
+  'settings.privacy.body':
+    'Bu uygulama hiçbir veriyi hiçbir yere göndermez. Tüm kayıtlar yalnızca bu cihazda saklanır. Analitik, izleme veya reklam yoktur.',
+  'settings.about.version': 'Sürüm {version} ({commit})',
+} satisfies Record<string, string>;
+
+export type MessageKey = keyof typeof tr;
