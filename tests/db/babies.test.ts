@@ -2,7 +2,9 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { BABY_NAME_MAX, addBaby, deleteBaby, listBabies, updateBaby } from '../../src/db/babies';
+import { logEvents } from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
+import { MINUTE } from '../../src/domain/time';
 
 const opened: TrackerDb[] = [];
 const freshDb = () => {
@@ -44,5 +46,68 @@ describe('babies repository', () => {
     await deleteBaby(db, ada.id, 5000);
     expect(await listBabies(db)).toEqual([]);
     expect(await db.babies.get(ada.id)).toMatchObject({ deletedAt: 5000 });
+  });
+
+  it('deleting a baby ends its running timers at that moment', async () => {
+    const db = freshDb();
+    const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
+    const can = await addBaby(db, { name: 'Can', color: '#ff9ecb' }, 1000);
+    const now = 100 * MINUTE;
+    const start = now - 20 * MINUTE;
+    const switched = now - 5 * MINUTE;
+    const [sleep, feed, doneSleep, canSleep, gone] = await logEvents(
+      db,
+      [
+        { type: 'sleep', babyId: ada.id, startAt: start },
+        {
+          type: 'breastfeed',
+          babyId: ada.id,
+          startAt: start,
+          segments: [{ side: 'L', start, end: switched }, { side: 'R', start: switched }],
+        },
+        { type: 'sleep', babyId: ada.id, startAt: start - 60 * MINUTE, endAt: start - 30 * MINUTE },
+        { type: 'sleep', babyId: can.id, startAt: start },
+        { type: 'diaper', babyId: ada.id, startAt: start, wet: true, dirty: false },
+      ],
+      start,
+    );
+    // A deleted running entry is left alone.
+    const deletedFeed = { ...feed!, id: 'deleted-feed', deletedAt: start, segments: [{ side: 'L' as const, start }] };
+    await db.events.add(deletedFeed);
+
+    await deleteBaby(db, ada.id, now);
+
+    expect(await db.events.get(sleep!.id)).toMatchObject({ endAt: now, updatedAt: now });
+    expect(await db.events.get(feed!.id)).toMatchObject({
+      endAt: now,
+      updatedAt: now,
+      segments: [{ side: 'L', start, end: switched }, { side: 'R', start: switched, end: now }],
+    });
+    expect(await db.events.get(doneSleep!.id)).toEqual(doneSleep);
+    expect(await db.events.get(canSleep!.id)).toEqual(canSleep);
+    expect(await db.events.get(gone!.id)).toEqual(gone);
+    expect(await db.events.get('deleted-feed')).toEqual(deletedFeed);
+    expect(await db.babies.get(ada.id)).toMatchObject({ deletedAt: now, updatedAt: now });
+  });
+
+  it('deleting an already deleted baby changes nothing', async () => {
+    const db = freshDb();
+    const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
+    await deleteBaby(db, ada.id, 5000);
+    await deleteBaby(db, ada.id, 9000);
+    expect(await db.babies.get(ada.id)).toMatchObject({ deletedAt: 5000, updatedAt: 5000 });
+  });
+
+  it('deleting an unknown baby throws', async () => {
+    const db = freshDb();
+    await expect(deleteBaby(db, 'missing', 5000)).rejects.toThrow('Baby missing not found');
+  });
+
+  it('a deleted baby cannot be edited', async () => {
+    const db = freshDb();
+    const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
+    await deleteBaby(db, ada.id, 5000);
+    await expect(updateBaby(db, ada.id, { name: 'Ada Nur' }, 6000)).rejects.toThrow(`Baby ${ada.id} not found`);
+    expect(await db.babies.get(ada.id)).toMatchObject({ name: 'Ada', updatedAt: 5000 });
   });
 });
