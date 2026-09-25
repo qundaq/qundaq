@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { addBabyInSettings, babyCard, openTab } from './support/tracking';
 
 // The browser may re-check the app's own sw.js for updates on navigation. That is the single request
 // MANIFESTO.md documents as outside the app's control; it carries no user data. Anything else counts
@@ -45,6 +46,33 @@ test('makes no network requests after the first load', async ({ page, context, b
   for (const name of ['Günlük', 'Özet', 'Sesler', 'Ana', 'Ayarlar']) {
     await nav.getByRole('button', { name, exact: true }).click();
   }
+
+  // The tracking flows must stay on the device too.
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, 'Ana');
+  const card = babyCard(page, 'Ada');
+  const quick = (name: string) => page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
+
+  await quick('Bez').click();
+  const diaper = page.getByRole('dialog', { name: 'Bez' });
+  await diaper.getByRole('button', { name: 'Kirli', exact: true }).click();
+  await diaper.getByRole('radio', { name: 'Sarı', exact: true }).click();
+  await diaper.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(card).toContainText('ıslak + kirli');
+
+  await quick('Emzir').click();
+  await page.getByRole('dialog', { name: 'Emzirme' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+  await expect(card).toContainText('Emziriyor');
+  await card.getByRole('button', { name: /Emzirmeyi bitir/ }).click();
+  await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
+
+  await quick('Biberon').click();
+  const bottle = page.getByRole('dialog', { name: 'Biberon' });
+  await bottle.getByRole('button', { name: '90', exact: true }).click();
+  await bottle.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(card).toContainText('biberon 90 ml');
+
+  await openTab(page, 'Ayarlar');
   const nightSwitch = page.getByRole('switch');
   await nightSwitch.click();
   await expect(nightSwitch).toBeChecked();
