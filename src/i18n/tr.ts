@@ -128,7 +128,7 @@ export const tr = {
   'stool.alert.blood': 'Kırmızı renk kan olabilir. Doktorunuza danışın.',
   'stool.alert.black': 'İlk günlerde siyah kaka (mekonyum) normaldir. Sonrasında görülürse doktorunuza danışın.',
   'timer.switchSide': 'Taraf değiştir',
-  'timer.stopFeed': 'Bitir',
+  'timer.stopFeed': 'Emzirmeyi bitir',
   'timer.wakeUp': 'Uyandı',
 } satisfies Record<string, string>;
 

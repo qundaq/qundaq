@@ -123,7 +123,7 @@ describe('timers', () => {
     expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);
   });
 
-  it('stopping an already finished event is a no-op (double tap on "Bitir")', async () => {
+  it('stopping an already finished event is a no-op (double tap on "Emzirmeyi bitir" or "Uyandı")', async () => {
     const db = freshDb();
     const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
     expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);

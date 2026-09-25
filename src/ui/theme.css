@@ -117,5 +117,7 @@ legend { margin-bottom: 6px; }
   background: var(--bg); padding: 8px 0;
 }
 .quick-actions .btn { min-height: 64px; padding: 0 4px; background: var(--surface); }
-.timer-actions { display: flex; gap: 8px; margin-top: 12px; }
-.timer-actions .btn { flex: 1; }
+.timer-actions { display: grid; gap: 12px; margin-top: 12px; }
+/* One row per timer; 16px between neighbours so a sleepy thumb cannot hit the wrong one. */
+.timer-row { display: flex; gap: 16px; }
+.timer-row .btn { flex: 1; }

@@ -130,6 +130,6 @@ export const en: Record<MessageKey, string> = {
   'stool.alert.blood': 'Red can mean blood. Contact your doctor.',
   'stool.alert.black': 'Black stool (meconium) is normal in the first days. If you see it later, contact your doctor.',
   'timer.switchSide': 'Switch side',
-  'timer.stopFeed': 'Finish',
+  'timer.stopFeed': 'Finish feed',
   'timer.wakeUp': 'Woke up',
 };

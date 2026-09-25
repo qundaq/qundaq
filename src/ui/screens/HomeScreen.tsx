@@ -69,19 +69,36 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
                 {(running || asleep) && (
                   <div className="timer-actions">
                     {running && (
-                      <>
-                        <button type="button" className="btn" onClick={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}>
+                      <div className="timer-row">
+                        <button
+                          type="button"
+                          className="btn"
+                          aria-label={`${baby.name}: ${t('timer.switchSide')}`}
+                          onClick={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}
+                        >
                           {t('timer.switchSide')}
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => act(running.eventId, () => stopEvent(db, running.eventId))}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          aria-label={`${baby.name}: ${t('timer.stopFeed')}`}
+                          onClick={() => act(running.eventId, () => stopEvent(db, running.eventId))}
+                        >
                           {t('timer.stopFeed')}
                         </button>
-                      </>
+                      </div>
                     )}
                     {asleep && (
-                      <button type="button" className="btn btn-primary" onClick={() => act(asleep.eventId, () => stopEvent(db, asleep.eventId))}>
-                        {t('timer.wakeUp')}
-                      </button>
+                      <div className="timer-row">
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          aria-label={`${baby.name}: ${t('timer.wakeUp')}`}
+                          onClick={() => act(asleep.eventId, () => stopEvent(db, asleep.eventId))}
+                        >
+                          {t('timer.wakeUp')}
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

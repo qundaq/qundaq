@@ -174,12 +174,12 @@ test.describe('timers and feeds', () => {
     await expect(card).toContainText('Emziriyor · sağ');
 
     await page.clock.fastForward('04:00');
-    await card.getByRole('button', { name: 'Bitir' }).click();
+    await card.getByRole('button', { name: /Emzirmeyi bitir/ }).click();
     await expect(card).toContainText('10 dk önce · sağ');
-    await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
+    await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
   });
 
-  test('double-tapping the feed finish button shows no error and finishes the feed', async ({ page }) => {
+  test('double-tapping "Emzirmeyi bitir" shows no error and finishes the feed', async ({ page }) => {
     await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
     await page.reload();
     await addBabyInSettings(page, 'Ada');
@@ -190,9 +190,9 @@ test.describe('timers and feeds', () => {
     await expect(card).toContainText('Emziriyor · sol');
 
     await page.clock.fastForward('05:00');
-    await card.getByRole('button', { name: 'Bitir' }).dblclick();
+    await card.getByRole('button', { name: /Emzirmeyi bitir/ }).dblclick();
     await expect(card).toContainText('5 dk önce · sol');
-    await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
+    await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
     await expect(page.getByRole('alert')).toHaveCount(0);
   });
 
@@ -215,6 +215,44 @@ test.describe('timers and feeds', () => {
     await page.clock.fastForward('00:10');
     await expect(card).toContainText('Emziriyor · sağ');
     await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('a feed and a sleep running together get their own rows; finishing the feed keeps the sleep', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await quick(page, 'Uyku').click();
+    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await quick(page, 'Emzir').click();
+    await page.getByRole('dialog', { name: 'Emzirme' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText('Emziriyor · sol');
+    await expect(card).toContainText('Uyuyor');
+
+    // Every timer button names the baby, so a screen reader never has to guess which twin it is for.
+    const switchSide = card.getByRole('button', { name: 'Ada: Taraf değiştir', exact: true });
+    const finishFeed = card.getByRole('button', { name: 'Ada: Emzirmeyi bitir', exact: true });
+    const wakeUp = card.getByRole('button', { name: 'Ada: Uyandı', exact: true });
+    await expect(switchSide).toHaveText('Taraf değiştir');
+    await expect(finishFeed).toHaveText('Emzirmeyi bitir');
+    await expect(wakeUp).toHaveText('Uyandı');
+
+    const feedRow = card.locator('.timer-row').filter({ has: page.getByRole('button', { name: 'Ada: Emzirmeyi bitir' }) });
+    const sleepRow = card.locator('.timer-row').filter({ has: page.getByRole('button', { name: 'Ada: Uyandı' }) });
+    await expect(feedRow).toBeVisible();
+    await expect(sleepRow).toBeVisible();
+    await expect(feedRow.getByRole('button')).toHaveCount(2);
+    await expect(sleepRow.getByRole('button')).toHaveCount(1);
+
+    const [a, b, c] = await Promise.all([switchSide.boundingBox(), finishFeed.boundingBox(), wakeUp.boundingBox()]);
+    expect(b!.x - (a!.x + a!.width)).toBeGreaterThanOrEqual(16);
+    expect(c!.y).toBeGreaterThanOrEqual(b!.y + b!.height);
+    for (const box of [a!, b!, c!]) expect(box.height).toBeGreaterThanOrEqual(48);
+
+    await finishFeed.click();
+    await expect(finishFeed).toHaveCount(0);
+    await expect(card).toContainText('Uyuyor');
+    await expect(wakeUp).toBeVisible();
   });
 
   test('a running sleep survives a reload and can be ended', async ({ page }) => {
@@ -268,7 +306,7 @@ test.describe('timers and feeds', () => {
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     const card = babyCard(page, 'Ada');
     await expect(card).toContainText('15 dk önce · sağ');
-    await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
+    await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
   });
 
   test('a bottle without an amount is refused', async ({ page }) => {
