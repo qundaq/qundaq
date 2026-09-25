@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { STOOL_COLORS, stoolAlert } from '../../domain/stool';
 import type { BottleContents, Consistency, Side } from '../../domain/types';
 import { useT } from '../I18nProvider';
@@ -12,6 +13,7 @@ interface FormProps<T> {
 
 export function DiaperForm({ value, onChange }: FormProps<DiaperInput>) {
   const t = useT();
+  const stoolGroup = useId();
   const alert = value.dirty ? stoolAlert(value.stoolColor ?? undefined) : null;
   return (
     <>
@@ -30,18 +32,18 @@ export function DiaperForm({ value, onChange }: FormProps<DiaperInput>) {
         <>
           <fieldset>
             <legend>{t('stool.color')}</legend>
-            <div className="swatches" role="radiogroup" aria-label={t('stool.color')}>
+            <div className="swatches">
               {STOOL_COLORS.map((color) => (
-                <button
-                  key={color.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={value.stoolColor === color.id}
-                  aria-label={t(`stool.color.${color.id}`)}
-                  className="swatch"
-                  style={{ background: color.hex }}
-                  onClick={() => onChange({ ...value, stoolColor: color.id })}
-                />
+                <label key={color.id} className="swatch" style={{ background: color.hex }}>
+                  <input
+                    type="radio"
+                    name={stoolGroup}
+                    value={color.id}
+                    aria-label={t(`stool.color.${color.id}`)}
+                    checked={value.stoolColor === color.id}
+                    onChange={() => onChange({ ...value, stoolColor: color.id })}
+                  />
+                </label>
               ))}
             </div>
           </fieldset>
@@ -139,7 +141,7 @@ export function BottleForm({ value, onChange }: FormProps<BottleInput>) {
       <div className="chips">
         {QUICK_ML.map((ml) => (
           <button key={ml} type="button" className="chip" aria-pressed={value.ml === ml} onClick={() => onChange({ ...value, ml })}>
-            {ml}
+            {t('unit.ml', { ml })}
           </button>
         ))}
       </div>

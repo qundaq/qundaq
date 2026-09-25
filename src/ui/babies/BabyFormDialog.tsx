@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { BABY_NAME_MAX, addBaby, updateBaby } from '../../db/babies';
 import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
@@ -25,20 +25,25 @@ export function BabyFormDialog({ open, baby, usedColors, onClose }: Props) {
 
 function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: readonly string[]; onDone: () => void }) {
   const t = useT();
+  const colorGroup = useId();
   const [name, setName] = useState(baby?.name ?? '');
   const [color, setColor] = useState(baby?.color ?? nextColor(usedColors));
   const [birthDate, setBirthDate] = useState(baby?.birthDate ?? '');
   const [error, setError] = useState<string | null>(null);
+  const submitting = useRef(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     try {
       // On edit an emptied date field clears the stored date (Dexie drops keys set to undefined).
       if (baby) await updateBaby(db, baby.id, { name, color, birthDate: birthDate || undefined });
       else await addBaby(db, { name, color, ...(birthDate ? { birthDate } : {}) });
-      onDone();
+      onDone(); // the guard stays set: the form only waits for its dialog to close
     } catch (failure) {
       setError(messageFor(t, failure));
+      submitting.current = false;
     }
   };
 
@@ -50,18 +55,18 @@ function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: reado
       </label>
       <fieldset>
         <legend>{t('babies.color')}</legend>
-        <div className="swatches" role="radiogroup" aria-label={t('babies.color')}>
+        <div className="swatches">
           {BABY_COLORS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={color === option.hex}
-              aria-label={t(`color.${option.id}`)}
-              className="swatch"
-              style={{ background: option.hex }}
-              onClick={() => setColor(option.hex)}
-            />
+            <label key={option.id} className="swatch" style={{ background: option.hex }}>
+              <input
+                type="radio"
+                name={colorGroup}
+                value={option.hex}
+                aria-label={t(`color.${option.id}`)}
+                checked={color === option.hex}
+                onChange={() => setColor(option.hex)}
+              />
+            </label>
           ))}
         </div>
       </fieldset>

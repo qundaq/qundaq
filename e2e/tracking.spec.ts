@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addBabyInSettings, babyCard, openTab } from './support/tracking';
+import { addBabyInSettings, babyCard, openTab, readEvents } from './support/tracking';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
@@ -301,7 +301,7 @@ test.describe('timers and feeds', () => {
 
     const [a, b, c] = await Promise.all([switchSide.boundingBox(), finishFeed.boundingBox(), wakeUp.boundingBox()]);
     expect(b!.x - (a!.x + a!.width)).toBeGreaterThanOrEqual(16);
-    expect(c!.y).toBeGreaterThanOrEqual(b!.y + b!.height);
+    expect(c!.y - (b!.y + b!.height)).toBeGreaterThanOrEqual(16);
     for (const box of [a!, b!, c!]) expect(box.height).toBeGreaterThanOrEqual(48);
 
     await finishFeed.click();
@@ -332,7 +332,7 @@ test.describe('timers and feeds', () => {
     await quick(page, 'Uyku').click();
     const sheet = page.getByRole('dialog', { name: 'Uyku' });
     await sheet.getByRole('button', { name: 'Başlat', exact: true }).click();
-    await expect(sheet.getByRole('alert')).toHaveText('Bu bebek için zaten devam eden bir kayıt var.');
+    await expect(sheet.getByRole('alert')).toHaveText('Ada için zaten devam eden bir kayıt var.');
   });
 
   test('a bottle for all babies at once', async ({ page }) => {
@@ -342,7 +342,7 @@ test.describe('timers and feeds', () => {
     await quick(page, 'Biberon').click();
     const sheet = page.getByRole('dialog', { name: 'Biberon' });
     await sheet.getByRole('button', { name: 'Hepsi', exact: true }).click();
-    await sheet.getByRole('button', { name: '90', exact: true }).click();
+    await sheet.getByRole('button', { name: '90 ml', exact: true }).click();
     await sheet.getByRole('button', { name: 'Mama', exact: true }).click();
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(babyCard(page, 'Ada')).toContainText('az önce · biberon 90 ml');
@@ -371,5 +371,128 @@ test.describe('timers and feeds', () => {
     const sheet = page.getByRole('dialog', { name: 'Biberon' });
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(sheet.getByRole('alert')).toHaveText('Geçerli bir miktar girin (1–1000 ml).');
+  });
+
+  test('"Hepsi" names the baby that is already asleep', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await quick(page, 'Uyku').click();
+    let sheet = page.getByRole('dialog', { name: 'Uyku' });
+    await sheet.getByRole('button', { name: 'Başlat', exact: true }).click(); // Ada, the default
+    await expect(sheet).toBeHidden();
+
+    await quick(page, 'Uyku').click();
+    sheet = page.getByRole('dialog', { name: 'Uyku' });
+    await sheet.getByRole('button', { name: 'Hepsi', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Başlat', exact: true }).click();
+    await expect(sheet.getByRole('alert')).toHaveText('Ada için zaten devam eden bir kayıt var.');
+  });
+
+  test('a feed longer than 4 hours is refused', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Emzir').click();
+    const sheet = page.getByRole('dialog', { name: 'Emzirme' });
+    await sheet.getByLabel('Süre (dk) — boş bırakırsanız sayaç başlar').fill('300');
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet.getByRole('alert')).toHaveText('Süre çok uzun: uyku en fazla 24 saat, emzirme en fazla 4 saat olabilir.');
+  });
+});
+
+test.describe('sheet defaults and saved fields', () => {
+  test('the sheet preselects the babies used last time, also after a reload', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    let sheet = page.getByRole('dialog', { name: 'Bez' });
+    const chip = (name: string) => sheet.getByRole('button', { name, exact: true });
+    await expect(chip('Ada')).toHaveAttribute('aria-pressed', 'true');
+    await chip('Can').click();
+    await chip('Ada').click();
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet).toBeHidden();
+
+    for (const reload of [false, true]) {
+      if (reload) await page.reload();
+      await quick(page, 'Bez').click();
+      sheet = page.getByRole('dialog', { name: 'Bez' });
+      await expect(chip('Can')).toHaveAttribute('aria-pressed', 'true');
+      await expect(chip('Ada')).toHaveAttribute('aria-pressed', 'false');
+      await sheet.getByRole('button', { name: 'Vazgeç', exact: true }).click();
+      await expect(sheet).toBeHidden();
+    }
+  });
+
+  test('turning "Kirli" off again saves no stool details', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
+    await sheet.getByRole('radio', { name: 'Beyaz', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Sulu', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet).toBeHidden();
+
+    const events = await readEvents(page);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: 'diaper', wet: true, dirty: false });
+    expect(events[0]).not.toHaveProperty('stoolColor');
+    expect(events[0]).not.toHaveProperty('consistency');
+  });
+
+  test('stool and baby colors are native radio buttons', async ({ page }) => {
+    await openTab(page, 'Ayarlar');
+    await page.getByRole('button', { name: 'Bebek ekle', exact: true }).click();
+    const form = page.getByRole('dialog', { name: 'Bebek ekle' });
+    // Real <input type="radio">, one group name, so the arrow keys move the choice natively.
+    const colorRadios = form.locator('input[type="radio"]');
+    await expect(colorRadios).toHaveCount(6);
+    expect(await colorRadios.evaluateAll((els) => new Set(els.map((el) => (el as HTMLInputElement).name)).size)).toBe(1);
+    await form.getByRole('radio', { name: 'Pembe', exact: true }).check();
+    await expect(form.getByRole('radio', { name: 'Pembe', exact: true })).toBeChecked();
+    await form.getByRole('radio', { name: 'Pembe', exact: true }).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(form.getByRole('radio', { name: 'Yeşil', exact: true })).toBeChecked();
+    await form.getByLabel('İsim').fill('Ada');
+    await form.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(form).toBeHidden();
+
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
+    const stoolRadios = sheet.locator('input[type="radio"]');
+    await expect(stoolRadios).toHaveCount(9);
+    expect(await stoolRadios.evaluateAll((els) => new Set(els.map((el) => (el as HTMLInputElement).name)).size)).toBe(1);
+    await sheet.getByRole('radio', { name: 'Hardal', exact: true }).check();
+    await expect(sheet.getByRole('radio', { name: 'Hardal', exact: true })).toBeChecked();
+    await expect(sheet.getByRole('radio', { name: 'Sarı', exact: true })).not.toBeChecked();
+  });
+
+  test('a closing sheet keeps its title and form until it is gone', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    // Record every committed state in which an open sheet has no form or an empty title.
+    await page.evaluate(() => {
+      const empty: string[] = [];
+      (window as unknown as { __emptySheets: string[] }).__emptySheets = empty;
+      new MutationObserver(() => {
+        for (const dialog of document.querySelectorAll<HTMLDialogElement>('dialog.sheet')) {
+          const title = dialog.querySelector('h2')?.textContent ?? '';
+          if (dialog.open && (!dialog.querySelector('form') || title === '')) empty.push(title);
+        }
+      }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    });
+    await quick(page, 'Bez').click();
+    await page.getByRole('dialog', { name: 'Bez' }).getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Bez' })).toBeHidden();
+    await quick(page, 'Biberon').click();
+    await page.getByRole('dialog', { name: 'Biberon' }).getByRole('button', { name: 'Vazgeç', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Biberon' })).toBeHidden();
+    expect(await page.evaluate(() => (window as unknown as { __emptySheets: string[] }).__emptySheets)).toEqual([]);
   });
 });

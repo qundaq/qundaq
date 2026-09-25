@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { ValidationError } from '../domain/rules';
+import type { Baby } from '../domain/types';
 import type { MessageKey } from '../i18n';
 import { useT, type TranslateFn } from './I18nProvider';
 
@@ -12,9 +13,16 @@ type ReportError = (error: unknown, options?: ReportOptions) => void;
 
 const ErrorContext = createContext<ReportError>((error) => console.error(error));
 
-export function messageFor(t: TranslateFn, error: unknown): string {
+export function messageFor(t: TranslateFn, error: unknown, babies: readonly Pick<Baby, 'id' | 'name'>[] = []): string {
   const first = error instanceof ValidationError ? error.violations[0] : undefined;
-  return first ? t(`rule.${first}`) : t('error.saveFailed');
+  if (!first) return t('error.saveFailed');
+  if (first === 'already-running' && error instanceof ValidationError) {
+    const names = error.babyIds
+      .map((id) => babies.find((baby) => baby.id === id)?.name)
+      .filter((name): name is string => name !== undefined);
+    if (names.length > 0) return t('rule.already-running.named', { names: names.join(', ') });
+  }
+  return t(`rule.${first}`);
 }
 
 export function bannerMessage(t: TranslateFn, error: unknown, messageKey?: MessageKey): string {

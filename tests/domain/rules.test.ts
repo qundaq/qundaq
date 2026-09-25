@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { MINUTE } from '../../src/domain/time';
+import { HOUR, MINUTE } from '../../src/domain/time';
 import type { BreastSegment, EventDraft, TrackerEvent } from '../../src/domain/types';
-import { FUTURE_TOLERANCE_MS, ValidationError, validateBabyName, validateEvent } from '../../src/domain/rules';
+import {
+  FUTURE_TOLERANCE_MS,
+  MAX_DURATION_MS,
+  ValidationError,
+  editedMinutesValid,
+  validateBabyName,
+  validateEvent,
+  type RuleViolation,
+} from '../../src/domain/rules';
 
 const NOW = new Date(2026, 8, 25, 12, 0).getTime();
 
@@ -131,5 +139,136 @@ describe('validateBabyName / ValidationError', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error.violations).toEqual(['diaper-empty']);
     expect(error.name).toBe('ValidationError');
+  });
+});
+
+describe('validateEvent — duration limit', () => {
+  it('rejects a finished sleep longer than 24 hours', () => {
+    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 25 * HOUR, endAt: NOW }, [], NOW)).toEqual(['too-long']);
+    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - MAX_DURATION_MS.sleep, endAt: NOW }, [], NOW)).toEqual([]);
+  });
+
+  it('rejects a finished feed longer than 4 hours, pauses included', () => {
+    const startAt = NOW - 4 * HOUR - MINUTE;
+    const draft: EventDraft = {
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt,
+      endAt: NOW,
+      segments: [
+        { side: 'L', start: startAt, end: startAt + 10 * MINUTE },
+        { side: 'R', start: NOW - 10 * MINUTE, end: NOW },
+      ],
+    };
+    expect(validateEvent(draft, [], NOW)).toEqual(['too-long']);
+  });
+
+  it('never checks running entries, however old', () => {
+    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 30 * HOUR }, [], NOW)).toEqual([]);
+  });
+});
+
+describe('validateEvent — pumping', () => {
+  it.each<[Partial<{ mlLeft: number; mlRight: number }>, RuleViolation[]]>([
+    [{}, ['pump-empty']],
+    [{ mlLeft: 60 }, []],
+    [{ mlRight: 40 }, []],
+    [{ mlLeft: 60, mlRight: 45 }, []],
+    [{ mlLeft: 0 }, ['pump-invalid']],
+    [{ mlLeft: 501 }, ['pump-invalid']],
+    [{ mlLeft: 60.5 }, ['pump-invalid']],
+    [{ mlLeft: 60, mlRight: Number.NaN }, ['pump-invalid']],
+  ])('%o → %o', (amounts, expected) => {
+    expect(validateEvent({ type: 'pump', babyId: null, startAt: NOW, ...amounts }, [], NOW)).toEqual(expected);
+  });
+});
+
+describe('validateEvent — growth', () => {
+  const growth = (metrics: Partial<{ weightG: number; heightMm: number; headMm: number }>): EventDraft => ({
+    type: 'growth',
+    babyId: 'a',
+    startAt: NOW,
+    ...metrics,
+  });
+
+  it('needs at least one measurement', () => {
+    expect(validateEvent(growth({}), [], NOW)).toEqual(['growth-empty']);
+  });
+
+  it('accepts whole grams and millimetres inside the ranges', () => {
+    expect(validateEvent(growth({ weightG: 3450, heightMm: 525, headMm: 350 }), [], NOW)).toEqual([]);
+    expect(validateEvent(growth({ weightG: 300 }), [], NOW)).toEqual([]);
+    expect(validateEvent(growth({ heightMm: 1300, headMm: 700 }), [], NOW)).toEqual([]);
+  });
+
+  it.each<[Partial<{ weightG: number; heightMm: number; headMm: number }>]>([
+    [{ weightG: 299 }],
+    [{ heightMm: 199 }],
+    [{ heightMm: 1301 }],
+    [{ headMm: 701 }],
+    [{ headMm: 350.5 }],
+    [{ weightG: Number.NaN }],
+  ])('rejects %o', (metrics) => {
+    expect(validateEvent(growth(metrics), [], NOW)).toEqual(['growth-invalid']);
+  });
+
+  it('a weight above 30 kg was probably typed in grams', () => {
+    expect(validateEvent(growth({ weightG: 3_450_000 }), [], NOW)).toEqual(['weight-in-kg']);
+  });
+});
+
+describe('validateEvent — temperature, medication and notes', () => {
+  it.each([29.9, 45.1, Number.NaN, Number.POSITIVE_INFINITY])('rejects %s °C', (celsius) => {
+    expect(validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius }, [], NOW)).toEqual(['temperature-invalid']);
+  });
+
+  it('accepts 30.0 to 45.0 °C', () => {
+    expect(validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 30 }, [], NOW)).toEqual([]);
+    expect(validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 45 }, [], NOW)).toEqual([]);
+  });
+
+  it('a medicine needs a name', () => {
+    expect(validateEvent({ type: 'medication', babyId: 'a', startAt: NOW, name: '   ' }, [], NOW)).toEqual([
+      'medication-name-required',
+    ]);
+  });
+
+  it('limits the length of names, doses and notes', () => {
+    const medication = (name: string, dose?: string): EventDraft => ({
+      type: 'medication',
+      babyId: 'a',
+      startAt: NOW,
+      name,
+      ...(dose === undefined ? {} : { dose }),
+    });
+    expect(validateEvent(medication('x'.repeat(60), 'y'.repeat(40)), [], NOW)).toEqual([]);
+    expect(validateEvent(medication('x'.repeat(61)), [], NOW)).toEqual(['text-too-long']);
+    expect(validateEvent(medication('D vitamini', 'y'.repeat(41)), [], NOW)).toEqual(['text-too-long']);
+    const diaper = (note: string): EventDraft => ({ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false, note });
+    expect(validateEvent(diaper('n'.repeat(500)), [], NOW)).toEqual([]);
+    expect(validateEvent(diaper('n'.repeat(501)), [], NOW)).toEqual(['text-too-long']);
+  });
+
+  it('a health note needs text', () => {
+    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW }, [], NOW)).toEqual(['note-required']);
+    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW, note: '  ' }, [], NOW)).toEqual(['note-required']);
+    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW, note: 'Aşı yapıldı' }, [], NOW)).toEqual([]);
+  });
+});
+
+describe('editedMinutesValid', () => {
+  it('needs at least one side and whole minutes of 1 or more', () => {
+    expect(editedMinutesValid([12, 1, 7])).toBe(true);
+    expect(editedMinutesValid([])).toBe(false);
+    expect(editedMinutesValid([12, 0])).toBe(false);
+    expect(editedMinutesValid([7.5])).toBe(false);
+    expect(editedMinutesValid([Number.NaN])).toBe(false);
+  });
+});
+
+describe('ValidationError — babyIds', () => {
+  it('names no baby by default and keeps the ones it is given', () => {
+    expect(new ValidationError(['already-running']).babyIds).toEqual([]);
+    expect(new ValidationError(['already-running'], ['a']).babyIds).toEqual(['a']);
   });
 });

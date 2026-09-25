@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { listBabies } from '../../src/db/babies';
-import { subscribeLiveQuery } from '../../src/ui/useLiveQuery';
+import { depsKey, subscribeLiveQuery, valueFor } from '../../src/ui/useLiveQuery';
 
 const opened: TrackerDb[] = [];
 afterEach(async () => {
@@ -27,5 +27,21 @@ describe('subscribeLiveQuery', () => {
     await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(failure));
     expect(next).not.toHaveBeenCalled();
     unsubscribe();
+  });
+});
+
+describe('keyed live-query values', () => {
+  it('returns a value only for the deps it was produced for', () => {
+    const today = depsKey([100, 200]);
+    const state = { key: today, value: ['today'] };
+    expect(valueFor(state, today)).toEqual(['today']);
+    expect(valueFor(state, depsKey([50, 100]))).toBeUndefined();
+    expect(valueFor(undefined, today)).toBeUndefined();
+  });
+
+  it('equal primitive deps give the same key, different ones a different key', () => {
+    expect(depsKey([1, 'a', null, true])).toBe(depsKey([1, 'a', null, true]));
+    expect(depsKey([1])).not.toBe(depsKey(['1']));
+    expect(depsKey([])).toBe('[]');
   });
 });

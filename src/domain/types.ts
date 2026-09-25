@@ -52,3 +52,6 @@ export type TrackerEvent = EventDraft & {
   updatedAt: number;
   deletedAt?: number;
 };
+
+export type GrowthEvent = Extract<TrackerEvent, { type: 'growth' }>;
+export type MedicationEvent = Extract<TrackerEvent, { type: 'medication' }>;

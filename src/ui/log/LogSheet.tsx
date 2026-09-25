@@ -4,7 +4,7 @@ import { db } from '../../db/instance';
 import type { Baby, Id } from '../../domain/types';
 import { messageFor } from '../ErrorBanner';
 import { useT } from '../I18nProvider';
-import { Sheet } from '../Sheet';
+import { Sheet, useSheetSession } from '../Sheet';
 import { BabyPicker } from './BabyPicker';
 import { DEFAULT_INPUTS, buildDrafts, resolveEntryTime, type SheetInput, type SheetKind } from './drafts';
 import { BottleForm, BreastfeedForm, DiaperForm, SleepForm } from './forms';
@@ -24,9 +24,19 @@ function initialInput(kind: SheetKind): SheetInput {
 
 export function LogSheet({ kind, babies, defaultBabyIds, onClose, onLogged }: Props) {
   const t = useT();
+  const session = useSheetSession(kind);
   return (
-    <Sheet open={kind !== null} title={kind ? t(`sheet.${kind}.title`) : ''} onClose={onClose}>
-      {kind && <LogForm key={kind} kind={kind} babies={babies} defaultBabyIds={defaultBabyIds} onClose={onClose} onLogged={onLogged} />}
+    <Sheet open={kind !== null} title={session ? t(`sheet.${session.value}.title`) : ''} onClose={onClose}>
+      {session && (
+        <LogForm
+          key={session.id}
+          kind={session.value}
+          babies={babies}
+          defaultBabyIds={defaultBabyIds}
+          onClose={onClose}
+          onLogged={onLogged}
+        />
+      )}
     </Sheet>
   );
 }
@@ -54,9 +64,10 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
       await logEvents(db, buildDrafts(input, selected, at));
       onLogged(selected);
       onClose();
+      // The guard stays set: the form is done and only waits for its dialog to close, so the second tap
+      // of a double tap must not log the entry again.
     } catch (failure) {
-      setError(messageFor(t, failure));
-    } finally {
+      setError(messageFor(t, failure, babies));
       submitting.current = false;
       setPending(false);
     }

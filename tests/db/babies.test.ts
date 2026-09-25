@@ -93,9 +93,10 @@ describe('babies repository', () => {
       segments: [{ side: 'L', start, end: switched }, { side: 'R', start: switched, end: now }],
     });
     expect(await db.events.get(doneSleep!.id)).toEqual(doneSleep);
-    expect(await db.events.get(canSleep!.id)).toEqual(canSleep);
+    expect(await db.events.get(canSleep!.id)).toEqual({ ...canSleep!, open: 1 });
     expect(await db.events.get(gone!.id)).toEqual(gone);
     expect(await db.events.get('deleted-feed')).toEqual(deletedFeed);
+    expect(await db.events.where('open').equals(1).primaryKeys()).toEqual([canSleep!.id]);
     expect(await db.babies.get(ada.id)).toMatchObject({ deletedAt: now, updatedAt: now });
   });
 

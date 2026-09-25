@@ -13,6 +13,13 @@ describe('formatDuration', () => {
     expect(formatDuration(tr, 2 * HOUR + 15 * MINUTE)).toBe('2 sa 15 dk');
     expect(formatDuration(en, 2 * HOUR + 15 * MINUTE)).toBe('2 h 15 min');
   });
+
+  it('shows days and hours from 24 hours on', () => {
+    expect(formatDuration(tr, 23 * HOUR + 59 * MINUTE)).toBe('23 sa 59 dk');
+    expect(formatDuration(tr, 27 * HOUR + 15 * MINUTE)).toBe('1 g 3 sa');
+    expect(formatDuration(en, 27 * HOUR + 15 * MINUTE)).toBe('1 d 3 h');
+    expect(formatDuration(tr, 48 * HOUR)).toBe('2 g 0 sa');
+  });
 });
 
 describe('formatAgo', () => {

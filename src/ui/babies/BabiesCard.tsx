@@ -5,6 +5,7 @@ import type { Baby } from '../../domain/types';
 import { useReportError, useReportLoadError } from '../ErrorBanner';
 import { useT } from '../I18nProvider';
 import { useLiveQuery } from '../useLiveQuery';
+import { useSheetSession } from '../Sheet';
 import { BabyFormDialog } from './BabyFormDialog';
 
 export function BabiesCard() {
@@ -12,6 +13,8 @@ export function BabiesCard() {
   const report = useReportError();
   const babies = useLiveQuery(() => listBabies(db), [], useReportLoadError()) ?? [];
   const [editing, setEditing] = useState<Baby | 'new' | null>(null);
+  // While the dialog closes it keeps showing the baby that was being edited.
+  const shown = useSheetSession(editing);
 
   const remove = async (baby: Baby) => {
     if (!window.confirm(t('babies.deleteConfirm', { name: baby.name }))) return;
@@ -44,7 +47,7 @@ export function BabiesCard() {
       </button>
       <BabyFormDialog
         open={editing !== null}
-        baby={editing === 'new' || editing === null ? undefined : editing}
+        baby={shown === null || shown.value === 'new' ? undefined : shown.value}
         usedColors={babies.map((b) => b.color)}
         onClose={() => setEditing(null)}
       />

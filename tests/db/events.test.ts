@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
-import { SWITCH_DEBOUNCE_MS, listRecentEvents, logEvents, stopEvent, switchBreastSide } from '../../src/db/events';
+import { SWITCH_DEBOUNCE_MS, listRecentEvents, listRunningEvents, logEvents, stopEvent, switchBreastSide } from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
-import { DAY, MINUTE } from '../../src/domain/time';
+import { DAY, HOUR, MINUTE } from '../../src/domain/time';
 
 const NOW = new Date(2026, 8, 25, 12, 0).getTime();
 const opened: TrackerDb[] = [];
@@ -52,7 +52,7 @@ describe('logEvents', () => {
         ],
         NOW,
       ),
-    ).rejects.toEqual(new ValidationError(['already-running']));
+    ).rejects.toEqual(new ValidationError(['already-running'], ['a']));
     expect(await db.events.count()).toBe(1);
   });
 
@@ -68,6 +68,37 @@ describe('logEvents', () => {
         NOW,
       ),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('names every baby whose draft clashes with a running entry', async () => {
+    const db = freshDb();
+    await logEvents(
+      db,
+      [
+        { type: 'sleep', babyId: 'a', startAt: NOW - 30 * MINUTE },
+        { type: 'sleep', babyId: 'b', startAt: NOW - 20 * MINUTE },
+      ],
+      NOW,
+    );
+    await expect(
+      logEvents(
+        db,
+        [
+          { type: 'sleep', babyId: 'a', startAt: NOW },
+          { type: 'sleep', babyId: 'b', startAt: NOW },
+          { type: 'sleep', babyId: 'c', startAt: NOW },
+        ],
+        NOW,
+      ),
+    ).rejects.toMatchObject({ violations: ['already-running'], babyIds: ['a', 'b'] });
+  });
+
+  it('refuses a finished feed longer than 4 hours', async () => {
+    const db = freshDb();
+    const start = NOW - 5 * HOUR;
+    await expect(
+      logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, endAt: NOW, segments: [{ side: 'L', start, end: NOW }] }], NOW),
+    ).rejects.toMatchObject({ violations: ['too-long'] });
   });
 });
 
@@ -191,5 +222,38 @@ describe('timers', () => {
     await expect(switchBreastSide(db, feed!.id, NOW)).rejects.toThrow(/not found/);
     await expect(switchBreastSide(db, 'missing', NOW)).rejects.toThrow(/not found/);
     await expect(switchBreastSide(db, sleep!.id, NOW)).rejects.toThrow(/not a breastfeed/);
+  });
+});
+
+describe('running events', () => {
+  it('logEvents, switchBreastSide and stopEvent keep exactly the running rows in the open index', async () => {
+    const db = freshDb();
+    const start = NOW - 10 * MINUTE;
+    const [sleep, feed] = await logEvents(
+      db,
+      [
+        { type: 'sleep', babyId: 'a', startAt: start },
+        { type: 'breastfeed', babyId: 'b', startAt: start, segments: [{ side: 'L', start }] },
+        { type: 'diaper', babyId: 'a', startAt: start, wet: true, dirty: false },
+      ],
+      start,
+    );
+    const runningIds = async () => (await listRunningEvents(db)).map((event) => event.id).sort();
+    expect(await runningIds()).toEqual([sleep!.id, feed!.id].sort());
+
+    await switchBreastSide(db, feed!.id, NOW);
+    expect(await runningIds()).toEqual([sleep!.id, feed!.id].sort());
+
+    await stopEvent(db, sleep!.id, NOW);
+    expect(await runningIds()).toEqual([feed!.id]);
+
+    await stopEvent(db, feed!.id, NOW);
+    expect(await runningIds()).toEqual([]);
+  });
+
+  it('stopEvent refuses an entry that is not a timer', async () => {
+    const db = freshDb();
+    const [diaper] = await logEvents(db, [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }], NOW);
+    await expect(stopEvent(db, diaper!.id, NOW)).rejects.toThrow(`Event ${diaper!.id} is not a timer`);
   });
 });

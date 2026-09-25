@@ -68,7 +68,7 @@ test('makes no network requests after the first load', async ({ page, context, b
 
   await quick('Biberon').click();
   const bottle = page.getByRole('dialog', { name: 'Biberon' });
-  await bottle.getByRole('button', { name: '90', exact: true }).click();
+  await bottle.getByRole('button', { name: '90 ml', exact: true }).click();
   await bottle.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(card).toContainText('biberon 90 ml');
 
