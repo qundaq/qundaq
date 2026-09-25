@@ -42,3 +42,53 @@ test.describe('babies', () => {
     await expect(babyCard(page, 'Can')).toHaveCount(0);
   });
 });
+
+function quick(page: import('@playwright/test').Page, name: string) {
+  return page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
+}
+
+test.describe('diapers', () => {
+  test('a dirty diaper with a pale stool shows the biliary-atresia warning and lands on the card', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
+    await sheet.getByRole('radio', { name: 'Beyaz' }).click();
+    await expect(sheet.getByRole('alert')).toContainText('biliyer atrezi');
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet).toBeHidden();
+    await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak + kirli');
+  });
+
+  test('"All" logs the same diaper for every baby', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByRole('button', { name: 'Hepsi', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak');
+    await expect(babyCard(page, 'Can')).toContainText('az önce · ıslak');
+  });
+
+  test('colored swatches and cards cause no CSP violations', async ({ page }) => {
+    await page.addInitScript(() => {
+      const store: string[] = [];
+      (window as unknown as { __cspViolations: string[] }).__cspViolations = store;
+      document.addEventListener('securitypolicyviolation', (e) => store.push(`${e.violatedDirective} ${e.blockedURI}`));
+    });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
+    await sheet.getByRole('radio', { name: 'Sarı' }).click();
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(babyCard(page, 'Ada')).toContainText('kirli');
+    const violations = await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
+    expect(violations).toEqual([]);
+  });
+});

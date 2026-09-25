@@ -100,3 +100,19 @@ legend { margin-bottom: 6px; }
 .baby-list .dot { width: 16px; height: 16px; border-radius: 50%; flex: none; }
 .baby-list .name { flex: 1; }
 .baby-card { border-left: 6px solid var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { min-height: var(--tap); padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); }
+.chip[aria-pressed='true'] { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+.time-field { display: flex; align-items: flex-end; gap: 8px; }
+.time-field .field { flex: 1; }
+.time-field .btn { margin-bottom: 12px; }
+.stool-alert { border: 1px solid var(--danger); color: var(--danger); border-radius: 12px; padding: 12px; }
+.status { margin: 0; display: grid; gap: 6px; }
+.status div { display: flex; justify-content: space-between; gap: 12px; }
+.status dt { color: var(--muted); }
+.status dd { margin: 0; text-align: right; }
+.quick-actions {
+  position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 8px);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px;
+}
+.quick-actions .btn { min-height: 64px; padding: 0 4px; background: var(--surface); }
