@@ -44,5 +44,7 @@ test('served from /qundaq/, the app loads, caches only its own paths and works o
   await expect(babyCard(fresh, 'Ada')).toContainText('ıslak');
 
   expect(leaked).toEqual([]);
-  expect(await servedPaths(request), 'requests that reached the server while offline').toEqual([]);
+  // The browser's own sw.js update check may reach the server (it bypasses route()); nothing else may.
+  const offline = (await servedPaths(request)).filter((path) => path !== '/qundaq/sw.js');
+  expect(offline, 'requests that reached the server while offline').toEqual([]);
 });

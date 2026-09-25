@@ -360,10 +360,13 @@ export function removeSegment(input: BreastfeedEdit, index: number): BreastfeedE
 }
 
 /**
- * The edit sheet's time fields: the shown value unchanged keeps the stored instant (seconds included); a
- * new value that parses replaces it; an emptied or broken value keeps it. The edit sheet never means "now".
+ * The edit sheet's time fields: the shown value unchanged keeps the current instant (seconds included); a
+ * value that shows the `stored` time again (a minute changed and changed back) returns exactly the stored
+ * instant, so the form is no longer dirty; a new value that parses replaces it; an emptied or broken value
+ * keeps it. The edit sheet never means "now".
  */
-export function editedTime(raw: string, current: number): number {
+export function editedTime(raw: string, current: number, stored?: number): number {
+  if (stored !== undefined && raw === toLocalInputValue(stored)) return stored;
   if (raw === toLocalInputValue(current)) return current;
   return fromLocalInputValue(raw) ?? current;
 }

@@ -186,7 +186,13 @@ export function NoteField({ value, required, onChange }: { value: string; requir
   return (
     <label className="field">
       {t(required ? 'note.required' : 'note.optional')}
-      <textarea rows={3} maxLength={TEXT_LIMITS.note} value={value} onChange={(e) => onChange(e.target.value)} />
+      <textarea
+        rows={3}
+        maxLength={TEXT_LIMITS.note}
+        aria-required={required || undefined}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </label>
   );
 }

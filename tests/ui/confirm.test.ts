@@ -11,8 +11,15 @@ describe('deleteTap', () => {
     expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MAX_MS)).toEqual({ armedAt: null, confirmed: true });
   });
 
-  it('a double tap is ignored and the button stays armed', () => {
-    expect(deleteTap(1000, 1300)).toEqual({ armedAt: 1000, confirmed: false });
+  it('a double tap does not delete and re-arms from the fast tap', () => {
+    expect(deleteTap(1000, 1300)).toEqual({ armedAt: 1300, confirmed: false });
+  });
+
+  it('a fast triple tap at 0 / 300 / 650 ms does not delete', () => {
+    const first = deleteTap(null, 0);
+    const second = deleteTap(first.armedAt, 300);
+    expect(second).toEqual({ armedAt: 300, confirmed: false });
+    expect(deleteTap(second.armedAt, 650)).toEqual({ armedAt: 650, confirmed: false });
   });
 
   it('a tap after the window arms again instead of deleting', () => {

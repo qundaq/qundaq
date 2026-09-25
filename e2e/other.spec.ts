@@ -102,6 +102,7 @@ test('switching the type keeps the time and the note; a health note needs text',
   await expect(page.getByRole('dialog', { name: 'Sağlık notu' })).toBeVisible();
   await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(sheet.getByRole('alert')).toHaveText('Bir not yazın.');
+  await expect(sheet.getByLabel('Not', { exact: true })).toHaveAttribute('aria-required', 'true');
 
   await sheet.getByLabel('Zaman').fill('2026-09-25T09:15');
   await sheet.getByLabel('Not', { exact: true }).fill('Aşı günü, huysuz');

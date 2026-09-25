@@ -23,6 +23,7 @@ Run on a real iPhone before telling anyone a release is ready. Automated tests c
 | 15 | Home in Turkish, then in English: look at the five quick buttons (Emzir … Diğer / Nurse … Other) | All five on one row, no label cut off, no sideways scrolling | |
 | 16 | Diğer → Büyüme: type 3,45 with the comma key of the Turkish keypad. Diğer → Ateş: 38,2 | Saved as 3,45 kg and 38,2 °C; the fever hint appears while typing | |
 | 17 | Start a sleep, wait until the next morning (or set the phone's clock 13 hours ahead), open Home | "Durdurmayı unuttunuz mu?" under the timer; tapping it lets you set the real wake-up time | |
+| 18 | Before updating to this version (the one that adds Günlük and Özet), start a sleep on the home-screen app. Then online: Settings → Güncellemeleri kontrol et → Yeniden başlat | Home still shows the sleep running with the right elapsed time; "Uyandı" stops it; Günlük lists it with the older entries | |
 
 Notes:
 - First launch: the home-screen app has its own storage, separate from Safari tabs. Records, settings and the

@@ -177,5 +177,5 @@ legend { margin-bottom: 6px; }
 .week thead th, .growth-table thead th { color: var(--muted); font-weight: 600; border-top: 0; }
 .week-detail { display: block; }
 .growth-chart { display: block; width: 100%; height: auto; margin: 8px 0; }
-.chart-axis { stroke: var(--border); stroke-width: 1; }
+.chart-axis { stroke: var(--muted); stroke-width: 1; }
 .chart-label { fill: var(--muted); font-size: 11px; }

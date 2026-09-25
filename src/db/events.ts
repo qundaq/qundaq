@@ -1,4 +1,3 @@
-import Dexie from 'dexie';
 import { newId } from '../domain/ids';
 import { ValidationError, isOpen, isTimedType, validateEvent, type RuleViolation } from '../domain/rules';
 import { DAY } from '../domain/time';
@@ -47,10 +46,17 @@ export async function listEventsOverlapping(db: TrackerDb, from: number, to: num
   return [...byId.values()].sort((a, b) => a.startAt - b.startAt);
 }
 
-/** One baby's non-deleted growth entries, oldest first. */
+/**
+ * One baby's non-deleted growth entries, oldest first. Read through the `type` index: growth rows are a
+ * few dozen a year, while the baby's other events run to thousands.
+ */
 export async function listGrowth(db: TrackerDb, babyId: Id): Promise<GrowthEvent[]> {
-  const rows = await db.events.where('[babyId+startAt]').between([babyId, Dexie.minKey], [babyId, Dexie.maxKey]).toArray();
-  return rows.filter((event): event is GrowthEvent => event.type === 'growth' && event.deletedAt === undefined);
+  const rows = await db.events
+    .where('type')
+    .equals('growth')
+    .filter((event) => event.babyId === babyId && event.deletedAt === undefined)
+    .sortBy('startAt');
+  return rows.filter((event): event is GrowthEvent => event.type === 'growth');
 }
 
 export interface RecentMedication {
@@ -62,7 +68,7 @@ export const RECENT_MEDICATION_WINDOW_MS = 60 * DAY;
 
 /** Case-insensitive key that treats İ/I/ı/i alike, so "İbuprofen" and "ibuprofen" are one medicine. */
 function foldCase(name: string): string {
-  return name.normalize('NFKD').replace(/̇/g, '').toLowerCase().replace(/ı/g, 'i');
+  return name.normalize('NFKD').replace(/\u0307/g, '').toLowerCase().replace(/ı/g, 'i');
 }
 
 /**

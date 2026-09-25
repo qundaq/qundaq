@@ -231,6 +231,21 @@ describe('edit sheet time fields', () => {
     expect(editedOptionalTime(toLocalInputValue(stored), stored)).toBe(stored);
   });
 
+  it('changed and changed back, return the stored instant, seconds included', () => {
+    const changed = editedTime('2026-09-25T09:30', stored, stored);
+    expect(changed).toBe(nineThirty());
+    expect(editedTime(toLocalInputValue(stored), changed, stored)).toBe(stored);
+  });
+
+  it('changed and changed back, leave the edit equal to the stored entry (not dirty)', () => {
+    const initial = eventToInput(RUNNING_SLEEP) as SleepEdit;
+    const storedStart = RUNNING_SLEEP.startAt;
+    const moved = { ...initial, startAt: editedTime('2026-09-25T09:30', initial.startAt, storedStart) };
+    expect(moved).not.toEqual(initial);
+    const back = { ...moved, startAt: editedTime(toLocalInputValue(storedStart), moved.startAt, storedStart) };
+    expect(JSON.stringify(back)).toBe(JSON.stringify(initial));
+  });
+
   it('take a new valid value; an emptied or broken field keeps the stored time', () => {
     expect(editedTime('2026-09-25T09:30', stored)).toBe(nineThirty());
     expect(editedTime('', stored)).toBe(stored);
