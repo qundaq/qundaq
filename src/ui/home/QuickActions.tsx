@@ -1,7 +1,7 @@
 import type { SheetKind } from '../log/drafts';
 import { useT } from '../I18nProvider';
 
-const KINDS: readonly SheetKind[] = ['breastfeed', 'bottle', 'sleep', 'diaper'];
+const KINDS: readonly SheetKind[] = ['breastfeed', 'bottle', 'sleep', 'diaper', 'other'];
 
 export function QuickActions({ onPick }: { onPick: (kind: SheetKind) => void }) {
   const t = useT();

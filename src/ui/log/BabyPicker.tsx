@@ -33,3 +33,20 @@ export function BabyPicker({ babies, selected, onChange }: Props) {
     </fieldset>
   );
 }
+
+/** Exactly one baby, no "All": for a measurement, and for the edit sheet (one entry, one baby). */
+export function SingleBabyPicker({ babies, selected, onChange }: { babies: readonly Baby[]; selected: Id | null; onChange: (id: Id) => void }) {
+  const t = useT();
+  return (
+    <fieldset>
+      <legend>{t('sheet.babies')}</legend>
+      <div className="chips">
+        {babies.map((baby) => (
+          <button key={baby.id} type="button" className="chip" aria-pressed={selected === baby.id} onClick={() => onChange(baby.id)}>
+            {baby.name}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}

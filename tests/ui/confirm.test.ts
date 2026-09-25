@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest';
+import { DELETE_CONFIRM_MAX_MS, DELETE_CONFIRM_MIN_MS, deleteTap } from '../../src/ui/history/confirm';
+
+describe('deleteTap', () => {
+  it('the first tap arms the button', () => {
+    expect(deleteTap(null, 1000)).toEqual({ armedAt: 1000, confirmed: false });
+  });
+
+  it('a second tap between 600 ms and 4 s after the first deletes', () => {
+    expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MIN_MS)).toEqual({ armedAt: null, confirmed: true });
+    expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MAX_MS)).toEqual({ armedAt: null, confirmed: true });
+  });
+
+  it('a double tap is ignored and the button stays armed', () => {
+    expect(deleteTap(1000, 1300)).toEqual({ armedAt: 1000, confirmed: false });
+  });
+
+  it('a tap after the window arms again instead of deleting', () => {
+    const late = 1000 + DELETE_CONFIRM_MAX_MS + 1;
+    expect(deleteTap(1000, late)).toEqual({ armedAt: late, confirmed: false });
+  });
+
+  it('a clock that went backwards arms again', () => {
+    expect(deleteTap(5000, 4000)).toEqual({ armedAt: 4000, confirmed: false });
+  });
+});
