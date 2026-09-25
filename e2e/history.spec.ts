@@ -176,6 +176,43 @@ test.describe('editing and deleting', () => {
     await expect(babyCard(page, 'Ada')).not.toContainText('biberon');
   });
 
+  test('Cancel and Esc wait for a save in flight', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await logDiaper(page, { at: '2026-09-25T09:40' });
+    await openTab(page, 'Günlük');
+    await openRow(page, 'Bez');
+    const sheet = page.getByRole('dialog', { name: 'Kaydı düzenle · Bez' });
+    await sheet.getByLabel('Not (isteğe bağlı)').fill('Pişik kremi');
+
+    // A second connection holds a read-write transaction on the events, so the app's save has to wait.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          const open = indexedDB.open('qundaq');
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const store = open.result.transaction('events', 'readwrite').objectStore('events');
+            const hold = () => {
+              if (!(window as unknown as { __release?: boolean }).__release) store.get('none').onsuccess = hold;
+            };
+            hold();
+            resolve();
+          };
+        }),
+    );
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet.getByRole('button', { name: 'Vazgeç', exact: true })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeVisible();
+
+    await page.evaluate(() => {
+      (window as unknown as { __release?: boolean }).__release = true;
+    });
+    await expect(sheet).toBeHidden();
+    await expect(logRows(page).first()).toContainText('Pişik kremi');
+  });
+
   test("a finished feed's sides and minutes can be changed", async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
@@ -257,9 +294,17 @@ test.describe('editing and deleting', () => {
     const wakeUp = () => sheet.getByRole('button', { name: 'Uyandı', exact: true });
     await expect(sheet.getByLabel('Bitiş', { exact: true })).toHaveCount(0);
     await expect(wakeUp()).toBeEnabled();
-    await sheet.getByLabel('Başlangıç', { exact: true }).fill('2026-09-25T09:30');
+    const start = sheet.getByLabel('Başlangıç', { exact: true });
+    const stored = await start.inputValue();
+    // Changed and changed back: the stored time (seconds included) is restored, so nothing is left to save.
+    await start.fill('2026-09-25T09:30');
+    await expect(wakeUp()).toBeDisabled();
+    await start.fill(stored);
+    await expect(wakeUp()).toBeEnabled();
+    await start.fill('2026-09-25T09:30');
     await expect(wakeUp()).toBeDisabled();
     await expect(sheet.getByText('Değişiklikleri önce kaydedin.')).toBeVisible();
+    await expect(wakeUp()).toHaveAccessibleDescription('Değişiklikleri önce kaydedin.');
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(sheet).toBeHidden();
     await expect(logRows(page).first()).toContainText('09:30 – devam ediyor');

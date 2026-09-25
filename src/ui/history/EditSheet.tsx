@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { deleteEvent, stopEvent, updateEvent } from '../../db/events';
 import { db } from '../../db/instance';
 import { isOpen } from '../../domain/rules';
@@ -39,11 +39,25 @@ function EditForm({ event, babies, onDone }: { event: TrackerEvent; babies: read
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false); // only for `disabled`; the ref below is the real guard
   const busy = useRef(false); // set synchronously, so a second action before the next render is refused
+  const form = useRef<HTMLFormElement>(null);
   const [armedAt, setArmedAt] = useState<number | null>(null);
+  const saveFirstId = useId();
   const running = isOpen(event);
   const dirty = JSON.stringify(input) !== JSON.stringify(initial);
 
   useEffect(() => setError(null), [input]);
+  useEffect(() => {
+    // Esc while a save, stop or delete is in flight would unmount the form and lose its outcome (a failure
+    // shown nowhere, or a "cancelled" save that lands anyway). The dialog's cancel event does not bubble, so
+    // listen on the dialog itself.
+    const dialog = form.current?.closest('dialog');
+    if (!dialog) return;
+    const holdWhileBusy = (cancel: Event) => {
+      if (busy.current) cancel.preventDefault();
+    };
+    dialog.addEventListener('cancel', holdWhileBusy);
+    return () => dialog.removeEventListener('cancel', holdWhileBusy);
+  }, []);
   useEffect(() => {
     if (armedAt === null) return;
     const timer = window.setTimeout(() => setArmedAt(null), DELETE_CONFIRM_MAX_MS);
@@ -76,15 +90,15 @@ function EditForm({ event, babies, onDone }: { event: TrackerEvent; babies: read
   };
 
   return (
-    <form onSubmit={save} noValidate>
+    <form ref={form} onSubmit={save} noValidate>
       {input.type !== 'pump' && babies.length > 1 && (
         <SingleBabyPicker babies={babies} selected={input.babyId} onChange={(babyId) => setInput({ ...input, babyId })} />
       )}
       {input.type === 'sleep' || input.type === 'breastfeed' ? (
         <>
-          <EditTimeField label={t('edit.start')} value={input.startAt} onChange={(startAt) => setInput({ ...input, startAt })} />
+          <EditTimeField label={t('edit.start')} value={input.startAt} stored={event.startAt} onChange={(startAt) => setInput({ ...input, startAt })} />
           {input.type === 'sleep' && input.endAt !== null && !running && (
-            <EditTimeField label={t('edit.end')} value={input.endAt} onChange={(endAt) => setInput({ ...input, endAt })} />
+            <EditTimeField label={t('edit.end')} value={input.endAt} stored={event.endAt} onChange={(endAt) => setInput({ ...input, endAt })} />
           )}
           {input.type === 'breastfeed' && <SegmentsEditor value={input} running={running} onChange={setInput} />}
           {running && (
@@ -92,7 +106,7 @@ function EditForm({ event, babies, onDone }: { event: TrackerEvent; babies: read
           )}
         </>
       ) : (
-        <EditTimeField label={t('sheet.time')} value={input.startAt} onChange={(startAt) => setInput({ ...input, startAt })} />
+        <EditTimeField label={t('sheet.time')} value={input.startAt} stored={event.startAt} onChange={(startAt) => setInput({ ...input, startAt })} />
       )}
       {input.type === 'bottle' && <BottleForm value={input.value} onChange={(value) => setInput({ ...input, value })} />}
       {input.type === 'diaper' && <DiaperForm value={input.value} onChange={(value) => setInput({ ...input, value })} />}
@@ -105,10 +119,20 @@ function EditForm({ event, babies, onDone }: { event: TrackerEvent; babies: read
       <NoteField value={input.note} required={input.type === 'healthNote'} onChange={(note) => setInput({ ...input, note })} />
       {running && (
         <div className="edit-stop">
-          <button type="button" className="btn btn-primary" disabled={dirty || pending} onClick={() => void run(() => stopEvent(db, event.id))}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={dirty || pending}
+            aria-describedby={dirty ? saveFirstId : undefined}
+            onClick={() => void run(() => stopEvent(db, event.id))}
+          >
             {t(event.type === 'sleep' ? 'timer.wakeUp' : 'timer.stopFeed')}
           </button>
-          {dirty && <p className="muted small">{t('edit.saveFirst')}</p>}
+          {dirty && (
+            <p id={saveFirstId} className="muted small">
+              {t('edit.saveFirst')}
+            </p>
+          )}
         </div>
       )}
       {error && (
@@ -117,7 +141,7 @@ function EditForm({ event, babies, onDone }: { event: TrackerEvent; babies: read
         </p>
       )}
       <div className="sheet-actions">
-        <button type="button" className="btn" onClick={onDone}>
+        <button type="button" className="btn" disabled={pending} onClick={onDone}>
           {t('common.cancel')}
         </button>
         <button type="submit" className="btn btn-primary" disabled={pending}>
