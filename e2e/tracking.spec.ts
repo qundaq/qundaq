@@ -43,6 +43,20 @@ test.describe('babies', () => {
   });
 });
 
+test('a failure to read the data is shown, not swallowed', async ({ page }) => {
+  await page.addInitScript(() => {
+    // Break every index read (the baby list is read through the createdAt index).
+    IDBIndex.prototype.getAll = function () {
+      throw new DOMException('Simulated read failure', 'UnknownError');
+    };
+    IDBIndex.prototype.openCursor = function () {
+      throw new DOMException('Simulated read failure', 'UnknownError');
+    };
+  });
+  await page.reload();
+  await expect(page.getByRole('alert')).toHaveText(/Veriler yüklenemedi\. Uygulamayı kapatıp yeniden açın\./);
+});
+
 function quick(page: import('@playwright/test').Page, name: string) {
   return page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
 }

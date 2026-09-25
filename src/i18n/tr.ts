@@ -40,6 +40,7 @@ export const tr = {
   'common.save': 'Kaydet',
   'common.dismiss': 'Kapat',
   'error.saveFailed': 'Kaydedilemedi. Lütfen tekrar deneyin.',
+  'error.loadFailed': 'Veriler yüklenemedi. Uygulamayı kapatıp yeniden açın.',
   'rule.baby-required': 'Bir bebek seçin.',
   'rule.in-future': 'Gelecekteki bir zaman girilemez.',
   'rule.end-before-start': 'Bitiş, başlangıçtan önce olamaz.',

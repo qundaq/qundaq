@@ -42,6 +42,7 @@ export const en: Record<MessageKey, string> = {
   'common.save': 'Save',
   'common.dismiss': 'Dismiss',
   'error.saveFailed': 'Could not save. Please try again.',
+  'error.loadFailed': "Couldn't load your data. Close and reopen the app.",
   'rule.baby-required': 'Choose a baby.',
   'rule.in-future': 'Times in the future are not allowed.',
   'rule.end-before-start': "The end can't be before the start.",

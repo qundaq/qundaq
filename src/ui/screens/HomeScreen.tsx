@@ -7,7 +7,7 @@ import type { Id } from '../../domain/types';
 import { babyStatus } from '../../domain/status';
 import { DAY } from '../../domain/time';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
-import { useReportError } from '../ErrorBanner';
+import { useReportError, useReportLoadError } from '../ErrorBanner';
 import { BabyCard } from '../home/BabyCard';
 import { QuickActions } from '../home/QuickActions';
 import { useT } from '../I18nProvider';
@@ -28,8 +28,9 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
   const t = useT();
   const tick = useNow();
   const report = useReportError();
-  const babies = useLiveQuery(() => listBabies(db), []);
-  const events = useLiveQuery(() => listRecentEvents(db, Date.now() - RECENT_WINDOW), []);
+  const reportLoadError = useReportLoadError();
+  const babies = useLiveQuery(() => listBabies(db), [], reportLoadError);
+  const events = useLiveQuery(() => listRecentEvents(db, Date.now() - RECENT_WINDOW), [], reportLoadError);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
   const [adding, setAdding] = useState(false);
   // Timer buttons already in flight, per event: a double tap must not run the same action twice.
@@ -44,7 +45,7 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
     if (busy.current.has(eventId)) return;
     busy.current.add(eventId);
     action()
-      .catch(report)
+      .catch((error: unknown) => report(error))
       .finally(() => busy.current.delete(eventId));
   };
 

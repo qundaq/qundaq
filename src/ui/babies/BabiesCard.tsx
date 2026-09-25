@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { deleteBaby, listBabies } from '../../db/babies';
 import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
-import { useReportError } from '../ErrorBanner';
+import { useReportError, useReportLoadError } from '../ErrorBanner';
 import { useT } from '../I18nProvider';
 import { useLiveQuery } from '../useLiveQuery';
 import { BabyFormDialog } from './BabyFormDialog';
@@ -10,7 +10,7 @@ import { BabyFormDialog } from './BabyFormDialog';
 export function BabiesCard() {
   const t = useT();
   const report = useReportError();
-  const babies = useLiveQuery(() => listBabies(db), []) ?? [];
+  const babies = useLiveQuery(() => listBabies(db), [], useReportLoadError()) ?? [];
   const [editing, setEditing] = useState<Baby | 'new' | null>(null);
 
   const remove = async (baby: Baby) => {
