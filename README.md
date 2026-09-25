@@ -11,7 +11,7 @@ Runs entirely on your phone as an installable web app. No accounts, no servers, 
 
 ## Status
 
-🚧 **Early development.** The first version contains only the app shell and settings; tracking, backup and sounds come next.
+🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer) and diapers with the stool color card. History editing, summaries, backup and sounds come next.
 
 ## Why
 
@@ -85,7 +85,7 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 
 "Qundaq", Türkçedeki *kundak* kelimesinin Azerbaycan Türkçesindeki yazılışıdır.
 
-**Durum:** 🚧 Geliştirmenin başında. İlk sürüm yalnızca uygulama kabuğunu ve ayarları içeriyor; takip, yedekleme ve sesler sırada.
+**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla) ve kaka renk kartıyla bezi takip ediyor. Geçmişi düzenleme, özetler, yedekleme ve sesler sırada.
 
 **İlkeler:**
 - Veri yalnızca telefonda tutulur.
