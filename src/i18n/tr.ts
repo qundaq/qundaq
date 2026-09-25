@@ -113,7 +113,7 @@ export const tr = {
   'stool.color.mustard': 'Hardal',
   'stool.color.green': 'Yeşil',
   'stool.color.brown': 'Kahverengi',
-  'stool.color.pale-yellow': 'Soluk',
+  'stool.color.pale-yellow': 'Soluk sarı',
   'stool.color.clay': 'Kil rengi',
   'stool.color.white': 'Beyaz',
   'stool.color.red': 'Kırmızı',

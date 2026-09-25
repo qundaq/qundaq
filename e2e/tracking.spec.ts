@@ -54,7 +54,7 @@ test.describe('diapers', () => {
     await quick(page, 'Bez').click();
     const sheet = page.getByRole('dialog', { name: 'Bez' });
     await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
-    await sheet.getByRole('radio', { name: 'Beyaz' }).click();
+    await sheet.getByRole('radio', { name: 'Beyaz', exact: true }).click();
     await expect(sheet.getByRole('alert')).toContainText('biliyer atrezi');
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(sheet).toBeHidden();
@@ -85,7 +85,7 @@ test.describe('diapers', () => {
     await quick(page, 'Bez').click();
     const sheet = page.getByRole('dialog', { name: 'Bez' });
     await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
-    await sheet.getByRole('radio', { name: 'Sarı' }).click();
+    await sheet.getByRole('radio', { name: 'Sarı', exact: true }).click();
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(babyCard(page, 'Ada')).toContainText('kirli');
     const violations = await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);

@@ -115,7 +115,7 @@ export const en: Record<MessageKey, string> = {
   'stool.color.mustard': 'Mustard',
   'stool.color.green': 'Green',
   'stool.color.brown': 'Brown',
-  'stool.color.pale-yellow': 'Pale',
+  'stool.color.pale-yellow': 'Pale yellow',
   'stool.color.clay': 'Clay',
   'stool.color.white': 'White',
   'stool.color.red': 'Red',
