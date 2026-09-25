@@ -3,11 +3,13 @@ import { listBabies } from '../../db/babies';
 import { listRecentEvents, stopEvent, switchBreastSide } from '../../db/events';
 import { db } from '../../db/instance';
 import type { Settings } from '../../db/settings';
-import type { Id } from '../../domain/types';
+import { forgottenTimer } from '../../domain/health';
 import { babyStatus } from '../../domain/status';
 import { DAY } from '../../domain/time';
+import type { Id, TrackerEvent } from '../../domain/types';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
 import { useReportError, useReportLoadError } from '../ErrorBanner';
+import { EditSheet } from '../history/EditSheet';
 import { BabyCard } from '../home/BabyCard';
 import { QuickActions } from '../home/QuickActions';
 import { useT } from '../I18nProvider';
@@ -33,6 +35,7 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
   const events = useLiveQuery(() => listRecentEvents(db, Date.now() - RECENT_WINDOW), [], reportLoadError);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<TrackerEvent | null>(null);
   // Timer buttons already in flight, per event: a double tap must not run the same action twice.
   const busy = useRef<Set<Id>>(new Set());
 
@@ -40,6 +43,7 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
 
   // The tick can be up to 30 s old; data written since then must never look like it is in the future.
   const now = Math.max(tick, Date.now());
+  const byId = new Map(events.map((event) => [event.id, event]));
 
   const act = (eventId: Id, action: () => Promise<unknown>) => {
     if (busy.current.has(eventId)) return;
@@ -47,6 +51,17 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
     action()
       .catch((error: unknown) => report(error))
       .finally(() => busy.current.delete(eventId));
+  };
+
+  /** Under a timer that has run suspiciously long: opens it in the edit sheet to end it at the right time. */
+  const forgotHint = (babyName: string, eventId: Id) => {
+    const event = byId.get(eventId);
+    if (!event || !forgottenTimer(event, now)) return null;
+    return (
+      <button type="button" className="btn btn-link" aria-label={`${babyName}: ${t('timer.forgot')}`} onClick={() => setEditing(event)}>
+        {t('timer.forgot')}
+      </button>
+    );
   };
 
   return (
@@ -70,36 +85,42 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
                 {(running || asleep) && (
                   <div className="timer-actions">
                     {running && (
-                      <div className="timer-row">
-                        <button
-                          type="button"
-                          className="btn"
-                          aria-label={`${baby.name}: ${t('timer.switchSide')}`}
-                          onClick={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}
-                        >
-                          {t('timer.switchSide')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          aria-label={`${baby.name}: ${t('timer.stopFeed')}`}
-                          onClick={() => act(running.eventId, () => stopEvent(db, running.eventId))}
-                        >
-                          {t('timer.stopFeed')}
-                        </button>
-                      </div>
+                      <>
+                        <div className="timer-row">
+                          <button
+                            type="button"
+                            className="btn"
+                            aria-label={`${baby.name}: ${t('timer.switchSide')}`}
+                            onClick={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}
+                          >
+                            {t('timer.switchSide')}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            aria-label={`${baby.name}: ${t('timer.stopFeed')}`}
+                            onClick={() => act(running.eventId, () => stopEvent(db, running.eventId))}
+                          >
+                            {t('timer.stopFeed')}
+                          </button>
+                        </div>
+                        {forgotHint(baby.name, running.eventId)}
+                      </>
                     )}
                     {asleep && (
-                      <div className="timer-row">
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          aria-label={`${baby.name}: ${t('timer.wakeUp')}`}
-                          onClick={() => act(asleep.eventId, () => stopEvent(db, asleep.eventId))}
-                        >
-                          {t('timer.wakeUp')}
-                        </button>
-                      </div>
+                      <>
+                        <div className="timer-row">
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            aria-label={`${baby.name}: ${t('timer.wakeUp')}`}
+                            onClick={() => act(asleep.eventId, () => stopEvent(db, asleep.eventId))}
+                          >
+                            {t('timer.wakeUp')}
+                          </button>
+                        </div>
+                        {forgotHint(baby.name, asleep.eventId)}
+                      </>
                     )}
                   </div>
                 )}
@@ -117,6 +138,7 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
         onClose={() => setSheet(null)}
         onLogged={(ids) => void onSettingsChange({ lastBabyIds: ids })}
       />
+      <EditSheet event={editing} babies={babies} onClose={() => setEditing(null)} />
     </section>
   );
 }

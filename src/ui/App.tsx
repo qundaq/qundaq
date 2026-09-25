@@ -3,6 +3,7 @@ import { db } from '../db/instance';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from '../db/settings';
 import { detectLocale } from '../i18n';
 import { ErrorProvider, useReportError } from './ErrorBanner';
+import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from './history/LogScreen';
 import { I18nProvider } from './I18nProvider';
 import { TabBar, type Tab } from './TabBar';
 import { ComingSoon } from './screens/ComingSoon';
@@ -43,6 +44,8 @@ export function App() {
 function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSaved: (next: Settings) => void }) {
   const report = useReportError();
   const [tab, setTab] = useState<Tab>('home');
+  // Screen state lives here so it survives tab switches (and resets when the app restarts).
+  const [logView, setLogView] = useState<LogView>(DEFAULT_LOG_VIEW);
 
   const updateSettings = async (patch: Partial<Settings>) => {
     try {
@@ -57,6 +60,8 @@ function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSa
       <main className="screen">
         {tab === 'home' ? (
           <HomeScreen settings={settings} onSettingsChange={updateSettings} />
+        ) : tab === 'log' ? (
+          <LogScreen view={logView} onViewChange={setLogView} />
         ) : tab === 'settings' ? (
           <SettingsScreen settings={settings} onChange={updateSettings} />
         ) : (

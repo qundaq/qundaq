@@ -4,7 +4,8 @@ import { MINUTE, fromLocalInputValue, toLocalInputValue } from '../../domain/tim
 import type { BottleContents, BreastSegment, Consistency, EventDraft, Id, Side, StoolColor, TrackerEvent } from '../../domain/types';
 import type { Locale } from '../../i18n';
 
-export type SheetKind = 'breastfeed' | 'bottle' | 'sleep' | 'diaper';
+/** What a quick button opens. "other" is the "Diğer" sheet, whose chip picks one of OTHER_TYPES. */
+export type SheetKind = 'breastfeed' | 'bottle' | 'sleep' | 'diaper' | 'other';
 
 /** The record types of the "Diğer" sheet in chip order. The first is the default: daily vitamin D. */
 export type OtherType = 'medication' | 'growth' | 'temperature' | 'pump' | 'healthNote';
