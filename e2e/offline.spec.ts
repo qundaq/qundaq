@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addBabyInSettings, babyCard, openTab } from './support/tracking';
+import { addBabyInSettings, babyCard, logRows, openRow, openTab } from './support/tracking';
 
 // The browser may re-check the app's own sw.js for updates on navigation. That is the single request
 // MANIFESTO.md documents as outside the app's control; it carries no user data. Anything else counts
@@ -71,6 +71,24 @@ test('makes no network requests after the first load', async ({ page, context, b
   await bottle.getByRole('button', { name: '90 ml', exact: true }).click();
   await bottle.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(card).toContainText('biberon 90 ml');
+
+  // History, editing, "Diğer" and the summary stay on the device as well.
+  await quick('Diğer').click();
+  const other = page.getByRole('dialog', { name: 'İlaç' });
+  await other.getByLabel('İlaç / vitamin').fill('D vitamini');
+  await other.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(other).toBeHidden();
+
+  await openTab(page, 'Günlük');
+  await openRow(page, 'Biberon');
+  const edit = page.getByRole('dialog', { name: 'Kaydı düzenle · Biberon' });
+  await edit.getByLabel('Miktar (ml)').fill('120');
+  await edit.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(logRows(page).filter({ hasText: '120 ml' })).toHaveCount(1);
+  await expect(logRows(page).filter({ hasText: 'D vitamini' })).toHaveCount(1);
+
+  await openTab(page, 'Özet');
+  await expect(page.getByRole('table', { name: 'Son 7 gün' })).toBeVisible();
 
   await openTab(page, 'Ayarlar');
   const nightSwitch = page.getByRole('switch');
