@@ -1,5 +1,6 @@
 import { LOCALES } from '../../i18n';
 import type { Settings } from '../../db/settings';
+import { BabiesCard } from '../babies/BabiesCard';
 import { useT } from '../I18nProvider';
 import { OfflineCard, StorageCard, UpdateCard } from './PlatformCards';
 
@@ -13,6 +14,8 @@ export function SettingsScreen({ settings, onChange }: Props) {
   return (
     <section>
       <h1>{t('tab.settings')}</h1>
+
+      <BabiesCard />
 
       <div className="card">
         <h2>{t('settings.language')}</h2>
