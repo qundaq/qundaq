@@ -40,6 +40,15 @@ describe('babies repository', () => {
     await expect(updateBaby(db, ada.id, { name: '' })).rejects.toBeInstanceOf(ValidationError);
   });
 
+  it('clears the birth date when it is set to undefined', async () => {
+    const db = freshDb();
+    const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff', birthDate: '2026-09-01' }, 1000);
+    await updateBaby(db, ada.id, { name: 'Ada', color: '#7cb7ff', birthDate: undefined }, 2000);
+    const stored = await db.babies.get(ada.id);
+    expect(stored).not.toHaveProperty('birthDate');
+    expect(stored).toMatchObject({ name: 'Ada', updatedAt: 2000 });
+  });
+
   it('soft-deletes', async () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' });

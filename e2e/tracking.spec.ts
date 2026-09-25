@@ -23,6 +23,27 @@ test.describe('babies', () => {
     await expect(dialog).toBeVisible();
   });
 
+  test('a birth date can be cleared', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    const row = page.getByRole('listitem').filter({ hasText: 'Ada' });
+    await row.getByRole('button', { name: 'Düzenle' }).click();
+    let dialog = page.getByRole('dialog', { name: 'Bebeği düzenle' });
+    await dialog.getByLabel('Doğum tarihi').fill('2026-09-01');
+    await dialog.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(dialog).toBeHidden();
+
+    await row.getByRole('button', { name: 'Düzenle' }).click();
+    dialog = page.getByRole('dialog', { name: 'Bebeği düzenle' });
+    await expect(dialog.getByLabel('Doğum tarihi')).toHaveValue('2026-09-01');
+    await dialog.getByLabel('Doğum tarihi').fill('');
+    await dialog.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(dialog).toBeHidden();
+
+    await row.getByRole('button', { name: 'Düzenle' }).click();
+    dialog = page.getByRole('dialog', { name: 'Bebeği düzenle' });
+    await expect(dialog.getByLabel('Doğum tarihi')).toHaveValue('');
+  });
+
   test('babies can be renamed and deleted in Settings', async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Can');

@@ -33,9 +33,9 @@ function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: reado
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      const fields = { name, color, ...(birthDate ? { birthDate } : {}) };
-      if (baby) await updateBaby(db, baby.id, fields);
-      else await addBaby(db, fields);
+      // On edit an emptied date field clears the stored date (Dexie drops keys set to undefined).
+      if (baby) await updateBaby(db, baby.id, { name, color, birthDate: birthDate || undefined });
+      else await addBaby(db, { name, color, ...(birthDate ? { birthDate } : {}) });
       onDone();
     } catch (failure) {
       setError(messageFor(t, failure));
