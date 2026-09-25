@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
-import { listRecentEvents, logEvents, stopEvent, switchBreastSide } from '../../src/db/events';
+import { SWITCH_DEBOUNCE_MS, listRecentEvents, logEvents, stopEvent, switchBreastSide } from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
 import { DAY, MINUTE } from '../../src/domain/time';
 
@@ -117,11 +117,79 @@ describe('timers', () => {
     expect(stored!.endAt).toBeUndefined();
   });
 
-  it('refuses to stop or switch something that is not running', async () => {
+  it('stopEvent reports true when it stopped the event', async () => {
     const db = freshDb();
-    const [done] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 60 * MINUTE, endAt: NOW - 30 * MINUTE }], NOW);
-    await expect(stopEvent(db, done!.id, NOW)).rejects.toThrow(/not running/);
-    await expect(switchBreastSide(db, done!.id, NOW)).rejects.toThrow(/not a running breastfeed/);
-    await expect(stopEvent(db, 'missing', NOW)).rejects.toThrow(/not running/);
+    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);
+  });
+
+  it('stopping an already finished event is a no-op (double tap on "Bitir")', async () => {
+    const db = freshDb();
+    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);
+    expect(await stopEvent(db, sleep!.id, NOW + 5000)).toBe(false);
+    expect(await db.events.get(sleep!.id)).toMatchObject({ endAt: NOW, updatedAt: NOW });
+  });
+
+  it('stopEvent still refuses a missing or deleted event', async () => {
+    const db = freshDb();
+    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    await db.events.put({ ...sleep!, deletedAt: NOW });
+    await expect(stopEvent(db, sleep!.id, NOW)).rejects.toThrow(/not found/);
+    await expect(stopEvent(db, 'missing', NOW)).rejects.toThrow(/not found/);
+  });
+
+  it('switchBreastSide reports true when it switched', async () => {
+    const db = freshDb();
+    const start = NOW - 10 * MINUTE;
+    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    expect(await switchBreastSide(db, feed!.id, NOW)).toBe(true);
+  });
+
+  it('a second switch within SWITCH_DEBOUNCE_MS is ignored (double tap on "Taraf değiştir")', async () => {
+    expect(SWITCH_DEBOUNCE_MS).toBe(2000);
+    const db = freshDb();
+    const start = NOW - 10 * MINUTE;
+    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    expect(await switchBreastSide(db, feed!.id, NOW)).toBe(true);
+    expect(await switchBreastSide(db, feed!.id, NOW + SWITCH_DEBOUNCE_MS - 1)).toBe(false);
+    expect(await db.events.get(feed!.id)).toMatchObject({
+      segments: [{ side: 'L', start, end: NOW }, { side: 'R', start: NOW }],
+      updatedAt: NOW,
+    });
+    expect(await switchBreastSide(db, feed!.id, NOW + SWITCH_DEBOUNCE_MS)).toBe(true);
+    expect(await db.events.get(feed!.id)).toMatchObject({
+      segments: [
+        { side: 'L', start, end: NOW },
+        { side: 'R', start: NOW, end: NOW + SWITCH_DEBOUNCE_MS },
+        { side: 'L', start: NOW + SWITCH_DEBOUNCE_MS },
+      ],
+    });
+  });
+
+  it('switching a finished feed is a no-op', async () => {
+    const db = freshDb();
+    const start = NOW - 10 * MINUTE;
+    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    await stopEvent(db, feed!.id, NOW);
+    expect(await switchBreastSide(db, feed!.id, NOW + 10_000)).toBe(false);
+    expect(await db.events.get(feed!.id)).toMatchObject({ endAt: NOW, segments: [{ side: 'L', start, end: NOW }] });
+  });
+
+  it('switchBreastSide still refuses a missing, deleted or non-breastfeed event', async () => {
+    const db = freshDb();
+    const start = NOW - 10 * MINUTE;
+    const [feed, sleep] = await logEvents(
+      db,
+      [
+        { type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] },
+        { type: 'sleep', babyId: 'a', startAt: start },
+      ],
+      start,
+    );
+    await db.events.put({ ...feed!, deletedAt: NOW });
+    await expect(switchBreastSide(db, feed!.id, NOW)).rejects.toThrow(/not found/);
+    await expect(switchBreastSide(db, 'missing', NOW)).rejects.toThrow(/not found/);
+    await expect(switchBreastSide(db, sleep!.id, NOW)).rejects.toThrow(/not a breastfeed/);
   });
 });

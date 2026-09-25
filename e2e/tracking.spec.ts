@@ -146,6 +146,44 @@ test.describe('timers and feeds', () => {
     await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
   });
 
+  test('double-tapping the feed finish button shows no error and finishes the feed', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Emzir').click();
+    await page.getByRole('dialog', { name: 'Emzirme' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText('Emziriyor · sol');
+
+    await page.clock.fastForward('05:00');
+    await card.getByRole('button', { name: 'Bitir' }).dblclick();
+    await expect(card).toContainText('5 dk önce · sol');
+    await expect(card.getByRole('button', { name: 'Bitir' })).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
+  test('double-tapping "Taraf değiştir" switches only once', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Emzir').click();
+    const sheet = page.getByRole('dialog', { name: 'Emzirme' });
+    await sheet.getByRole('button', { name: 'Sol', exact: true }).click();
+    await sheet.getByRole('button', { name: 'Başlat', exact: true }).click();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText('Emziriyor · sol');
+
+    await page.clock.fastForward('03:00');
+    await card.getByRole('button', { name: 'Taraf değiştir' }).dblclick();
+    await expect(card).toContainText('Emziriyor · sağ');
+    // Let any late second write land before checking it did not flip back.
+    await page.clock.fastForward('00:10');
+    await expect(card).toContainText('Emziriyor · sağ');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+
   test('a running sleep survives a reload and can be ended', async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');

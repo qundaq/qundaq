@@ -30,36 +30,55 @@ export async function logEvents(db: TrackerDb, drafts: readonly EventDraft[], no
   });
 }
 
+/** A second "switch side" tap within this window is treated as the same tap. */
+export const SWITCH_DEBOUNCE_MS = 2000;
+
 function closeLast(segments: readonly BreastSegment[], at: number): BreastSegment[] {
   return segments.map((segment, i) =>
     i === segments.length - 1 && segment.end === undefined ? { ...segment, end: Math.max(at, segment.start) } : segment,
   );
 }
 
-export async function stopEvent(db: TrackerDb, id: Id, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.events, async () => {
-    const event = await db.events.get(id);
-    if (!event || event.deletedAt !== undefined || !isOpen(event)) throw new Error(`Event ${id} is not running`);
-    const endAt = Math.max(now, event.startAt);
-    const next = {
-      ...event,
-      endAt,
-      updatedAt: now,
-      ...(event.type === 'breastfeed' ? { segments: closeLast(event.segments, endAt) } : {}),
-    } as TrackerEvent;
-    await db.events.put(next);
+/** The running event ended at `now` (never before it started), with its last breastfeeding segment closed. */
+export function stoppedAt(event: TrackerEvent, now: number): TrackerEvent {
+  const endAt = Math.max(now, event.startAt);
+  return {
+    ...event,
+    endAt,
+    updatedAt: now,
+    ...(event.type === 'breastfeed' ? { segments: closeLast(event.segments, endAt) } : {}),
+  } as TrackerEvent;
+}
+
+async function getLive(db: TrackerDb, id: Id): Promise<TrackerEvent> {
+  const event = await db.events.get(id);
+  if (!event || event.deletedAt !== undefined) throw new Error(`Event ${id} not found`);
+  return event;
+}
+
+/** Stops a running event. Returns false (and changes nothing) if it has already been stopped. */
+export async function stopEvent(db: TrackerDb, id: Id, now = Date.now()): Promise<boolean> {
+  return db.transaction('rw', db.events, async () => {
+    const event = await getLive(db, id);
+    if (!isOpen(event)) return false;
+    await db.events.put(stoppedAt(event, now));
+    return true;
   });
 }
 
-export async function switchBreastSide(db: TrackerDb, id: Id, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.events, async () => {
-    const event = await db.events.get(id);
-    if (!event || event.deletedAt !== undefined || event.type !== 'breastfeed' || !isOpen(event)) {
-      throw new Error(`Event ${id} is not a running breastfeed`);
-    }
+/**
+ * Closes the current side and opens the other. Returns false (and changes nothing) if the feed has
+ * already finished, or if the current side began less than SWITCH_DEBOUNCE_MS ago (a double tap).
+ */
+export async function switchBreastSide(db: TrackerDb, id: Id, now = Date.now()): Promise<boolean> {
+  return db.transaction('rw', db.events, async () => {
+    const event = await getLive(db, id);
+    if (event.type !== 'breastfeed') throw new Error(`Event ${id} is not a breastfeed`);
+    if (!isOpen(event)) return false;
     const current = event.segments.at(-1)!;
-    const at = Math.max(now, current.start);
-    const segments: BreastSegment[] = [...closeLast(event.segments, at), { side: current.side === 'L' ? 'R' : 'L', start: at }];
+    if (now - current.start < SWITCH_DEBOUNCE_MS) return false;
+    const segments: BreastSegment[] = [...closeLast(event.segments, now), { side: current.side === 'L' ? 'R' : 'L', start: now }];
     await db.events.put({ ...event, segments, updatedAt: now } as TrackerEvent);
+    return true;
   });
 }
