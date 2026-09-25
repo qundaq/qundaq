@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo/qundaq-icon.png" width="128" height="128" alt="Qundaq logo: a swaddled sleeping baby inside a circle, with sound waves"></p>
+
 # Qundaq
 
 **An offline-first, privacy-first baby tracker and sleep-sound mixer for twins (or any number of babies).**
