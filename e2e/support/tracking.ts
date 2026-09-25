@@ -58,6 +58,14 @@ export async function openOther(page: Page, chip: 'İlaç' | 'Büyüme' | 'Ateş
   return sheet;
 }
 
+/** The value next to `label` in Özet's day card. */
+export function summaryValue(page: Page, label: string) {
+  return page
+    .locator('.summary-day dl > div')
+    .filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) })
+    .locator('dd');
+}
+
 /** Every row of the events store, read straight from IndexedDB (deleted rows included). */
 export function readEvents(page: Page): Promise<Record<string, unknown>[]> {
   return page.evaluate(

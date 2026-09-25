@@ -169,3 +169,13 @@ legend { margin-bottom: 6px; }
 .field-row .field { flex: 1; min-width: 0; }
 .field-row .field input { width: 100%; }
 .chips.recent { margin: -4px 0 12px; }
+.summary-day .status dd { font-variant-numeric: tabular-nums; }
+.week, .growth-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 14px; }
+.week th, .week td, .growth-table th, .growth-table td {
+  padding: 6px 4px; text-align: left; vertical-align: top; overflow-wrap: anywhere; border-top: 1px solid var(--border);
+}
+.week thead th, .growth-table thead th { color: var(--muted); font-weight: 600; border-top: 0; }
+.week-detail { display: block; }
+.growth-chart { display: block; width: 100%; height: auto; margin: 8px 0; }
+.chart-axis { stroke: var(--border); stroke-width: 1; }
+.chart-label { fill: var(--muted); font-size: 11px; }

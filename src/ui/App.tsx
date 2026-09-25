@@ -9,6 +9,7 @@ import { TabBar, type Tab } from './TabBar';
 import { ComingSoon } from './screens/ComingSoon';
 import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from './summary/SummaryScreen';
 
 const fallbackLocale = detectLocale(navigator.language);
 
@@ -46,6 +47,7 @@ function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSa
   const [tab, setTab] = useState<Tab>('home');
   // Screen state lives here so it survives tab switches (and resets when the app restarts).
   const [logView, setLogView] = useState<LogView>(DEFAULT_LOG_VIEW);
+  const [summaryView, setSummaryView] = useState<SummaryView>(DEFAULT_SUMMARY_VIEW);
 
   const updateSettings = async (patch: Partial<Settings>) => {
     try {
@@ -62,6 +64,8 @@ function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSa
           <HomeScreen settings={settings} onSettingsChange={updateSettings} />
         ) : tab === 'log' ? (
           <LogScreen view={logView} onViewChange={setLogView} />
+        ) : tab === 'summary' ? (
+          <SummaryScreen view={summaryView} onViewChange={setSummaryView} lastBabyIds={settings.lastBabyIds} />
         ) : tab === 'settings' ? (
           <SettingsScreen settings={settings} onChange={updateSettings} />
         ) : (
