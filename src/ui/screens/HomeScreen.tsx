@@ -26,7 +26,7 @@ interface Props {
 
 export function HomeScreen({ settings, onSettingsChange }: Props) {
   const t = useT();
-  const now = useNow();
+  const tick = useNow();
   const report = useReportError();
   const babies = useLiveQuery(() => listBabies(db), []);
   const events = useLiveQuery(() => listRecentEvents(db, Date.now() - RECENT_WINDOW), []);
@@ -36,6 +36,9 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
   const busy = useRef<Set<Id>>(new Set());
 
   if (babies === undefined || events === undefined) return <section aria-busy="true"><h1>{t('tab.home')}</h1></section>;
+
+  // The tick can be up to 30 s old; data written since then must never look like it is in the future.
+  const now = Math.max(tick, Date.now());
 
   const act = (eventId: Id, action: () => Promise<unknown>) => {
     if (busy.current.has(eventId)) return;

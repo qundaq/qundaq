@@ -224,6 +224,8 @@ test.describe('timers and feeds', () => {
   });
 
   test('a feed with a duration is saved as finished, ending at the chosen time', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Emzir').click();
