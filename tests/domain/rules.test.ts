@@ -47,6 +47,17 @@ describe('validateEvent — running timers', () => {
     expect(validateEvent({ ...draft, babyId: 'b' }, [openSleepA], NOW)).toEqual([]);
   });
 
+  it('allows only one running breastfeed per baby', () => {
+    const openFeedA = saved(
+      { type: 'breastfeed', babyId: 'a', startAt: NOW - 10 * MINUTE, segments: [{ side: 'L', start: NOW - 10 * MINUTE }] },
+      'feeding',
+    );
+    const draft: EventDraft = { type: 'breastfeed', babyId: 'a', startAt: NOW, segments: [{ side: 'R', start: NOW }] };
+    expect(validateEvent(draft, [openFeedA], NOW)).toEqual(['already-running']);
+    expect(validateEvent({ ...draft, babyId: 'b' }, [openFeedA], NOW)).toEqual([]);
+    expect(validateEvent(draft, [openSleepA], NOW)).toEqual([]);
+  });
+
   it('ignores finished, deleted and self events', () => {
     const draft: EventDraft = { type: 'sleep', babyId: 'a', startAt: NOW };
     expect(validateEvent(draft, [{ ...openSleepA, endAt: NOW - MINUTE }], NOW)).toEqual([]);
