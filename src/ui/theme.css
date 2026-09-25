@@ -70,3 +70,10 @@ p { line-height: 1.45; margin: 0 0 8px; }
 }
 .tab[aria-current='page'] { color: var(--accent); }
 .tab-icon { font-size: 22px; line-height: 1; }
+
+.alert {
+  position: fixed; z-index: 10; top: calc(env(safe-area-inset-top) + 8px); left: 16px; right: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--danger); border-radius: var(--radius);
+  padding: 8px 8px 8px 16px;
+}

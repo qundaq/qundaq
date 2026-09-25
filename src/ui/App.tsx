@@ -2,16 +2,17 @@ import { useEffect, useState } from 'react';
 import { db } from '../db/instance';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from '../db/settings';
 import { detectLocale } from '../i18n';
+import { ErrorProvider, useReportError } from './ErrorBanner';
 import { I18nProvider } from './I18nProvider';
 import { TabBar, type Tab } from './TabBar';
 import { ComingSoon } from './screens/ComingSoon';
+import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 
 const fallbackLocale = detectLocale(navigator.language);
 
 export function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [tab, setTab] = useState<Tab>('home');
 
   useEffect(() => {
     loadSettings(db, fallbackLocale)
@@ -30,16 +31,39 @@ export function App() {
 
   if (!settings) return null;
 
+  return (
+    <I18nProvider locale={settings.locale}>
+      <ErrorProvider>
+        <Shell settings={settings} onSettingsSaved={setSettings} />
+      </ErrorProvider>
+    </I18nProvider>
+  );
+}
+
+function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSaved: (next: Settings) => void }) {
+  const report = useReportError();
+  const [tab, setTab] = useState<Tab>('home');
+
   const updateSettings = async (patch: Partial<Settings>) => {
-    setSettings(await saveSettings(db, patch, fallbackLocale));
+    try {
+      onSettingsSaved(await saveSettings(db, patch, fallbackLocale));
+    } catch (error) {
+      report(error);
+    }
   };
 
   return (
-    <I18nProvider locale={settings.locale}>
+    <>
       <main className="screen">
-        {tab === 'settings' ? <SettingsScreen settings={settings} onChange={updateSettings} /> : <ComingSoon tab={tab} />}
+        {tab === 'home' ? (
+          <HomeScreen settings={settings} onSettingsChange={updateSettings} />
+        ) : tab === 'settings' ? (
+          <SettingsScreen settings={settings} onChange={updateSettings} />
+        ) : (
+          <ComingSoon tab={tab} />
+        )}
       </main>
       <TabBar current={tab} onSelect={setTab} />
-    </I18nProvider>
+    </>
   );
 }

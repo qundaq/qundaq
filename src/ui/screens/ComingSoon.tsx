@@ -1,7 +1,7 @@
 import type { Tab } from '../TabBar';
 import { useT } from '../I18nProvider';
 
-export function ComingSoon({ tab }: { tab: Exclude<Tab, 'settings'> }) {
+export function ComingSoon({ tab }: { tab: Exclude<Tab, 'settings' | 'home'> }) {
   const t = useT();
   return (
     <section>
