@@ -61,6 +61,39 @@ test.describe('diapers', () => {
     await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak + kirli');
   });
 
+  test('a sheet left open while the phone was locked still logs at the moment of saving', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T03:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    await page.clock.fastForward('20:00');
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(sheet).toBeHidden();
+    await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak');
+  });
+
+  test('a time the user picked is kept, and "Şimdi" goes back to now', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T03:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    let sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByLabel('Zaman').fill('2026-09-25T02:15');
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(babyCard(page, 'Ada')).toContainText('45 dk önce · ıslak');
+
+    await quick(page, 'Bez').click();
+    sheet = page.getByRole('dialog', { name: 'Bez' });
+    await sheet.getByLabel('Zaman').fill('2026-09-25T02:30');
+    await sheet.getByRole('button', { name: 'Şimdi', exact: true }).click();
+    await page.clock.fastForward('05:00');
+    await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak');
+  });
+
   test('"All" logs the same diaper for every baby', async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Can');

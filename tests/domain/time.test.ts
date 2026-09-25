@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HOUR, MINUTE, elapsedParts, fromLocalInputValue, toLocalInputValue } from '../../src/domain/time';
 
 describe('elapsedParts', () => {
@@ -34,5 +34,27 @@ describe('datetime-local helpers', () => {
     expect(fromLocalInputValue('')).toBeNull();
     expect(fromLocalInputValue('yesterday')).toBeNull();
     expect(fromLocalInputValue('2026-13-45T99:99')).toBeNull();
+  });
+});
+
+describe('datetime-local round trip across the DST fall-back hour (Europe/Berlin)', () => {
+  let previousTz: string | undefined;
+  beforeEach(() => {
+    previousTz = process.env.TZ;
+    process.env.TZ = 'Europe/Berlin';
+  });
+  afterEach(() => {
+    if (previousTz === undefined) delete process.env.TZ;
+    else process.env.TZ = previousTz;
+  });
+
+  it('cannot represent the second 02:30 on 2026-10-25, so "now" must never be round-tripped', () => {
+    // 01:30 UTC is 02:30 CET, the second time the wall clock shows 02:30 that night.
+    const secondTwoThirty = Date.UTC(2026, 9, 25, 1, 30);
+    expect(new Date(secondTwoThirty).getHours()).toBe(2);
+    expect(toLocalInputValue(secondTwoThirty)).toBe('2026-10-25T02:30');
+    const roundTripped = fromLocalInputValue(toLocalInputValue(secondTwoThirty));
+    expect(roundTripped).not.toBe(secondTwoThirty);
+    expect(roundTripped).toBe(secondTwoThirty - HOUR); // the first 02:30 (CEST): an hour off
   });
 });

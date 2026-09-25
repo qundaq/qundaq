@@ -1,13 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { logEvents } from '../../db/events';
 import { db } from '../../db/instance';
-import { fromLocalInputValue, toLocalInputValue } from '../../domain/time';
 import type { Baby, Id } from '../../domain/types';
 import { messageFor } from '../ErrorBanner';
 import { useT } from '../I18nProvider';
 import { Sheet } from '../Sheet';
 import { BabyPicker } from './BabyPicker';
-import { DEFAULT_INPUTS, buildDrafts, type SheetInput, type SheetKind } from './drafts';
+import { DEFAULT_INPUTS, buildDrafts, resolveEntryTime, type SheetInput, type SheetKind } from './drafts';
 import { BottleForm, BreastfeedForm, DiaperForm, SleepForm } from './forms';
 import { TimeField } from './TimeField';
 
@@ -36,7 +35,7 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
   const t = useT();
   const known = defaultBabyIds.filter((id) => babies.some((b) => b.id === id));
   const [selected, setSelected] = useState<Id[]>(known.length > 0 ? known : babies[0] ? [babies[0].id] : []);
-  const [time, setTime] = useState(() => toLocalInputValue(Date.now()));
+  const [time, setTime] = useState<number | null>(null); // null = "now"
   const [input, setInput] = useState<SheetInput>(() => initialInput(kind));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -48,7 +47,7 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
     event.preventDefault();
     if (pending) return;
     setPending(true);
-    const at = fromLocalInputValue(time) ?? Date.now();
+    const at = resolveEntryTime(time, Date.now());
     try {
       await logEvents(db, buildDrafts(input, selected, at));
       onLogged(selected);

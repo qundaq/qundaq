@@ -21,6 +21,11 @@ export const DEFAULT_INPUTS = {
   diaper: { wet: true, dirty: false, stoolColor: null, consistency: null } as DiaperInput,
 };
 
+/** The sheet's time: `null` means "now" — the moment of saving, never a value parsed back from the field. */
+export function resolveEntryTime(value: number | null, now: number): number {
+  return value ?? now;
+}
+
 /**
  * Turns one sheet submission into one draft per selected baby. Validation happens in the repository.
  * `at` is the time from the sheet: a timer STARTS at `at`; an entry with a duration ENDS at `at`

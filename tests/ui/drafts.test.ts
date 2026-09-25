@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MINUTE } from '../../src/domain/time';
-import { DEFAULT_INPUTS, buildDrafts } from '../../src/ui/log/drafts';
+import { DEFAULT_INPUTS, buildDrafts, resolveEntryTime } from '../../src/ui/log/drafts';
 
 const AT = new Date(2026, 8, 25, 8, 0).getTime();
 
@@ -46,5 +46,17 @@ describe('buildDrafts', () => {
   it('creates one draft per selected baby', () => {
     const drafts = buildDrafts({ kind: 'diaper', value: DEFAULT_INPUTS.diaper }, ['a', 'b'], AT);
     expect(drafts.map((d) => d.babyId)).toEqual(['a', 'b']);
+  });
+});
+
+describe('resolveEntryTime', () => {
+  const NOW = new Date(2026, 8, 25, 8, 17, 42, 123).getTime();
+
+  it('null means "now": the exact current instant, seconds and all, never a parsed minute', () => {
+    expect(resolveEntryTime(null, NOW)).toBe(NOW);
+  });
+
+  it('a time the user picked is used as is', () => {
+    expect(resolveEntryTime(AT, NOW)).toBe(AT);
   });
 });
