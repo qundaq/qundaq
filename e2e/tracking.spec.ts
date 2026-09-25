@@ -61,6 +61,27 @@ function quick(page: import('@playwright/test').Page, name: string) {
   return page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
 }
 
+function countDiapers(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      new Promise<number>((resolve, reject) => {
+        const request = indexedDB.open('qundaq');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('events', 'readonly');
+          const getAll = tx.objectStore('events').getAll();
+          getAll.onsuccess = () => {
+            const events = getAll.result as Array<{ type: string }>;
+            db.close();
+            resolve(events.filter((event) => event.type === 'diaper').length);
+          };
+          getAll.onerror = () => reject(getAll.error);
+        };
+      }),
+  );
+}
+
 test.describe('diapers', () => {
   test('a dirty diaper with a pale stool shows the biliary-atresia warning and lands on the card', async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
@@ -73,6 +94,21 @@ test.describe('diapers', () => {
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(sheet).toBeHidden();
     await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak + kirli');
+  });
+
+  test('two submits in the same instant store only one diaper', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, 'Ana');
+    await quick(page, 'Bez').click();
+    const sheet = page.getByRole('dialog', { name: 'Bez' });
+    // Both submits run before React can re-render, so a guard kept only in state would let both through.
+    await sheet.locator('form').evaluate((form: HTMLFormElement) => {
+      form.requestSubmit();
+      form.requestSubmit();
+    });
+    await expect(sheet).toBeHidden();
+    await expect(babyCard(page, 'Ada')).toContainText('az önce · ıslak');
+    expect(await countDiapers(page)).toBe(1);
   });
 
   test('a sheet left open while the phone was locked still logs at the moment of saving', async ({ page }) => {
@@ -147,23 +183,7 @@ test.describe('diapers', () => {
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).dblclick();
     await expect(sheet).toBeHidden();
 
-    const diaperCount = await page.evaluate(
-      () =>
-        new Promise<number>((resolve, reject) => {
-          const request = indexedDB.open('qundaq');
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () => {
-            const db = request.result;
-            const tx = db.transaction('events', 'readonly');
-            const getAll = tx.objectStore('events').getAll();
-            getAll.onsuccess = () => {
-              const events = getAll.result as Array<{ type: string }>;
-              resolve(events.filter((event) => event.type === 'diaper').length);
-            };
-            getAll.onerror = () => reject(getAll.error);
-          };
-        }),
-    );
+    const diaperCount = await countDiapers(page);
     expect(diaperCount).toBe(1);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { logEvents } from '../../db/events';
 import { db } from '../../db/instance';
 import type { Baby, Id } from '../../domain/types';
@@ -38,14 +38,16 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
   const [time, setTime] = useState<number | null>(null); // null = "now"
   const [input, setInput] = useState<SheetInput>(() => initialInput(kind));
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState(false); // only for `disabled`; the ref below is the real guard
+  const submitting = useRef(false); // set synchronously, so a second submit before the next render is refused
   useEffect(() => setError(null), [input, selected, time]);
 
   const isTimer = (input.kind === 'breastfeed' || input.kind === 'sleep') && input.value.durationMin === null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (pending) return;
+    if (submitting.current) return;
+    submitting.current = true;
     setPending(true);
     const at = resolveEntryTime(time, Date.now());
     try {
@@ -55,6 +57,7 @@ function LogForm({ kind, babies, defaultBabyIds, onClose, onLogged }: Props & { 
     } catch (failure) {
       setError(messageFor(t, failure));
     } finally {
+      submitting.current = false;
       setPending(false);
     }
   };
