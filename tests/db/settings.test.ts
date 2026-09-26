@@ -67,3 +67,13 @@ describe('settings repository', () => {
     expect((await loadSettings(db, 'tr')).lastBabyIds).toEqual([]);
   });
 });
+
+describe('backup times in the settings row', () => {
+  it('keeps finite backup times and drops anything else', async () => {
+    const db = freshDb();
+    await saveSettings(db, { lastBackupAt: 1000, backupReminderSnoozedUntil: 2000 }, 'tr');
+    expect(await loadSettings(db, 'tr')).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [], lastBackupAt: 1000, backupReminderSnoozedUntil: 2000 });
+    await db.settings.put({ id: 'app', locale: 'tr', nightMode: false, lastBabyIds: [], lastBackupAt: 'yesterday', backupReminderSnoozedUntil: Number.NaN } as never);
+    expect(await loadSettings(db, 'tr')).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [] });
+  });
+});

@@ -6,7 +6,14 @@ export interface Settings {
   locale: Locale;
   nightMode: boolean;
   lastBabyIds: Id[];
+  /** When this device last saved a JSON backup (a completed share, or a download the user confirmed). Never exported. */
+  lastBackupAt?: number;
+  /** Home's backup reminder stays hidden until then ("Yarın hatırlat"). Never exported. */
+  backupReminderSnoozedUntil?: number;
 }
+
+/** Optional times in the settings row: kept when finite, dropped otherwise. */
+const OPTIONAL_TIMES = ['lastBackupAt', 'backupReminderSnoozedUntil'] as const;
 
 const SETTINGS_ID = 'app';
 
@@ -28,7 +35,12 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
     Array.isArray(stored.lastBabyIds) && stored.lastBabyIds.every((id) => typeof id === 'string')
       ? (stored.lastBabyIds as Id[])
       : defaults.lastBabyIds;
-  return { ...defaults, ...stored, locale, nightMode, lastBabyIds };
+  const settings: Settings = { ...defaults, ...stored, locale, nightMode, lastBabyIds };
+  for (const key of OPTIONAL_TIMES) {
+    const value = stored[key];
+    if (!(typeof value === 'number' && Number.isFinite(value))) delete settings[key];
+  }
+  return settings;
 }
 
 export async function saveSettings(db: TrackerDb, patch: Partial<Settings>, fallbackLocale: Locale): Promise<Settings> {

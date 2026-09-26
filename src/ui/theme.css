@@ -179,3 +179,6 @@ legend { margin-bottom: 6px; }
 .growth-chart { display: block; width: 100%; height: auto; margin: 8px 0; }
 .chart-axis { stroke: var(--muted); stroke-width: 1; }
 .chart-label { fill: var(--muted); font-size: 11px; }
+.backup-actions, .export-actions { display: grid; gap: 8px; margin-top: 12px; }
+.backup-actions .btn, .export-actions .btn { width: 100%; }
+.crash-message { overflow-wrap: anywhere; }
