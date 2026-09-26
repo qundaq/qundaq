@@ -1,5 +1,6 @@
-import { LOCALES, type Locale } from '../i18n';
+import { readLastSound, readVolumeCap, type LastSound } from '../domain/sounds';
 import type { Id } from '../domain/types';
+import { LOCALES, type Locale } from '../i18n';
 import type { TrackerDb } from './db';
 
 export interface Settings {
@@ -10,6 +11,13 @@ export interface Settings {
   lastBackupAt?: number;
   /** Home's backup reminder stays hidden until then ("Yarın hatırlat"). Never exported. */
   backupReminderSnoozedUntil?: number;
+  /**
+   * Ayarlar → Ses güvenlik sınırı, a slider value in 0.2–1 (absent: the default, 0.5). Never exported: a
+   * restore must never raise another phone's safety limit.
+   */
+  volumeCap?: number;
+  /** The Sesler tab's last selection, restored at launch without playing. Never exported. */
+  lastSound?: LastSound;
 }
 
 /** Optional times in the settings row: kept when finite, dropped otherwise. */
@@ -40,6 +48,13 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
     const value = stored[key];
     if (!(typeof value === 'number' && Number.isFinite(value))) delete settings[key];
   }
+  // The sound settings decide loudness and what starts on a tap: an unreadable value is dropped, so the default applies.
+  const cap = stored.volumeCap;
+  if (readVolumeCap(cap) === cap) settings.volumeCap = cap;
+  else delete settings.volumeCap;
+  delete settings.lastSound;
+  const lastSound = readLastSound(stored.lastSound);
+  if (lastSound) settings.lastSound = lastSound;
   return settings;
 }
 

@@ -22,7 +22,7 @@ test.describe('JSON backup', () => {
     expect(file?.name).toMatch(/^qundaq-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/);
     expect(file?.type).toBe('application/json');
     const backup = JSON.parse(file!.text) as Record<string, unknown> & { babies: { name: string }[]; events: object[] };
-    expect(backup).toMatchObject({ app: 'qundaq', schemaVersion: 1, mixes: [], settings: { locale: 'tr', nightMode: false } });
+    expect(backup).toMatchObject({ app: 'qundaq', schemaVersion: 2, mixes: [], settings: { locale: 'tr', nightMode: false } });
     expect(backup.babies.map((baby) => baby.name)).toEqual(['Ada']);
     expect(backup.events).toHaveLength(1);
     expect(file!.text).not.toContain('"open"');

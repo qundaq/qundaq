@@ -4,6 +4,7 @@ import { buildBackup, serializeBackup } from '../../src/backup/export';
 import { findSameBabies, planImport, planSignature, type ImportOptions } from '../../src/backup/merge';
 import { parseBackup, type ParsedBackup } from '../../src/backup/validate';
 import { addBaby, deleteBaby } from '../../src/db/babies';
+import { deleteMix, listMixes, saveMix } from '../../src/db/mixes';
 import { applyImport, readSnapshot } from '../../src/db/backup';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { listRunningEvents, logEvents } from '../../src/db/events';
@@ -31,12 +32,16 @@ describe('readSnapshot', () => {
     await logEvents(db, [{ type: 'sleep', babyId: ada.id, startAt: T }], T);
     await logEvents(db, [{ type: 'diaper', babyId: can.id, startAt: T, wet: true, dirty: false }], T);
     await deleteBaby(db, can.id, T + 1);
+    const gone = await saveMix(db, 'Eski', [{ soundId: 'pink', gain: 1 }], T - 1);
+    await deleteMix(db, gone.id, T);
+    await saveMix(db, 'Gece', [{ soundId: 'white', gain: 0.7 }], T);
     await saveSettings(db, { nightMode: true, lastBackupAt: T }, 'tr');
 
     const snapshot = await readSnapshot(db, 'en');
     expect(snapshot.babies.map((baby) => baby.name).sort()).toEqual(['Ada', 'Can']);
     expect(snapshot.events).toHaveLength(2);
     expect(snapshot.events.some((event) => 'open' in event)).toBe(false);
+    expect(snapshot.mixes.map((mix) => [mix.name, mix.deletedAt])).toEqual([['Eski', T], ['Gece', undefined]]);
     expect(snapshot.settings).toMatchObject({ locale: 'tr', nightMode: true, lastBackupAt: T });
   });
 
@@ -75,16 +80,19 @@ describe('export, then read back', () => {
     );
     await logEvents(db, [{ type: 'pump', babyId: null, startAt: T - 2 * MINUTE, mlLeft: 60 }], T);
     await deleteBaby(db, can.id, T + 1);
-    await saveSettings(db, { locale: 'en', nightMode: true, lastBabyIds: [ada.id], lastBackupAt: T }, 'tr');
+    await saveMix(db, 'Gece', [{ soundId: 'white', gain: 0.7 }, { soundId: 'rain', gain: 0.4 }], T);
+    await saveSettings(db, { locale: 'en', nightMode: true, lastBabyIds: [ada.id], lastBackupAt: T, volumeCap: 0.9 }, 'tr');
 
     const snapshot = await readSnapshot(db, 'tr');
     const text = serializeBackup(buildBackup(snapshot, { exportedAt: T + 2, appVersion: '0.1.0' }));
+    expect(text).not.toContain('volumeCap');
     const result = parseBackup(text, T + DAY);
     if (!result.ok) throw new Error(result.error);
     expect(result.skipped).toEqual([]);
     expect(result.warnings).toEqual({ outOfRange: 0, settings: false, badBirthDate: 0 });
     expect(result.backup.babies).toEqual(snapshot.babies);
     expect(result.backup.events).toEqual(snapshot.events);
+    expect(result.backup.mixes).toEqual(snapshot.mixes);
     expect(result.backup.settings).toEqual({ locale: 'en', nightMode: true, lastBabyIds: [ada.id] });
   });
 
@@ -134,11 +142,12 @@ describe('applyImport', () => {
   const sleep = (id: string, babyId: string, startAt: number, extra: Partial<TrackerEvent> = {}) =>
     ({ id, type: 'sleep', babyId, startAt, createdAt: startAt, updatedAt: startAt, ...extra }) as TrackerEvent;
   const file = (parts: Partial<ParsedBackup> = {}): ParsedBackup => ({
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: T + 1,
     appVersion: '0.1.0',
     babies: [baby('b-file', 'Bora')],
     events: [sleep('file-running', 'b-file', T), sleep('file-done', 'b-file', T - DAY, { endAt: T - DAY + 1 })],
+    mixes: [{ id: 'm-file', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: T + 1, updatedAt: T + 1 }],
     settings: { locale: 'en', nightMode: true, lastBabyIds: ['b-file'] },
     ...parts,
   });
@@ -151,11 +160,12 @@ describe('applyImport', () => {
   async function seedDevice(db: TrackerDb) {
     const ada = await addBaby(db, { name: 'Ada', color: '#ff9ecb' }, T);
     await logEvents(db, [{ type: 'sleep', babyId: ada.id, startAt: T }], T);
+    await saveMix(db, 'Öğlen', [{ soundId: 'pink', gain: 0.5 }], T);
     await saveSettings(db, { lastBabyIds: [ada.id], lastBackupAt: T - DAY }, 'tr');
     return ada;
   }
 
-  it('merge: adds the rows, keeps the running index right and keeps the device settings', async () => {
+  it('merge: adds the rows and the mixes, keeps the running index right and keeps the device settings', async () => {
     const db = freshDb();
     const ada = await seedDevice(db);
     const backup = file();
@@ -163,6 +173,7 @@ describe('applyImport', () => {
     expect(result.applied).toBe(true);
     expect((await db.babies.toArray()).map((row) => row.name).sort()).toEqual(['Ada', 'Bora']);
     expect(await db.events.count()).toBe(3);
+    expect((await listMixes(db)).map((row) => row.name)).toEqual(['Öğlen', 'Gece']);
     expect((await listRunningEvents(db)).map((row) => row.babyId).sort()).toEqual([ada.id, 'b-file'].sort());
     expect(await loadSettings(db, 'tr')).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [ada.id], lastBackupAt: T - DAY });
   });
@@ -175,6 +186,7 @@ describe('applyImport', () => {
     expect(result.applied).toBe(true);
     expect((await db.babies.toArray()).map((row) => row.id)).toEqual(['b-file']);
     expect((await db.events.toArray()).map((row) => row.id).sort()).toEqual(['file-done', 'file-running']);
+    expect((await db.mixes.toArray()).map((row) => row.id)).toEqual(['m-file']);
     expect((await listRunningEvents(db)).map((row) => row.id)).toEqual(['file-running']);
     expect(await loadSettings(db, 'tr')).toEqual({ locale: 'en', nightMode: true, lastBabyIds: ['b-file'], lastBackupAt: T - DAY });
   });
@@ -264,6 +276,7 @@ describe('applyImport', () => {
     await expect(applyImport(db, { backup, options: REPLACE, expected, fallbackLocale: 'tr', now: T + 2 })).rejects.toThrow('disk full');
     failing.mockRestore();
     expect(await readSnapshot(db, 'tr')).toEqual(before);
+    expect((await listMixes(db)).map((row) => row.name)).toEqual(['Öğlen']);
     expect(await listRunningEvents(db)).toHaveLength(1);
   });
 });

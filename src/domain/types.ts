@@ -55,3 +55,19 @@ export type TrackerEvent = EventDraft & {
 
 export type GrowthEvent = Extract<TrackerEvent, { type: 'growth' }>;
 export type MedicationEvent = Extract<TrackerEvent, { type: 'medication' }>;
+
+/** One layer of a saved mix: a sound and its slider value (0..1). */
+export interface MixLayer {
+  soundId: string;
+  gain: number;
+}
+
+/** A saved sound mix (Sesler → Karışımı kaydet). Stores neither the master level nor the timer. */
+export interface Mix {
+  id: Id;
+  name: string;
+  layers: MixLayer[];
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: number;
+}

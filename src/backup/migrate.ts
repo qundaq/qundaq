@@ -7,10 +7,13 @@ export type RawBackup = Record<string, unknown>;
 export type MigrationStep = (raw: RawBackup) => RawBackup;
 
 /**
- * Step n upgrades a version-n file to version n + 1. Empty while version 1 is the only format; adding a
- * stored field means bumping BACKUP_VERSION and adding the step for the version before it here.
+ * Step n upgrades a version-n file to version n + 1. Adding a stored field means bumping BACKUP_VERSION
+ * and adding the step for the version before it here.
+ *
+ * 1 → 2: `mixes` became real data. A version-1 file always has `mixes: []`, and a crafted one with mixes
+ * is read by the version-2 rules, so the step changes nothing; migrateBackup sets the version.
  */
-export const MIGRATIONS: Readonly<Record<number, MigrationStep>> = {};
+export const MIGRATIONS: Readonly<Record<number, MigrationStep>> = { 1: (raw) => raw };
 
 /** Walks `raw` (a version-`from` file) up to `target` one step at a time. Throws if a step is missing. */
 export function migrateBackup(

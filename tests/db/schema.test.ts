@@ -23,7 +23,8 @@ describe('schema', () => {
     expect(await loadSettings(db, 'tr')).toEqual({ locale: 'en', nightMode: true, lastBabyIds: [] });
     expect(await db.babies.count()).toBe(0);
     expect(await db.events.count()).toBe(0);
-    expect(db.verno).toBe(3);
+    expect(await db.mixes.count()).toBe(0);
+    expect(db.verno).toBe(4);
     await db.delete();
   });
 
@@ -48,7 +49,31 @@ describe('schema', () => {
     expect(await db.events.get('finished')).not.toHaveProperty('open');
     expect(await db.events.get('deleted-running')).not.toHaveProperty('open');
     expect(await db.events.count()).toBe(5);
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
+    await db.delete();
+  });
+
+  it('v4 adds the mixes table and keeps the events, their running index and the settings of a version-3 database', async () => {
+    const name = `test-${crypto.randomUUID()}`;
+    const v3 = new Dexie(name);
+    v3.version(1).stores({ settings: 'id' });
+    v3.version(2).stores(V2_STORES);
+    v3.version(3).stores({ ...V2_STORES, events: `${V2_STORES.events}, open` });
+    await v3.open();
+    await v3.table('settings').put({ id: 'app', locale: 'tr', nightMode: true });
+    await v3.table('events').bulkAdd([
+      { id: 'running', type: 'sleep', babyId: 'a', startAt: 100, createdAt: 1, updatedAt: 1, open: 1 },
+      { id: 'done', type: 'sleep', babyId: 'a', startAt: 100, endAt: 200, createdAt: 1, updatedAt: 1 },
+    ]);
+    v3.close();
+
+    const db = openDb(name);
+    expect(db.verno).toBe(4);
+    expect(await db.mixes.count()).toBe(0);
+    expect(await db.events.where('open').equals(1).primaryKeys()).toEqual(['running']);
+    expect(await loadSettings(db, 'en')).toEqual({ locale: 'tr', nightMode: true, lastBabyIds: [] });
+    await db.mixes.add({ id: 'm1', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: 1, updatedAt: 1 });
+    expect(await db.mixes.count()).toBe(1);
     await db.delete();
   });
 });

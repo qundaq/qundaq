@@ -1,9 +1,10 @@
-import { BABY_KEYS, BACKUP_APP, BACKUP_VERSION, EVENT_KEYS, type BackupFile, type BackupSettings } from './format';
+import { BABY_KEYS, BACKUP_APP, BACKUP_VERSION, EVENT_KEYS, MIX_KEYS, type BackupFile, type BackupSettings } from './format';
 
 /** What the device holds. Event rows may carry the storage-only `open` marker; it never reaches a file. */
 export interface Snapshot {
   babies: readonly object[];
   events: readonly object[];
+  mixes: readonly object[];
   settings: BackupSettings;
 }
 
@@ -26,8 +27,8 @@ function orderedCopy(row: object, order: readonly string[], drop: readonly strin
 }
 
 /**
- * Every baby and every event, deleted and archived ones included (their tombstones keep a later merge
- * from bringing them back). Only the events' storage-only `open` field is left out.
+ * Every baby, event and saved mix, deleted and archived ones included (their tombstones keep a later
+ * merge from bringing them back). Only the events' storage-only `open` field is left out.
  */
 export function buildBackup(snapshot: Snapshot, meta: BackupMeta): BackupFile {
   return {
@@ -37,7 +38,7 @@ export function buildBackup(snapshot: Snapshot, meta: BackupMeta): BackupFile {
     appVersion: meta.appVersion,
     babies: snapshot.babies.map((baby) => orderedCopy(baby, BABY_KEYS)) as unknown as BackupFile['babies'],
     events: snapshot.events.map((event) => orderedCopy(event, EVENT_KEYS, ['open'])) as unknown as BackupFile['events'],
-    mixes: [],
+    mixes: snapshot.mixes.map((mix) => orderedCopy(mix, MIX_KEYS)) as unknown as BackupFile['mixes'],
     settings: {
       locale: snapshot.settings.locale,
       nightMode: snapshot.settings.nightMode,

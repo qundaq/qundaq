@@ -97,13 +97,13 @@ test("entries logged on a baby that the other phone combined follow it to the ba
   file.events = [];
 
   const sheet = await pickBackupFile(page, JSON.stringify(file));
-  const follow = sheet.getByRole('checkbox', { name: 'Bu cihazdan kaldırılacak Ada: kayıtları Ada altında birleştirilsin' });
+  const follow = sheet.getByRole('checkbox', { name: 'Ada (silinen bebek): kayıtları Ada altında birleştirilsin' });
   await expect(follow).toBeChecked();
   await expect(sheet).toContainText('Bu cihazdan kaldırılacak bebek: Ada');
   await expect(sheet).toContainText('1 kayıt Ada altında birleştirilecek.');
   // Kept apart, the entry would hide with the deleted baby: the preview says so.
   await follow.uncheck();
-  await expect(sheet).toContainText('Ada: bu cihazdaki 1 kayıt bebekle birlikte gizlenecek.');
+  await expect(sheet).toContainText('Ada silindiği için 1 kayıt gizli kalacak.');
   await expect(sheet).not.toContainText('birleştirilecek');
   await follow.check();
   await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
@@ -177,6 +177,39 @@ test('broken files are refused with the right message, and nothing is written', 
 
   await openTab(page, 'Ana');
   await expect(page.getByText('Başlamak için bir bebek ekleyin.')).toBeVisible();
+});
+
+test('the preview shows a mixes count row, replace-mode mix loss, and names a skipped bad mix', async ({ page }) => {
+  // The Sesler UI to create a mix does not exist yet: mixes are seeded through a crafted backup file.
+  await addBabyInSettings(page, 'Ada');
+  const T = new Date('2026-09-26T08:00:00+03:00').getTime();
+  const base = { app: 'qundaq', schemaVersion: 2, appVersion: '0.1.0', babies: [], events: [], settings: {} };
+  const gece = { id: 'm-gece', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: T, updatedAt: T };
+
+  // Merge a backup carrying one valid mix: the preview shows the "Karışımlar" counts row.
+  let sheet = await pickBackupFile(page, JSON.stringify({ ...base, exportedAt: T, mixes: [gece] }));
+  await expect(sheet).toContainText(
+    'KarışımlarEklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0 · Bu cihazdaki daha yeni olduğu için korunacak: 0',
+  );
+  await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+
+  // Replacing with a file carrying a new valid mix and a bad one: the bad mix is skipped and named, and
+  // the device's one live mix (just saved above) shows as a loss.
+  const yeni = { id: 'm-yeni', name: 'Yeni', layers: [{ soundId: 'rain', gain: 0.4 }], createdAt: T + 1, updatedAt: T + 1 };
+  const bozuk = { id: 'm-bozuk', name: 'Bozuk', layers: [], createdAt: T + 1, updatedAt: T + 1 };
+  sheet = await pickBackupFile(page, JSON.stringify({ ...base, exportedAt: T + 1, mixes: [yeni, bozuk] }));
+  // Still in merge mode (the default): the counts row shows the one addable mix, the bad one skipped.
+  await expect(sheet).toContainText(
+    'KarışımlarEklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0 · Bu cihazdaki daha yeni olduğu için korunacak: 0',
+  );
+  await sheet.getByText('Ayrıntılar', { exact: true }).click();
+  await expect(sheet.getByRole('listitem')).toHaveText(['Karışım Bozuk: karışım bilgileri geçersiz']);
+  // Switching to replace: the counts row is not shown there, but the loss line is.
+  await sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true }).click();
+  await expect(sheet).toContainText('Bu cihazdaki 1 karışım silinecek.');
+  await sheet.getByRole('button', { name: 'Vazgeç', exact: true }).click();
+  await expect(sheet).toBeHidden();
 });
 
 test('a running timer in an old backup is stopped at the time of the backup', async ({ page }) => {

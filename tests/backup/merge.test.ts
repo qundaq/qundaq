@@ -12,7 +12,7 @@ import {
 } from '../../src/backup/merge';
 import type { ParsedBackup } from '../../src/backup/validate';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
-import type { Baby, EventDraft, TrackerEvent } from '../../src/domain/types';
+import type { Baby, EventDraft, Mix, TrackerEvent } from '../../src/domain/types';
 
 const T = 1_790_000_000_000;
 const NOW = T + 10 * HOUR;
@@ -31,16 +31,19 @@ const baby = (id: string, name = id, extra: Partial<Baby> = {}): Baby => ({
 const event = (id: string, draft: Partial<EventDraft> = {}, extra: Partial<TrackerEvent> = {}): TrackerEvent =>
   ({ id, type: 'diaper', babyId: 'a', startAt: T, wet: true, dirty: false, createdAt: T, updatedAt: T, ...draft, ...extra }) as TrackerEvent;
 
+const mix = (id: string, name = 'Gece', extra: Partial<Mix> = {}): Mix => ({ id, name, layers: [{ soundId: 'white', gain: 0.7 }], createdAt: T, updatedAt: T, ...extra });
+
 function local(parts: Partial<LocalState> = {}): LocalState {
-  return { babies: [baby('a', 'Ada')], events: [], settings: { locale: 'tr', nightMode: false, lastBabyIds: ['a'] }, ...parts };
+  return { babies: [baby('a', 'Ada')], events: [], mixes: [], settings: { locale: 'tr', nightMode: false, lastBabyIds: ['a'] }, ...parts };
 }
 function backup(parts: Partial<ParsedBackup> = {}): ParsedBackup {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: T + HOUR,
     appVersion: '0.1.0',
     babies: [baby('a', 'Ada')],
     events: [],
+    mixes: [],
     settings: { locale: 'en', nightMode: true, lastBabyIds: ['a'] },
     ...parts,
   };
@@ -52,7 +55,9 @@ function applyPlan(state: LocalState, plan: ImportPlan): LocalState {
   for (const row of plan.babies) babies.set(row.id, row);
   const events = new Map(state.events.map((row) => [row.id, row]));
   for (const row of plan.events) events.set(row.id, row);
-  return { babies: [...babies.values()], events: [...events.values()], settings: plan.settings };
+  const mixes = new Map(state.mixes.map((row) => [row.id, row]));
+  for (const row of plan.mixes) mixes.set(row.id, row);
+  return { babies: [...babies.values()], events: [...events.values()], mixes: [...mixes.values()], settings: plan.settings };
 }
 
 describe('compareRows', () => {
@@ -464,7 +469,52 @@ describe('the same baby: a later exchange after one phone paired them', () => {
   });
 });
 
+describe('saved mixes merge like babies', () => {
+  it('adds, updates, keeps, deletes and counts mixes by id; two same-named mixes both survive', () => {
+    const state = local({
+      mixes: [mix('m1'), mix('m2', 'Öğlen', { updatedAt: T + 5 }), mix('m3', 'Eski'), mix('m4', 'Gece')],
+    });
+    const file = backup({
+      mixes: [
+        mix('m1', 'Gece', { layers: [{ soundId: 'rain', gain: 0.4 }], updatedAt: T + 1 }), // newer: updates
+        mix('m2', 'Öğlen', { updatedAt: T + 1 }), // older: kept
+        mix('m3', 'Eski', { deletedAt: T + 2, updatedAt: T + 2 }), // deleted on the other phone: removed
+        mix('m5', 'Gece'), // new, with the same name as m4: both stay
+      ],
+    });
+    const plan = planImport(state, file, MERGE, NOW);
+    expect(plan.stats.mixes).toEqual({ add: 1, update: 1, remove: 1, same: 0, keep: 1, deleted: 0 });
+    expect(plan.stats.localMixes).toBe(4);
+    expect(plan.mixes.map((row) => row.id).sort()).toEqual(['m1', 'm3', 'm5']);
+    const after = applyPlan(state, plan);
+    expect(after.mixes.filter((row) => row.deletedAt === undefined).map((row) => row.name).sort()).toEqual(['Gece', 'Gece', 'Gece', 'Öğlen']);
+    expect(after.mixes.find((row) => row.id === 'm1')?.layers).toEqual([{ soundId: 'rain', gain: 0.4 }]);
+  });
+
+  it('equal updatedAt with different layers: both phones converge on the same copy', () => {
+    const mine = mix('m1', 'Gece', { layers: [{ soundId: 'white', gain: 0.7 }] });
+    const theirs = mix('m1', 'Gece', { layers: [{ gain: 0.2, soundId: 'rain' }] });
+    const fromA = applyPlan(local({ mixes: [mine] }), planImport(local({ mixes: [mine] }), backup({ mixes: [theirs] }), MERGE, NOW));
+    const fromB = applyPlan(local({ mixes: [theirs] }), planImport(local({ mixes: [theirs] }), backup({ mixes: [mine] }), MERGE, NOW));
+    expect(fromA.mixes).toEqual(fromB.mixes);
+    expect(planImport(local({ mixes: [mine] }), backup({ mixes: [{ ...mine, layers: [{ gain: 0.7, soundId: 'white' }] }] }), MERGE, NOW).stats.mixes.same).toBe(1);
+  });
+
+  it('the signature covers the mixes', () => {
+    const one = planImport(local(), backup({ mixes: [mix('m1')] }), MERGE, NOW);
+    const none = planImport(local(), backup(), MERGE, NOW);
+    expect(planSignature(one)).not.toBe(planSignature(none));
+  });
+});
+
 describe('planImport: replace', () => {
+  it("writes the file's mixes and counts the device's live mixes that go", () => {
+    const plan = planImport(local({ mixes: [mix('m1'), mix('m2', 'Eski', { deletedAt: T })] }), backup({ mixes: [mix('m9', 'Yeni')] }), REPLACE, NOW);
+    expect(plan.mixes).toEqual([mix('m9', 'Yeni')]);
+    expect(plan.stats.mixes).toEqual({ add: 1, update: 0, remove: 0, same: 0, keep: 0, deleted: 0 });
+    expect(plan.stats.localMixes).toBe(1);
+  });
+
   it("writes the file's rows and takes its language and night mode", () => {
     const file = backup({ babies: [baby('a'), baby('z', 'z', { deletedAt: T })], events: [event('e1'), event('e2', {}, { deletedAt: T })] });
     const plan = planImport(local({ events: [event('mine')] }), file, REPLACE, NOW);
@@ -505,7 +555,24 @@ describe('planImport: replace', () => {
       REPLACE,
       NOW,
     );
-    expect(plan.loss).toEqual({ events: 2, newestAt: T + 3 * HOUR });
+    expect(plan.loss).toEqual({ events: 2, newestAt: T + 3 * HOUR, mixes: 0 });
+  });
+
+  it('counts the device mixes that replace would lose the same way: missing from the file, or changed after it', () => {
+    const plan = planImport(
+      local({
+        mixes: [
+          mix('in-file'),
+          mix('changed-after', 'Gece', { updatedAt: T + 2 * HOUR }),
+          mix('new-here', 'Gece'),
+          mix('deleted-here', 'Eski', { deletedAt: T }),
+        ],
+      }),
+      backup({ mixes: [mix('in-file'), mix('changed-after')] }),
+      REPLACE,
+      NOW,
+    );
+    expect(plan.loss).toEqual({ events: 0, newestAt: null, mixes: 2 });
   });
 });
 

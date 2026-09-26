@@ -4,7 +4,7 @@ import { BACKUP_VERSION } from '../../src/backup/format';
 import { MAX_BACKUP_BYTES, PROBLEM_CODES, checkFileSize, parseBackup, type ParseResult, type ProblemCode } from '../../src/backup/validate';
 import type { Settings } from '../../src/db/settings';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
-import type { Baby, BreastSegment, EventDraft, TrackerEvent } from '../../src/domain/types';
+import type { Baby, BreastSegment, EventDraft, Mix, MixLayer, TrackerEvent } from '../../src/domain/types';
 import { buildDrafts, eventToInput, inputToDraft, type SheetInput } from '../../src/ui/log/drafts';
 
 let previousTz: string | undefined;
@@ -24,6 +24,7 @@ const baby = (id = 'b1', extra: Partial<Baby> = {}): Baby => ({ id, name: 'Ada',
 const event = (draft: EventDraft, id = 'e1', extra: Partial<TrackerEvent> = {}): TrackerEvent =>
   ({ ...draft, id, createdAt: T, updatedAt: T, ...extra }) as TrackerEvent;
 const sleep = (id = 'e1', extra: Partial<TrackerEvent> = {}) => event({ type: 'sleep', babyId: 'b1', startAt: T, endAt: T + HOUR }, id, extra);
+const mix = (id = 'm1', extra: Partial<Mix> = {}): Mix => ({ id, name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: T, updatedAt: T, ...extra });
 
 /** A file as the app writes it, with rows that may be anything. */
 function file(parts: Record<string, unknown> = {}): string {
@@ -86,7 +87,7 @@ describe('rows that fail their checks are skipped and reported', () => {
     ['bad-payload', { events: [event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T, segments: [] })] }],
     ['bad-field', { events: [{ ...sleep(), note: 5 }] }],
     ['missing-baby', { events: [{ ...sleep(), babyId: 'nobody' }] }],
-    ['unsupported', { mixes: [{ id: 'm1' }] }],
+    ['bad-mix', { mixes: [mix('m1', { name: '  ' })] }],
   ];
 
   it('covers every problem code', () => {
@@ -96,6 +97,44 @@ describe('rows that fail their checks are skipped and reported', () => {
   it.each(cases)('%s', (code, parts) => {
     const { skipped } = ok(parseBackup(file(parts), NOW));
     expect(skipped.map((row) => row.code)).toEqual([code]);
+  });
+
+  it.each([
+    ['no layers', { layers: [] }],
+    ['seven layers', { layers: ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat'].map((soundId) => ({ soundId, gain: 0.5 })) }],
+    ['a layer that is not an object', { layers: ['white'] }],
+    ['an empty sound id', { layers: [{ soundId: '', gain: 0.5 }] }],
+    ['a gain above 1', { layers: [{ soundId: 'white', gain: 1.5 }] }],
+    ['a gain that is not a number', { layers: [{ soundId: 'white', gain: '0.5' }] }],
+    ['the same sound twice', { layers: [{ soundId: 'white', gain: 0.5 }, { soundId: 'white', gain: 0.6 }] }],
+  ])('a mix with %s is skipped as bad-mix, named by its name', (_label, parts) => {
+    const { skipped, backup } = ok(parseBackup(file({ mixes: [mix('m1', parts as Partial<Mix>)] }), NOW));
+    expect(skipped.map((row) => [row.list, row.code, row.name])).toEqual([['mixes', 'bad-mix', 'Gece']]);
+    expect(backup.mixes).toEqual([]);
+  });
+
+  it('a mix with a name over 40 characters, or a bad time, is skipped and named by the start of its name', () => {
+    const rows = [mix('m1', { name: 'x'.repeat(41) }), mix('m2', { updatedAt: 'now' as unknown as number })];
+    const { skipped, backup } = ok(parseBackup(file({ mixes: rows }), NOW));
+    expect(skipped.map((row) => [row.code, row.name])).toEqual([
+      ['bad-mix', 'x'.repeat(40)],
+      ['bad-time', 'Gece'],
+    ]);
+    expect(backup.mixes).toEqual([]);
+  });
+
+  it('keeps a mix whose sound this version does not know: it comes from a newer version and is skipped only when played', () => {
+    const newer = mix('m1', { layers: [{ soundId: 'train', gain: 0.5 }, { soundId: 'white', gain: 1 }] });
+    const { skipped, backup } = ok(parseBackup(file({ mixes: [newer, mix('m2', { deletedAt: T + 1 })] }), NOW));
+    expect(skipped).toEqual([]);
+    expect(backup.mixes).toEqual([newer, mix('m2', { deletedAt: T + 1 })]);
+  });
+
+  it('reads a version-1 file with mixes by the version-2 rules', () => {
+    const { skipped, backup } = ok(parseBackup(file({ schemaVersion: 1, mixes: [mix(), { id: 'bad' }] }), NOW));
+    expect(backup.schemaVersion).toBe(2);
+    expect(backup.mixes).toEqual([mix()]);
+    expect(skipped.map((row) => [row.list, row.code])).toEqual([['mixes', 'bad-mix']]);
   });
 
   it('names a skipped event by what could be read of it', () => {
@@ -182,9 +221,11 @@ describe('whitelisting', () => {
     const text = file({
       babies: [{ ...baby(), isAdmin: true }],
       events: [JSON.parse('{"id":"e1","type":"sleep","babyId":"b1","startAt":1,"createdAt":1,"updatedAt":1,"open":1,"extra":2,"__proto__":{"polluted":true},"constructor":"x"}')],
+      mixes: [{ ...mix(), layers: [{ soundId: 'white', gain: 0.7, colour: 'red' }], extra: 1 }],
     });
     const { backup } = ok(parseBackup(text, NOW));
     expect(backup.babies[0]).toEqual(baby());
+    expect(backup.mixes).toEqual([mix()]);
     expect(backup.events[0]).toEqual({ id: 'e1', type: 'sleep', babyId: 'b1', startAt: 1, createdAt: 1, updatedAt: 1 });
     expect(Object.getPrototypeOf(backup.events[0])).toBe(Object.prototype);
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
@@ -219,14 +260,24 @@ describe('whitelisting', () => {
       { ...common, id: 'med', type: 'medication', endAt: T, name: 'D vitamini', dose: '400 IU' } satisfies Full<'medication'>,
       { ...common, id: 'health', type: 'healthNote', endAt: T } satisfies Full<'healthNote'>,
     ];
-    const settings: Required<Settings> = { locale: 'en', nightMode: true, lastBabyIds: ['b1'], lastBackupAt: T, backupReminderSnoozedUntil: T };
-    const text = serializeBackup(buildBackup({ babies: [b], events: samples, settings }, { exportedAt: T, appVersion: '0.1.0' }));
+    const m: Required<Mix> = { id: 'm1', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 } satisfies Required<MixLayer>], createdAt: T, updatedAt: T, deletedAt: T };
+    const settings: Required<Settings> = {
+      locale: 'en',
+      nightMode: true,
+      lastBabyIds: ['b1'],
+      lastBackupAt: T,
+      backupReminderSnoozedUntil: T,
+      volumeCap: 0.7,
+      lastSound: { layers: [{ soundId: 'white', level: 0.5 }], master: 0.6, timerMin: 30 },
+    };
+    const text = serializeBackup(buildBackup({ babies: [b], events: samples, mixes: [m], settings }, { exportedAt: T, appVersion: '0.1.0' }));
     const { backup, skipped } = ok(parseBackup(text, NOW));
     expect(skipped).toEqual([]);
     expect(backup.babies).toEqual([b]);
     expect(backup.events).toEqual(samples);
+    expect(backup.mixes).toEqual([m]);
     // Device-only settings stay behind on purpose; everything else comes back.
-    const { lastBackupAt: _last, backupReminderSnoozedUntil: _snooze, ...portable } = settings;
+    const { lastBackupAt: _last, backupReminderSnoozedUntil: _snooze, volumeCap: _cap, lastSound: _sound, ...portable } = settings;
     expect(backup.settings).toEqual(portable);
   });
 });
