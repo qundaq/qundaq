@@ -14,13 +14,13 @@ import {
   type GrowthMetric,
 } from '../../domain/summary';
 import type { Baby, GrowthEvent, Id, TrackerEvent } from '../../domain/types';
-import { useReportLoadError } from '../ErrorBanner';
-import { formatDuration } from '../format';
+import { useReportLoadError } from '../shared/ErrorBanner';
+import { formatDuration } from '../shared/format';
 import { DayPicker } from '../history/DayPicker';
 import { dayLabel, formatNumber, weekdayShort } from '../history/describe';
-import { useLocale, useT, type TranslateFn } from '../I18nProvider';
-import { useLiveQuery } from '../useLiveQuery';
-import { useNow } from '../useNow';
+import { useLocale, useT, type TranslateFn } from '../app/I18nProvider';
+import { useLiveQuery } from '../shared/useLiveQuery';
+import { useNow } from '../shared/useNow';
 import { GrowthChart } from './GrowthChart';
 
 /** Özet's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */

@@ -1,7 +1,8 @@
-import { foldCase } from '../domain/text';
 import type { Baby, Id, Mix, TrackerEvent } from '../domain/types';
-import { BABY_KEYS, EVENT_KEYS, MIX_KEYS, type BackupSettings } from './format';
+import type { BackupSettings } from './format';
+import { compareRows, isLive, type Row } from './rows';
 import { findStale, repairRunning, type StaleTimer, type StoppedTimer } from './running';
+import { displayName, foldedName, groupByFoldedName, type SameBabyPair } from './sameBaby';
 import type { ParsedBackup } from './validate';
 
 export type ImportMode = 'merge' | 'replace';
@@ -12,18 +13,6 @@ export interface LocalState {
   events: readonly TrackerEvent[];
   mixes: readonly Mix[];
   settings: BackupSettings;
-}
-
-/**
- * A device baby and a backup baby with the same name but different ids: the same child, added again after
- * a wipe. Confirmed, one of the two survives (see mergePlan: the earlier createdAt, ties to the smaller id),
- * so either side's baby may be the one kept.
- */
-export interface SameBabyPair {
-  localId: Id;
-  incomingId: Id;
-  name: string; // as the backup spells it
-  localName: string; // as this device spells it
 }
 
 export interface ImportOptions {
@@ -54,12 +43,6 @@ export interface FollowingBaby {
   name: string; // the deleted baby, as this device spells it
   survivorName: string; // the baby its entries move to
 }
-
-/**
- * What happens to one row of the file. add: new to the device. update: the file's copy wins. same: both
- * copies are equal. keep: the device's copy wins.
- */
-export type Outcome = 'add' | 'update' | 'same' | 'keep';
 
 /**
  * Counts of the file's rows by outcome. `remove`: the file's newer deletion of a row that is live on the
@@ -128,55 +111,6 @@ export interface ImportPlan {
   stopped: StoppedTimer[];
 }
 
-type Row = { id: Id; updatedAt: number; deletedAt?: number };
-
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys);
-  if (typeof value === 'object' && value !== null) {
-    const record = value as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.keys(record)
-        .sort()
-        .map((key) => [key, sortKeys(record[key])]),
-    );
-  }
-  return value;
-}
-
-/**
- * Every field a baby, an event or a mix row can legitimately have (the storage-only `open` marker is not
- * one of them, so it drops out on its own). A device row may also carry a legacy or otherwise unknown
- * field from an older version of the app; canonicalRow ignores those too, on both sides, so two rows that
- * agree on every field the current app understands compare equal regardless of what else either one is
- * carrying. A mix's `layers` are compared with their keys sorted, like every nested value.
- */
-const CANONICAL_KEYS = new Set<string>([...BABY_KEYS, ...EVENT_KEYS, ...MIX_KEYS]);
-
-/** A row as JSON with sorted keys and only the known fields: equal rows give equal strings, whatever their key order. */
-export function canonicalRow(row: object): string {
-  const source = row as Record<string, unknown>;
-  const rest: Record<string, unknown> = {};
-  for (const key of Object.keys(source)) if (CANONICAL_KEYS.has(key)) rest[key] = source[key];
-  return JSON.stringify(sortKeys(rest));
-}
-
-/**
- * Last writer wins, by `updatedAt`. Equal times with different content: the copy whose canonical JSON
- * sorts larger wins, so two phones merging each other's backups end up with the same row. (A phone whose
- * clock runs ahead wins more often; there is no better clock to go by.)
- */
-export function compareRows(local: Row | undefined, incoming: Row): Outcome {
-  if (local === undefined) return 'add';
-  if (incoming.updatedAt > local.updatedAt) return 'update';
-  if (incoming.updatedAt < local.updatedAt) return 'keep';
-  const mine = canonicalRow(local);
-  const theirs = canonicalRow(incoming);
-  if (mine === theirs) return 'same';
-  return theirs > mine ? 'update' : 'keep';
-}
-
-const isLive = (row: { deletedAt?: number }) => row.deletedAt === undefined;
-
 function emptyStats(): TableStats {
   return { add: 0, update: 0, remove: 0, same: 0, keep: 0, deleted: 0 };
 }
@@ -233,64 +167,6 @@ function recount(
   table.stats[bucket] -= 1;
   table.counted.delete(id);
   if (to !== undefined) table.stats[to] += 1;
-}
-
-/**
- * The name as pairing compares it (case folded, İ/ı included, trimmed), or null for a device row whose name
- * is not a string: device rows were never validated, and such a baby is never paired, only left as it is.
- */
-function foldedName(baby: Baby): string | null {
-  return typeof baby.name === 'string' ? foldCase(baby.name.trim()) : null;
-}
-
-/** The name to show for a device baby, whose row may be malformed. */
-function displayName(baby: Baby): string {
-  return typeof baby.name === 'string' ? baby.name : '?';
-}
-
-function groupByFoldedName(babies: readonly Baby[]): Map<string, Baby[]> {
-  const groups = new Map<string, Baby[]>();
-  for (const baby of babies) {
-    const key = foldedName(baby);
-    if (key === null) continue;
-    const group = groups.get(key);
-    if (group) group.push(baby);
-    else groups.set(key, [baby]);
-  }
-  return groups;
-}
-
-/**
- * A live device baby and a live backup baby with the same name (ignoring case, İ/ı included) but different
- * ids: the same child, added again after a wipe. Pairs only when exactly one live baby on each side shares
- * that name — an ambiguous name (two babies on one side, or on both) is never guessed at, so it is left
- * unpaired. Babies whose id is on both sides are the same record already, not a same-name candidate.
- */
-export function findSameBabies(local: readonly Baby[], incoming: readonly Baby[]): SameBabyPair[] {
-  const localIds = new Set(local.map((baby) => baby.id));
-  const incomingIds = new Set(incoming.map((baby) => baby.id));
-  const localGroups = groupByFoldedName(
-    local.filter((baby) => isLive(baby) && !incomingIds.has(baby.id)),
-  );
-  const incomingGroups = groupByFoldedName(
-    incoming.filter((baby) => isLive(baby) && !localIds.has(baby.id)),
-  );
-
-  const pairs: SameBabyPair[] = [];
-  for (const [key, locals] of localGroups) {
-    if (locals.length !== 1) continue;
-    const matches = incomingGroups.get(key);
-    if (!matches || matches.length !== 1) continue;
-    const mine = locals[0]!;
-    const theirs = matches[0]!;
-    pairs.push({
-      localId: mine.id,
-      incomingId: theirs.id,
-      name: theirs.name,
-      localName: mine.name,
-    });
-  }
-  return pairs;
 }
 
 /** Remapped through `rename`, kept only for babies that are live afterwards, without duplicates. */

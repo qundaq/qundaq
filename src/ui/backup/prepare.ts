@@ -5,7 +5,7 @@ import { readSnapshot } from '../../db/backup';
 import { db } from '../../db/instance';
 import type { Locale, MessageKey } from '../../i18n';
 import { describeEvent, formatNumber, typeLabel } from '../history/describe';
-import type { TranslateFn } from '../I18nProvider';
+import type { TranslateFn } from '../app/I18nProvider';
 import { countsAsBackup, fileSize } from './text';
 
 /** Files ready to share, prepared before the share tap: async work inside the tap would lose its user activation. */

@@ -5,9 +5,9 @@ import {
   createDownloads,
   shareFiles,
 } from '../../platform/share';
-import { ErrorBoundary } from '../ErrorBoundary';
-import { useLocale, useT } from '../I18nProvider';
-import { Sheet, useSheetSession } from '../Sheet';
+import { ErrorBoundary } from '../app/ErrorBoundary';
+import { useLocale, useT } from '../app/I18nProvider';
+import { Sheet, useSheetSession } from '../shared/Sheet';
 import { prepareBackup, prepareCsv, type Prepared } from './prepare';
 import { SheetMessage } from './SheetMessage';
 import type { ExportKind } from './text';

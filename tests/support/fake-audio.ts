@@ -1,20 +1,20 @@
 import { vi } from 'vitest';
 import { Automation, type AutomationEvent } from '../../src/audio/automation';
+import type { EngineDeps } from '../../src/audio/engine';
 import type {
   BufferLike,
   BufferSourceLike,
   CompressorLike,
   ConstantSourceLike,
   ContextLike,
-  EngineDeps,
   GainLike,
   NodeLike,
   ParamLike,
-} from '../../src/audio/engine';
+} from '../../src/audio/graph';
 import type { SoundId } from '../../src/domain/sounds';
 
 /**
- * A fake of the parts of the Web Audio API the engine uses (src/audio/engine.ts declares them). Every
+ * A fake of the parts of the Web Audio API the engine uses (src/audio/graph.ts declares them). Every
  * AudioParam keeps an Automation of what was scheduled on it, so a test can ask what value a gain has at
  * any audio-clock time, and every node records its connections and its start/stop calls. The clock only
  * advances through FakeDeps.advance, and only while the context is running, as a real one does.

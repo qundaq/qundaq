@@ -1,35 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import { db } from '../db/instance';
-import { defaultSettings, loadSettings, saveSettings, type Settings } from '../db/settings';
-import { DEFAULT_CAP } from '../domain/sounds';
-import { detectLocale } from '../i18n';
-import { ExportSheet } from './backup/ExportSheet';
+import { db } from '../../db/instance';
+import { defaultSettings, loadSettings, saveSettings, type Settings } from '../../db/settings';
+import { DEFAULT_CAP } from '../../domain/sounds';
+import { detectLocale } from '../../i18n';
+import { ExportSheet } from '../backup/ExportSheet';
 import {
   DEFAULT_CHOICES,
   readImportFile,
   type ImportChoices,
   type ImportSource,
-} from './backup/importFile';
-import { ImportSheet } from './backup/ImportSheet';
-import { ErrorProvider, useReportError } from './ErrorBanner';
+} from '../backup/importFile';
+import { ImportSheet } from '../backup/ImportSheet';
+import { ErrorProvider, useReportError } from '../shared/ErrorBanner';
 import { ErrorBoundary } from './ErrorBoundary';
-import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from './history/LogScreen';
+import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from '../history/LogScreen';
 import { I18nProvider, useT } from './I18nProvider';
 import { TabBar, type Tab } from './TabBar';
-import { CrashScreen } from './screens/CrashScreen';
-import { HomeScreen } from './screens/HomeScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { NowPlayingBar } from './sounds/NowPlayingBar';
-import { SoundsScreen } from './sounds/SoundsScreen';
+import { CrashScreen } from './CrashScreen';
+import { HomeScreen } from '../home/HomeScreen';
+import { SettingsScreen } from '../settings/SettingsScreen';
+import { NowPlayingBar } from '../sounds/NowPlayingBar';
+import { SoundsScreen } from '../sounds/SoundsScreen';
 import {
   lastSoundOf,
   lastSoundToPersist,
   layerNames,
   sameLastSound,
   toSavedSound,
-} from './sounds/text';
-import { useMediaSession, useSoundEngine } from './sounds/useSoundEngine';
-import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from './summary/SummaryScreen';
+} from '../sounds/text';
+import { useMediaSession, useSoundEngine } from '../sounds/useSoundEngine';
+import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from '../summary/SummaryScreen';
 
 const fallbackLocale = detectLocale(navigator.language);
 

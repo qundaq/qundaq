@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { applyUpdate, checkForUpdate, hasWaitingUpdate } from '../../platform/sw-client';
-import { useT } from '../I18nProvider';
-import { useOfflineStatus, usePersistenceState } from '../usePlatformStatus';
+import { useT } from '../app/I18nProvider';
+import { useOfflineStatus, usePersistenceState } from '../shared/usePlatformStatus';
 
 export function OfflineCard() {
   const t = useT();

@@ -1,5 +1,5 @@
-import { MINUTE, elapsedParts } from '../domain/time';
-import type { TranslateFn } from './I18nProvider';
+import { MINUTE, elapsedParts } from '../../domain/time';
+import type { TranslateFn } from '../app/I18nProvider';
 
 export function formatDuration(t: TranslateFn, ms: number): string {
   const { hours, minutes } = elapsedParts(ms);

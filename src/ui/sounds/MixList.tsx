@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { db } from '../../db/instance';
 import { deleteMix, listMixes } from '../../db/mixes';
 import type { Id, Mix } from '../../domain/types';
-import { useReportError, useReportLoadError } from '../ErrorBanner';
+import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../history/confirm';
-import { useT } from '../I18nProvider';
-import { useLiveQuery } from '../useLiveQuery';
+import { useT } from '../app/I18nProvider';
+import { useLiveQuery } from '../shared/useLiveQuery';
 import { mixLayerNames } from './text';
 
 interface Props {

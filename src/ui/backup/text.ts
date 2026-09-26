@@ -2,7 +2,7 @@ import { believable, daysSinceBackup } from '../../backup/reminder';
 import { DAY } from '../../domain/time';
 import type { Locale } from '../../i18n';
 import { clockTime, formatNumber, shortDate } from '../history/describe';
-import type { TranslateFn } from '../I18nProvider';
+import type { TranslateFn } from '../app/I18nProvider';
 
 const KB = 1024;
 const MB = 1024 * KB;

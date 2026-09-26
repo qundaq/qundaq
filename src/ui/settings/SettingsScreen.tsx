@@ -4,9 +4,9 @@ import { DEFAULT_CAP } from '../../domain/sounds';
 import { LOCALES } from '../../i18n';
 import { BabiesCard } from '../babies/BabiesCard';
 import { BackupCard, type BackupActions } from '../backup/BackupCard';
-import { useT } from '../I18nProvider';
-import { CapCard } from '../settings/CapCard';
-import { SourcesSheet } from '../settings/SourcesSheet';
+import { useT } from '../app/I18nProvider';
+import { CapCard } from './CapCard';
+import { SourcesSheet } from './SourcesSheet';
 import { OfflineCard, StorageCard, UpdateCard } from './PlatformCards';
 
 interface Props {

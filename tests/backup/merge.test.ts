@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  canonicalRow,
-  compareRows,
-  findSameBabies,
   planImport,
   planSignature,
   type ImportOptions,
   type ImportPlan,
   type LocalState,
-  type SameBabyPair,
 } from '../../src/backup/merge';
+import { canonicalRow, compareRows } from '../../src/backup/rows';
+import { findSameBabies, type SameBabyPair } from '../../src/backup/sameBaby';
 import type { ParsedBackup } from '../../src/backup/validate';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
 import type { Baby, EventDraft, Mix, TrackerEvent } from '../../src/domain/types';

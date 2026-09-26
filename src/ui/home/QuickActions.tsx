@@ -1,5 +1,5 @@
 import type { SheetKind } from '../log/drafts';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 
 const KINDS: readonly SheetKind[] = ['breastfeed', 'bottle', 'sleep', 'diaper', 'other'];
 

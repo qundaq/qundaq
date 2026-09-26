@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { listBabies } from '../../src/db/babies';
-import { depsKey, subscribeLiveQuery, valueFor } from '../../src/ui/useLiveQuery';
+import { depsKey, subscribeLiveQuery, valueFor } from '../../src/ui/shared/useLiveQuery';
 
 const opened: TrackerDb[] = [];
 afterEach(async () => {

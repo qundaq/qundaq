@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useT } from '../I18nProvider';
-import { Sheet } from '../Sheet';
+import { useT } from '../app/I18nProvider';
+import { Sheet } from '../shared/Sheet';
 
 /** Where every sound comes from, served with the app (precached like everything in dist). */
 export const SOURCES_PATH = 'sounds/SOURCES.md';

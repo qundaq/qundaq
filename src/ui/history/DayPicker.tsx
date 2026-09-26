@@ -5,7 +5,7 @@ import {
   stepDay,
   toDateInputValue,
 } from '../../domain/days';
-import { useLocale, useT } from '../I18nProvider';
+import { useLocale, useT } from '../app/I18nProvider';
 import { dayLabel } from './describe';
 
 interface Props {

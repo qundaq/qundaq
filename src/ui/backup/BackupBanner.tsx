@@ -1,4 +1,4 @@
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 import { backupAgo } from './text';
 
 interface Props {

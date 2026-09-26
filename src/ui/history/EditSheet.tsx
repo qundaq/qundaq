@@ -3,21 +3,15 @@ import { deleteEvent, stopEvent, updateEvent } from '../../db/events';
 import { db } from '../../db/instance';
 import { isOpen } from '../../domain/rules';
 import type { Baby, TrackerEvent } from '../../domain/types';
-import { messageFor } from '../ErrorBanner';
-import { useLocale, useT } from '../I18nProvider';
+import { messageFor } from '../shared/ErrorBanner';
+import { useLocale, useT } from '../app/I18nProvider';
 import { SingleBabyPicker } from '../log/BabyPicker';
-import { decimalSeparatorFor, eventToInput, inputToDraft, type EditInput } from '../log/drafts';
-import {
-  BottleForm,
-  DiaperForm,
-  GrowthForm,
-  MedicationForm,
-  NoteField,
-  PumpForm,
-  TemperatureForm,
-} from '../log/forms';
+import { decimalSeparatorFor, eventToInput, inputToDraft, type EditInput } from '../log/edits';
+import { BottleForm, DiaperForm } from '../log/forms/care';
+import { NoteField } from '../log/forms/fields';
+import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from '../log/forms/other';
 import { EditTimeField, OptionalTimeField } from '../log/TimeField';
-import { Sheet, useSheetSession } from '../Sheet';
+import { Sheet, useSheetSession } from '../shared/Sheet';
 import { DELETE_CONFIRM_MAX_MS, deleteTap } from './confirm';
 import { SegmentsEditor } from './SegmentsEditor';
 

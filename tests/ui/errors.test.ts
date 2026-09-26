@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { translate, type MessageKey } from '../../src/i18n';
 import { ValidationError } from '../../src/domain/rules';
-import { bannerMessage, messageFor } from '../../src/ui/ErrorBanner';
+import { bannerMessage, messageFor } from '../../src/ui/shared/ErrorBanner';
 
 const t = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
 

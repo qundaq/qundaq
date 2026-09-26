@@ -19,7 +19,8 @@ import type {
   MixLayer,
   TrackerEvent,
 } from '../../src/domain/types';
-import { buildDrafts, eventToInput, inputToDraft, type SheetInput } from '../../src/ui/log/drafts';
+import { buildDrafts, type SheetInput } from '../../src/ui/log/drafts';
+import { eventToInput, inputToDraft } from '../../src/ui/log/edits';
 
 let previousTz: string | undefined;
 beforeEach(() => {

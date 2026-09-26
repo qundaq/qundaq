@@ -1,12 +1,12 @@
 import type { Side } from '../../domain/types';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 import {
   addSegment,
   removeSegment,
   setSegmentMinutes,
   setSegmentSide,
   type BreastfeedEdit,
-} from '../log/drafts';
+} from '../log/edits';
 
 const SIDES: readonly Side[] = ['L', 'R'];
 

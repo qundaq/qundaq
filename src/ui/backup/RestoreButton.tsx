@@ -1,4 +1,4 @@
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 
 /**
  * "Yedekten geri yükle": a label styled as a button around a transparent file input, because iOS opens its

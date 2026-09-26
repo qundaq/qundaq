@@ -2,9 +2,9 @@ import { useId, useRef, useState, type FormEvent } from 'react';
 import { BABY_NAME_MAX, addBaby, updateBaby } from '../../db/babies';
 import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
-import { messageFor } from '../ErrorBanner';
-import { useT } from '../I18nProvider';
-import { Sheet } from '../Sheet';
+import { messageFor } from '../shared/ErrorBanner';
+import { useT } from '../app/I18nProvider';
+import { Sheet } from '../shared/Sheet';
 import { BABY_COLORS, nextColor } from './colors';
 
 interface Props {

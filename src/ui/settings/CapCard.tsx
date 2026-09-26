@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { isAboveDefaultCap, percent } from '../../audio/volume';
 import { DEFAULT_CAP, MIN_CAP } from '../../domain/sounds';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 
 /** A slider move is saved this long after it stops: every move would otherwise be a write. */
 const SAVE_AFTER_MS = 300;

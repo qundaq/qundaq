@@ -1,5 +1,5 @@
 import type { Baby, Id } from '../../domain/types';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 
 interface Props {
   babies: readonly Baby[];

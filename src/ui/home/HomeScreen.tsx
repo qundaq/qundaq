@@ -11,15 +11,15 @@ import type { Id, TrackerEvent } from '../../domain/types';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
 import { BackupBanner } from '../backup/BackupBanner';
 import { RestoreButton } from '../backup/RestoreButton';
-import { useReportError, useReportLoadError } from '../ErrorBanner';
+import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { EditSheet } from '../history/EditSheet';
-import { BabyCard } from '../home/BabyCard';
-import { QuickActions } from '../home/QuickActions';
-import { useT } from '../I18nProvider';
+import { BabyCard } from './BabyCard';
+import { QuickActions } from './QuickActions';
+import { useT } from '../app/I18nProvider';
 import type { SheetKind } from '../log/drafts';
 import { LogSheet } from '../log/LogSheet';
-import { useLiveQuery } from '../useLiveQuery';
-import { useNow } from '../useNow';
+import { useLiveQuery } from '../shared/useLiveQuery';
+import { useNow } from '../shared/useNow';
 
 /** How far back Home looks for "last feed / diaper / wake-up". Running timers are always included. */
 const RECENT_WINDOW = 7 * DAY;

@@ -6,9 +6,9 @@ import type { GrowthMetric } from '../../domain/summary';
 import type { EventType, Side, TrackerEvent } from '../../domain/types';
 import type { Locale } from '../../i18n';
 import { HOUR } from '../../domain/time';
-import { formatDuration } from '../format';
-import type { TranslateFn } from '../I18nProvider';
-import { segmentMinutes } from '../log/drafts';
+import { formatDuration } from '../shared/format';
+import type { TranslateFn } from '../app/I18nProvider';
+import { segmentMinutes } from '../log/edits';
 
 // Formatters are built per call: Intl captures the time zone when it is constructed.
 

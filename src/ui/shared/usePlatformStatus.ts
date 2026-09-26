@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getOfflineStatus, type OfflineStatus } from '../platform/sw-client';
-import { getPersistenceState, type PersistenceState } from '../platform/storage';
+import { getOfflineStatus, type OfflineStatus } from '../../platform/sw-client';
+import { getPersistenceState, type PersistenceState } from '../../platform/storage';
 
 const POLL_MS = 1500;
 
