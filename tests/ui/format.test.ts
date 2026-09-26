@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { translate } from '../../src/i18n';
 import { HOUR, MINUTE } from '../../src/domain/time';
-import { formatAgo, formatDuration } from '../../src/ui/format';
+import { formatAgo, formatDuration } from '../../src/ui/shared/format';
 
 const tr = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
   translate('tr', key, vars);

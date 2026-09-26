@@ -15,7 +15,7 @@ import {
   setSegmentSide,
   type BreastfeedEdit,
   type SleepEdit,
-} from '../../src/ui/log/drafts';
+} from '../../src/ui/log/edits';
 
 const T0 = new Date(2026, 8, 25, 8, 0).getTime();
 const SECOND = 1000;

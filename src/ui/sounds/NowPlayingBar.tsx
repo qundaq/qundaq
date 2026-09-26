@@ -1,5 +1,5 @@
 import type { EngineState } from '../../audio/engine';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 import { statusText } from './text';
 import { useRemaining } from './useRemaining';
 

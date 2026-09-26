@@ -1,6 +1,6 @@
 import type { GrowthMetric, GrowthPoint } from '../../domain/summary';
 import { formatMeasurement, longDate, shortDate } from '../history/describe';
-import { useLocale, useT } from '../I18nProvider';
+import { useLocale, useT } from '../app/I18nProvider';
 import { growthChartGeometry } from './chartGeometry';
 
 const WIDTH = 320;

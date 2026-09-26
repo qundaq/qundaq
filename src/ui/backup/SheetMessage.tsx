@@ -1,4 +1,4 @@
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 
 /** A sheet's failure: the message and a button that closes the sheet. */
 export function SheetMessage({ message, onClose }: { message: string; onClose: () => void }) {

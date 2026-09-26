@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { translate, type Locale, type MessageKey } from '../i18n';
+import { translate, type Locale, type MessageKey } from '../../i18n';
 
 export type TranslateFn = (key: MessageKey, vars?: Record<string, string | number>) => string;
 

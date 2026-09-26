@@ -1,5 +1,5 @@
 import type { Baby, TrackerEvent } from '../../domain/types';
-import { useLocale, useT } from '../I18nProvider';
+import { useLocale, useT } from '../app/I18nProvider';
 import { describeEvent, firstLine, hasAlert, timeRange, typeLabel } from './describe';
 
 interface Props {

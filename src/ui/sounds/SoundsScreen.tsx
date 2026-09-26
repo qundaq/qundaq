@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SOUNDS } from '../../audio/catalog';
 import { percent } from '../../audio/volume';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 import { MixList } from './MixList';
 import { MixNameSheet, type MixNameRequest } from './MixNameSheet';
 import { SoundTile } from './SoundTile';

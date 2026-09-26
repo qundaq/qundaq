@@ -1,12 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildBackup, serializeBackup } from '../../src/backup/export';
-import {
-  findSameBabies,
-  planImport,
-  planSignature,
-  type ImportOptions,
-} from '../../src/backup/merge';
+import { planImport, planSignature, type ImportOptions } from '../../src/backup/merge';
+import { findSameBabies } from '../../src/backup/sameBaby';
 import { parseBackup, type ParsedBackup } from '../../src/backup/validate';
 import { addBaby, deleteBaby } from '../../src/db/babies';
 import { deleteMix, listMixes, saveMix } from '../../src/db/mixes';

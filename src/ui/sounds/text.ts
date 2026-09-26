@@ -4,7 +4,7 @@ import { minutesLeft } from '../../audio/timer';
 import { DEFAULT_MASTER } from '../../audio/volume';
 import { DEFAULT_TIMER, isSoundId, type LastSound, type SoundId } from '../../domain/sounds';
 import type { MixLayer } from '../../domain/types';
-import type { TranslateFn } from '../I18nProvider';
+import type { TranslateFn } from '../app/I18nProvider';
 
 /** "Beyaz gürültü + Yağmur", in layer order. */
 export function layerNames(t: TranslateFn, layers: readonly { soundId: SoundId }[]): string {

@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { logEvents, recentMedicationNames } from '../../db/events';
 import { db } from '../../db/instance';
 import type { Baby, Id } from '../../domain/types';
-import { messageFor, useReportLoadError } from '../ErrorBanner';
-import { useT } from '../I18nProvider';
-import { Sheet, useSheetSession } from '../Sheet';
-import { useLiveQuery } from '../useLiveQuery';
+import { messageFor, useReportLoadError } from '../shared/ErrorBanner';
+import { useT } from '../app/I18nProvider';
+import { Sheet, useSheetSession } from '../shared/Sheet';
+import { useLiveQuery } from '../shared/useLiveQuery';
 import { BabyPicker, SingleBabyPicker } from './BabyPicker';
 import {
   DEFAULT_OTHER_TYPE,
@@ -18,19 +18,9 @@ import {
   type SheetInput,
   type SheetKind,
 } from './drafts';
-import {
-  BottleForm,
-  BreastfeedForm,
-  DiaperForm,
-  GrowthForm,
-  MedicationForm,
-  NoteField,
-  OtherTypeChips,
-  PumpForm,
-  SleepForm,
-  TemperatureForm,
-  type FormProps,
-} from './forms';
+import { BottleForm, BreastfeedForm, DiaperForm, SleepForm } from './forms/care';
+import { NoteField, OtherTypeChips, type FormProps } from './forms/fields';
+import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from './forms/other';
 import { TimeField } from './TimeField';
 
 interface Props {

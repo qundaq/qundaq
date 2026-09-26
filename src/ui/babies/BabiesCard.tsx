@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { deleteBaby, listBabies } from '../../db/babies';
 import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
-import { useReportError, useReportLoadError } from '../ErrorBanner';
-import { useT } from '../I18nProvider';
-import { useLiveQuery } from '../useLiveQuery';
-import { useSheetSession } from '../Sheet';
+import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
+import { useT } from '../app/I18nProvider';
+import { useLiveQuery } from '../shared/useLiveQuery';
+import { useSheetSession } from '../shared/Sheet';
 import { BabyFormDialog } from './BabyFormDialog';
 
 export function BabiesCard() {

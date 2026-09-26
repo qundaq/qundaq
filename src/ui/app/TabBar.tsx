@@ -1,4 +1,4 @@
-import type { MessageKey } from '../i18n';
+import type { MessageKey } from '../../i18n';
 import { useT } from './I18nProvider';
 
 export type Tab = 'home' | 'log' | 'summary' | 'sounds' | 'settings';

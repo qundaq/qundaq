@@ -1,5 +1,5 @@
-import { useLocale, useT } from '../I18nProvider';
-import { useNow } from '../useNow';
+import { useLocale, useT } from '../app/I18nProvider';
+import { useNow } from '../shared/useNow';
 import { RestoreButton } from './RestoreButton';
 import { lastBackupText } from './text';
 

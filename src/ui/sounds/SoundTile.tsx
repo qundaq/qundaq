@@ -1,5 +1,5 @@
 import { percent } from '../../audio/volume';
-import { useT } from '../I18nProvider';
+import { useT } from '../app/I18nProvider';
 
 interface Props {
   name: string;

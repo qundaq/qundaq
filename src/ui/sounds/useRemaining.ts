@@ -1,5 +1,5 @@
-import type { TranslateFn } from '../I18nProvider';
-import { useNow } from '../useNow';
+import type { TranslateFn } from '../app/I18nProvider';
+import { useNow } from '../shared/useNow';
 import { remainingText } from './text';
 
 /** "24 dk kaldı" for the running timer, refreshed every 10 s; a stale render clock never inflates the minutes. */

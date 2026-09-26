@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import type { BabyStatus } from '../../domain/status';
 import type { Baby } from '../../domain/types';
-import { formatAgo, formatDuration } from '../format';
-import { useT } from '../I18nProvider';
+import { formatAgo, formatDuration } from '../shared/format';
+import { useT } from '../app/I18nProvider';
 
 interface Props {
   baby: Baby;

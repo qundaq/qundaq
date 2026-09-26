@@ -1,7 +1,7 @@
 import { fromLocalInputValue, toLocalInputValue } from '../../domain/time';
-import { useT } from '../I18nProvider';
-import { useNow } from '../useNow';
-import { editedOptionalTime, editedTime } from './drafts';
+import { useT } from '../app/I18nProvider';
+import { useNow } from '../shared/useNow';
+import { editedOptionalTime, editedTime } from './edits';
 
 /**
  * `null` means "now": the field shows the current time, and the entry is stamped with the moment it is

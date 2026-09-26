@@ -3,9 +3,9 @@ import { db } from '../../db/instance';
 import { renameMix, saveMix } from '../../db/mixes';
 import { MIX_NAME_MAX, ValidationError } from '../../domain/rules';
 import type { Mix, MixLayer } from '../../domain/types';
-import { messageFor } from '../ErrorBanner';
-import { useT } from '../I18nProvider';
-import { Sheet, useSheetSession } from '../Sheet';
+import { messageFor } from '../shared/ErrorBanner';
+import { useT } from '../app/I18nProvider';
+import { Sheet, useSheetSession } from '../shared/Sheet';
 
 /** Opened with the layers to save under a new name, or with a mix to rename. */
 export type MixNameRequest =

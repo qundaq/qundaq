@@ -1,5 +1,5 @@
 import { RestoreButton } from '../backup/RestoreButton';
-import { useT } from '../I18nProvider';
+import { useT } from './I18nProvider';
 
 interface Props {
   error: Error;
