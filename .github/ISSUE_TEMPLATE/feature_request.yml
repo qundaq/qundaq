@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the app makes hard or impossible? Real situations ("at 3 a.m., with one hand...") help most.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your proposal
+      description: How you imagine it working. Keep in mind the app's principles — no network, no accounts, no tracking, no permissions.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to solve it, including what you do today instead.
+    validations:
+      required: false

@@ -2,6 +2,8 @@
 
 # Qundaq
 
+[![CI](https://github.com/qundaq/qundaq/actions/workflows/ci.yml/badge.svg)](https://github.com/qundaq/qundaq/actions/workflows/ci.yml)
+
 **An offline-first, privacy-first baby tracker and sleep-sound mixer for twins (or any number of babies).**
 Runs entirely on your phone as an installable web app. No accounts, no servers, no tracking — your data never leaves the device.
 
@@ -83,6 +85,10 @@ The Sounds tab plays white, pink and brown noise, rain, waves, wind, a heartbeat
 - **Locked screen:** the sound keeps playing with the screen locked and in airplane mode. It plays through the ring/silent switch, and it pauses other audio (a podcast) when it starts. After a call or an alarm while the phone is locked, iOS may keep the sound off until you open the app again; the app then shows "Resume".
 - **Safety:** keep the phone out of the crib, at least 2 metres (about 7 feet) away, keep the volume as low as works, and prefer the timer to playing all night (Hugh et al., _Pediatrics_ 2014). Settings → **Volume safety cap** limits how loud the Sounds tab can go (default 50 %); raising it shows this advice, and raising it never makes a playing sound louder by itself. The phone's own volume buttons apply on top, and the app cannot read them.
 - **Sources:** every sound is listed with its origin and licence in [`public/sounds/SOURCES.md`](public/sounds/SOURCES.md), also shown in the app under Settings → About → Sound sources. Recordings, when they come, will be CC0 or clearly labelled as AI-generated with the tool and date.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks and the project's hard rules (they are stricter than most). Everyone participating is expected to follow the [code of conduct](CODE_OF_CONDUCT.md). Security issues go through [SECURITY.md](SECURITY.md), not the issue tracker.
 
 ## Medical disclaimer
 

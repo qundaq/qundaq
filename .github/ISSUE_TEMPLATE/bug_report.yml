@@ -1,0 +1,47 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: ['bug']
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Sounds tab
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device, OS and browser
+      placeholder: iPhone 13, iOS 18.1, Safari (installed to home screen)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the app under Settings → About.
+    validations:
+      required: false
+  - type: checkboxes
+    id: data-loss
+    attributes:
+      label: Data loss
+      options:
+        - label: This bug lost or corrupted logged data
+          required: false
