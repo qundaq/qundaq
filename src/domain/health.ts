@@ -6,10 +6,7 @@ export const FEVER_C = 38;
 export const LOW_TEMPERATURE_C = 36;
 export type TemperatureAlert = 'fever' | 'low';
 
-/**
- * 38 °C or more is a fever; below 36 °C is a low body temperature. A hint, never a block. Values outside
- * the valid range (a half-typed "3", say) give no hint.
- */
+/** A hint, never a block. Values outside the valid range (a half-typed "3", say) give no hint. */
 export function temperatureAlert(celsius: number): TemperatureAlert | null {
   const [min, max] = TEMPERATURE_RANGE_C;
   if (!Number.isFinite(celsius) || celsius < min || celsius > max) return null;

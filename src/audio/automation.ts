@@ -72,6 +72,7 @@ export class Automation {
         ? value
         : target.value +
           (value - target.value) * Math.exp(-(at - target.time) / target.timeConstant);
+
     for (const event of this.list) {
       if (event.type === 'linear') {
         if (target !== null) {
@@ -95,6 +96,7 @@ export class Automation {
       if (event.type === 'set') value = event.value;
       else target = event;
     }
+
     return onTarget(time);
   }
 }

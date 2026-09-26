@@ -112,6 +112,7 @@ export const rain: Generator = (sampleRate, seconds, seed) => {
       filter(pinkNoise(n, random), highPass(sampleRate, 400)),
       lowPass(sampleRate, 9000),
     );
+
     const drops = Math.round((n / sampleRate) * 150); // about 150 droplets a second
     for (let d = 0; d < drops; d++) {
       const start = Math.floor(random() * n);
@@ -148,6 +149,7 @@ export function swellEnvelope(
   const count = Math.max(1, Math.round(length / (SWELL_SECONDS * sampleRate)));
   const weights = Array.from({ length: count }, () => 1 + 0.1 * (random() * 2 - 1));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
+
   const envelope = new Float32Array(length);
   let start = 0;
   weights.forEach((weight, index) => {
@@ -168,6 +170,7 @@ export const waves: Generator = (sampleRate, seconds, seed) => {
   const dark = makeLoop(onePoleLowPass(raw, sampleRate, 350), sampleRate, BED_FADE_SECONDS);
   const bright = makeLoop(onePoleLowPass(raw, sampleRate, 1600), sampleRate, BED_FADE_SECONDS);
   const envelope = swellEnvelope(length, sampleRate, random);
+
   const out = new Float32Array(length);
   for (let i = 0; i < length; i++) {
     const e = envelope[i]!;
@@ -194,6 +197,7 @@ function driftCurve(length: number, random: () => number, low: number, high: num
       value += amplitude * Math.sin((2 * Math.PI * h * i) / length + phase);
     return low + ((value / reach + 1) / 2) * (high - low);
   };
+
   const step = 64;
   const curve = new Float32Array(length);
   for (let start = 0; start < length; start += step) {
@@ -211,6 +215,7 @@ export const wind: Generator = (sampleRate, seconds, seed) => {
   const length = loopLength(sampleRate, seconds);
   const raw = pinkNoise(length + Math.round(BED_FADE_SECONDS * sampleRate), random);
   const out = new Float32Array(length);
+
   for (const centre of [300, 600, 1200]) {
     const band = makeLoop(
       filter(raw, bandPass(sampleRate, centre, 1.2)),
@@ -264,6 +269,7 @@ export const heartbeat: Generator = (sampleRate, seconds, seed) => {
   const length = beats * period;
   const out = bedLoop(sampleRate, length, (n) => brownNoise(n, random, sampleRate));
   for (let i = 0; i < length; i++) out[i] = out[i]! * 0.02;
+
   const lub = thump(sampleRate, 90, 60);
   const dub = thump(sampleRate, 80, 55);
   const dubDelay = Math.round(DUB_DELAY_SECONDS * sampleRate);
@@ -271,6 +277,7 @@ export const heartbeat: Generator = (sampleRate, seconds, seed) => {
     addCircular(out, lub, start);
     addCircular(out, dub, start + dubDelay, 0.7);
   }
+
   return normalise(out, sampleRate, HEARTBEAT_TARGET_DB);
 };
 
@@ -295,6 +302,7 @@ export function shushEnvelope(sampleRate: number, periods: number): Float32Array
     else if (i < on) level = (1 + Math.cos((Math.PI * (i - (on - fall))) / fall)) / 2;
     cycle[i] = floor + (1 - floor) * level;
   }
+
   const envelope = new Float32Array(period * periods);
   for (let p = 0; p < periods; p++) envelope.set(cycle, p * period);
   return envelope;
@@ -330,6 +338,7 @@ export const airplane: Generator = (sampleRate, seconds, seed) => {
     for (let i = 0; i < n; i++) mix[i] = brownBed[i]! * 0.8 + pinkBed[i]! * 0.35;
     return filter(mix, lowPass(sampleRate, 700));
   });
+
   const humLevels = [0.03, 0.03, 0.02, 0.02];
   for (let i = 0; i < length; i++) {
     let hum = 0;

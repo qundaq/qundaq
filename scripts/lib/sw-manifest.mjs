@@ -34,11 +34,13 @@ export function renderServiceWorker(template, files) {
     hash.update('\0');
   }
   const version = hash.digest('hex').slice(0, 12);
+
   /** @type {PrecacheEntry[]} */
   const precache = entries.map((f) => ({
     url: `./${f.path}`,
     sha256: createHash('sha256').update(f.content).digest('hex'),
   }));
+
   // Function replacers: a string replacement would expand "$&", "$'", "$`" and "$$" found in file names.
   const source = template
     .replace(VERSION_TOKEN, () => JSON.stringify(version))

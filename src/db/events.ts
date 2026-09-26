@@ -106,6 +106,7 @@ export async function recentMedicationNames(
         event.type === 'medication' && event.deletedAt === undefined && event.startAt >= since,
     )
     .sort((a, b) => b.startAt - a.startAt);
+
   const seen = new Set<string>();
   const recent: RecentMedication[] = [];
   for (const medication of medications) {
@@ -116,6 +117,7 @@ export async function recentMedicationNames(
     recent.push({ name, ...(medication.dose ? { dose: medication.dose } : {}) });
     if (recent.length === limit) break;
   }
+
   return recent;
 }
 
@@ -132,6 +134,7 @@ export async function logEvents(
     const created: TrackerEvent[] = [];
     const violations = new Set<RuleViolation>();
     const clashing: Id[] = []; // babies whose draft hit 'already-running', so the message can name them
+
     for (const draft of drafts) {
       const found = validateEvent(draft, [...running, ...created], now);
       for (const violation of found) violations.add(violation);
@@ -144,6 +147,7 @@ export async function logEvents(
         updatedAt: now,
       });
     }
+
     if (violations.size > 0) throw new ValidationError([...violations], clashing);
     await db.events.bulkAdd(created);
     return created;
@@ -227,12 +231,14 @@ export async function updateEvent(
       throw new Error(`Event ${id} is a ${stored.type}, not a ${draft.type}`);
     if (!isOpen(stored) && isOpen(draft))
       throw new Error(`Event ${id} has finished and cannot be restarted`);
+
     const violations = validateEvent(draft, await listRunningEvents(db), now, id);
     if (violations.length > 0) {
       const clashing =
         violations.includes('already-running') && draft.babyId !== null ? [draft.babyId] : [];
       throw new ValidationError(violations, clashing);
     }
+
     const updated = {
       ...draft,
       id,

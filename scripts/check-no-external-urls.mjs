@@ -15,10 +15,12 @@ for (const file of files) {
     failures++;
   }
 }
+
 if (failures > 0) {
   console.error(
     `\n${failures} external URL(s) found in ${DIST}/. See scripts/lib/external-urls.mjs.`,
   );
   process.exit(1);
 }
+
 console.log(`No external URLs in ${DIST}/ (${files.length} files scanned).`);

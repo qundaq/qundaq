@@ -11,6 +11,7 @@ const paths = (await readdir(DIST, { recursive: true, withFileTypes: true }))
 const files = await Promise.all(
   paths.map(async (path) => ({ path, content: await readFile(join(DIST, path)) })),
 );
+
 const template = await readFile('src/sw/sw.js', 'utf8');
 const { source, version, precache } = renderServiceWorker(template, files);
 await writeFile(join(DIST, SW_FILE), source);

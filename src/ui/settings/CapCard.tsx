@@ -19,10 +19,12 @@ export function CapCard({ cap, onChange }: { cap: number; onChange: (cap: number
   useEffect(() => {
     onChangeRef.current = onChange;
   });
+
   // A saved move coming back must not undo a newer one still waiting to be saved (a lower cap chosen meanwhile).
   useEffect(() => {
     if (pending.current === null) setValue(cap);
   }, [cap]);
+
   useEffect(() => {
     if (value === cap) {
       pending.current = null;
@@ -35,6 +37,7 @@ export function CapCard({ cap, onChange }: { cap: number; onChange: (cap: number
     }, SAVE_AFTER_MS);
     return () => window.clearTimeout(handle);
   }, [value, cap]);
+
   // A move still pending when the card goes away (a tab switch right after it) is saved then.
   useEffect(
     () => () => {

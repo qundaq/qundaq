@@ -8,7 +8,7 @@ interface Props {
   baby: Baby;
   status: BabyStatus;
   now: number;
-  children?: ReactNode; // timer controls (Task 7)
+  children?: ReactNode; // timer controls
 }
 
 export function BabyCard({ baby, status, now, children }: Props) {

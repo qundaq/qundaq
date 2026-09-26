@@ -61,6 +61,7 @@ export function ImportForm({
       cancelled = true;
     };
   }, [locale]);
+
   useEffect(() => {
     // Esc must not close the sheet while the import is being written.
     const dialog = root.current?.closest('dialog');

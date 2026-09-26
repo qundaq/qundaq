@@ -136,6 +136,7 @@ function readBaby(raw: unknown, warnBirthDate: () => void): Baby {
   const color = own(raw, 'color');
   const rawBirthDate = own(raw, 'birthDate');
   const archived = own(raw, 'archived');
+
   if (typeof name !== 'string' || name.trim() === '' || name.length > BABY_NAME_MAX)
     fail('bad-baby');
   if (typeof color !== 'string' || !COLOR.test(color)) fail('bad-baby');
@@ -146,6 +147,7 @@ function readBaby(raw: unknown, warnBirthDate: () => void): Baby {
     else warnBirthDate();
   }
   if (typeof archived !== 'boolean') fail('bad-baby');
+
   return {
     id,
     name,
@@ -288,6 +290,7 @@ function readEvent(raw: unknown, babyIds: ReadonlySet<Id>): TrackerEvent {
   const note = readNote(raw);
   const bookkeeping = readBookkeeping(raw);
   const payload = PAYLOADS[type](raw, endAt, note);
+
   return {
     id,
     type,
@@ -324,6 +327,7 @@ function readMix(raw: unknown): Mix {
     if (layers.some((layer) => layer.soundId === soundId)) fail('bad-mix');
     layers.push({ soundId, gain });
   }
+
   return { id, name: name.trim(), layers, ...readBookkeeping(raw) };
 }
 

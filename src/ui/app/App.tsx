@@ -102,6 +102,7 @@ function Shell({
   useEffect(() => {
     storedSound.current = settings.lastSound;
   });
+
   // Nothing is remembered before the launch's restore ran: until then the engine holds the default selection.
   const restored = useRef(false);
 
@@ -130,10 +131,12 @@ function Shell({
     // The restore reads lastSound and volumeCap once, at launch; later settings must not restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine]);
+
   // A no-op after updateSettings: the engine already holds the cap.
   useEffect(() => {
     engine.setCap(settings.volumeCap ?? DEFAULT_CAP);
   }, [engine, settings.volumeCap]);
+
   // The selection is remembered a second after it last changed, as the engine holds it then (never a
   // render's copy, which can predate a cap's rescale or the restore); the playing state never is.
   useEffect(() => {
@@ -148,7 +151,9 @@ function Shell({
     // function every render, so listing either would rearm the timer on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, sound.layers, sound.master, sound.timer, settings.lastSound]);
+
   useMediaSession(engine, sound, layerNames(t, sound.layers));
+
   // On the other tabs the now-playing bar sits above the tab bar; the screens make room through --nowplaying-h (R16).
   const nowPlaying = tab !== 'sounds' && sound.status !== 'stopped';
   useEffect(() => {
