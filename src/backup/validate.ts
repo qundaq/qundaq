@@ -1,6 +1,6 @@
 import { fromDateInputValue } from '../domain/days';
 import { scaleToInt } from '../domain/decimal';
-import { BABY_NAME_MAX, GROWTH_RANGES, MAX_BOTTLE_ML, MAX_PUMP_ML, MIX_NAME_MAX, TEMPERATURE_RANGE_C, TEXT_LIMITS } from '../domain/rules';
+import { BABY_NAME_MAX, GROWTH_RANGES, MAX_BOTTLE_ML, MAX_PUMP_ML, MIX_NAME_MAX, TEMPERATURE_RANGE_C, TEXT_LIMITS, validateMixName } from '../domain/rules';
 import { MAX_LAYERS } from '../domain/sounds';
 import { STOOL_COLORS } from '../domain/stool';
 import { DAY } from '../domain/time';
@@ -321,7 +321,7 @@ function readMix(raw: unknown): Mix {
   const id = readId(raw);
   const name = own(raw, 'name');
   const rawLayers = own(raw, 'layers');
-  if (typeof name !== 'string' || name.trim() === '' || name.length > MIX_NAME_MAX) fail('bad-mix');
+  if (typeof name !== 'string' || validateMixName(name).length > 0) fail('bad-mix');
   if (!Array.isArray(rawLayers) || rawLayers.length === 0 || rawLayers.length > MAX_LAYERS) fail('bad-mix');
   const layers: MixLayer[] = [];
   for (const item of rawLayers) {
@@ -333,7 +333,7 @@ function readMix(raw: unknown): Mix {
     if (layers.some((layer) => layer.soundId === soundId)) fail('bad-mix');
     layers.push({ soundId, gain });
   }
-  return { id, name, layers, ...readBookkeeping(raw) };
+  return { id, name: name.trim(), layers, ...readBookkeeping(raw) };
 }
 
 /**
