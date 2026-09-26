@@ -33,7 +33,7 @@ function orderedCopy(
   drop: readonly string[] = [],
 ): Record<string, unknown> {
   const source = row as Record<string, unknown>;
-  const keys = [...order.filter((key) => Object.hasOwn(source, key))];
+  const keys = order.filter((key) => Object.hasOwn(source, key));
   for (const key of Object.keys(source))
     if (!keys.includes(key) && !drop.includes(key)) keys.push(key);
   return Object.fromEntries(keys.map((key) => [key, source[key]]));

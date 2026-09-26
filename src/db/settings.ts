@@ -33,6 +33,7 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
   const row = await db.settings.get(SETTINGS_ID);
   const defaults = defaultSettings(fallbackLocale);
   if (!row) return defaults;
+
   // Spread stored fields over the defaults so fields added by later versions survive a save,
   // then validate the fields this version knows about.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
@@ -46,11 +47,13 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
     Array.isArray(stored.lastBabyIds) && stored.lastBabyIds.every((id) => typeof id === 'string')
       ? stored.lastBabyIds
       : defaults.lastBabyIds;
+
   const settings: Settings = { ...defaults, ...stored, locale, nightMode, lastBabyIds };
   for (const key of OPTIONAL_TIMES) {
     const value = stored[key];
     if (!(typeof value === 'number' && Number.isFinite(value))) delete settings[key];
   }
+
   // The sound settings decide loudness and what starts on a tap: an unreadable value is dropped, so the default applies.
   const cap = stored.volumeCap;
   if (readVolumeCap(cap) === cap) settings.volumeCap = cap;

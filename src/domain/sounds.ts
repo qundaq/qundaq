@@ -41,13 +41,11 @@ function isUnit(value: unknown): value is number {
 }
 
 /**
- * The stored cap as the app may use it: a finite number within MIN_CAP..1, otherwise the default. A
- * value that decides loudness is never trusted from storage (a stored 5 would be a gain of 25).
+ * The stored cap, or the default: a value that decides loudness is never trusted from storage (a
+ * stored 5 would be a gain of 25).
  */
 export function readVolumeCap(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_CAP && value <= 1
-    ? value
-    : DEFAULT_CAP;
+  return isUnit(value) && value >= MIN_CAP ? value : DEFAULT_CAP;
 }
 
 /** What the Sesler tab remembers between launches: the selection, never the playing state. */
@@ -72,6 +70,7 @@ export function readLastSound(value: unknown): LastSound | undefined {
     !isTimerChoice(record.timerMin)
   )
     return undefined;
+
   const out: LastSound['layers'] = [];
   for (const layer of layers) {
     if (typeof layer !== 'object' || layer === null) return undefined;
@@ -80,6 +79,7 @@ export function readLastSound(value: unknown): LastSound | undefined {
       return undefined;
     out.push({ soundId, level });
   }
+
   return { layers: out, master: record.master, timerMin: record.timerMin };
 }
 

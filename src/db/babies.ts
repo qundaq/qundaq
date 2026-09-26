@@ -66,6 +66,7 @@ export async function deleteBaby(db: TrackerDb, id: Id, now = Date.now()): Promi
     const baby = await db.babies.get(id);
     if (!baby) throw new Error(`Baby ${id} not found`);
     if (baby.deletedAt !== undefined) return;
+
     const running = await db.events
       .where('babyId')
       .equals(id)

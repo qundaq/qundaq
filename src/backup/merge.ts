@@ -134,6 +134,7 @@ function mergeTable<T extends Row>(
   const fromFile = new Set<Id>();
   const stats = emptyStats();
   const counted = new Map<Id, keyof TableStats>();
+
   for (const row of incoming) {
     const mine = result.get(row.id);
     const outcome = compareRows(mine, row);
@@ -153,6 +154,7 @@ function mergeTable<T extends Row>(
     stats[bucket] += 1;
     counted.set(row.id, bucket);
   }
+
   return { result, writes, fromFile, stats, counted };
 }
 
@@ -220,6 +222,7 @@ function replacePlan(
     now,
   );
   for (const event of changed) events.set(event.id, event);
+
   const fileIds = new Set(backup.events.map((event) => event.id));
   const lost = local.events.filter(
     (event) => isLive(event) && (!fileIds.has(event.id) || event.updatedAt > backup.exportedAt),
@@ -232,6 +235,7 @@ function replacePlan(
   const lostMixes = local.mixes.filter(
     (mix) => isLive(mix) && (!mixFileIds.has(mix.id) || mix.updatedAt > backup.exportedAt),
   ).length;
+
   const count = (rows: readonly Row[]): TableStats => ({
     ...emptyStats(),
     add: rows.filter(isLive).length,

@@ -181,6 +181,7 @@ class Engine {
       next.preparing.length !== current.preparing.length ||
       next.preparing.some((id, i) => id !== current.preparing[i]);
     if (!changed) return;
+
     this.state = next;
     this.markIdle();
     for (const listener of [...this.listeners]) listener();
@@ -211,7 +212,7 @@ class Engine {
     return out;
   }
 
-  // ---- The first tap -------------------------------------------------------------------------------
+  // ---- Lifecycle: the first tap -----------------------------------------------------------------
 
   /**
    * Synchronous, first in every tap that can start sound, before any await: iOS only lets a context start
@@ -237,18 +238,21 @@ class Engine {
     const transport = gain(0);
     const sleep = gain(1);
     const cap = gain(capGain(this.cap));
+
     const limiter = context.createDynamicsCompressor();
     limiter.threshold.value = LIMITER.threshold;
     limiter.knee.value = LIMITER.knee;
     limiter.ratio.value = LIMITER.ratio;
     limiter.attack.value = LIMITER.attack;
     limiter.release.value = LIMITER.release;
+
     bus.node.connect(master.node);
     master.node.connect(transport.node);
     transport.node.connect(sleep.node);
     sleep.node.connect(cap.node);
     cap.node.connect(limiter);
     limiter.connect(context.destination);
+
     context.onstatechange = () => this.contextStateChanged();
     this.graph = {
       context,
@@ -290,7 +294,7 @@ class Engine {
     this.suspendTimer = null;
   }
 
-  // ---- Controls ------------------------------------------------------------------------------------
+  // ---- Layers: the tiles ------------------------------------------------------------------------
 
   /** A tile tap. While stopped it also starts playback, while interrupted it also resumes; while paused it only changes the selection. */
   toggleLayer(soundId: SoundId): ToggleResult {
@@ -307,6 +311,7 @@ class Engine {
       this.applyBus(REMOVE_FADE_SECONDS);
       return 'removed';
     }
+
     if (layers.length >= MAX_LAYERS) return 'full';
     const layer: EngineLayer = { soundId, level: DEFAULT_LEVEL };
     if (this.state.status === 'stopped') {
@@ -324,6 +329,7 @@ class Engine {
       }
       this.unlock();
     }
+
     this.update({ layers: [...layers, layer] });
     this.applyBus(0);
     if (this.state.status !== 'paused') this.startVoice(layer, START_FADE_SECONDS);
@@ -338,6 +344,7 @@ class Engine {
         layer.soundId === soundId ? { soundId, level: value } : layer,
       ),
     });
+
     const voice = this.voices.get(soundId);
     if (voice && this.graph) {
       const t = this.graph.context.currentTime;
@@ -346,6 +353,8 @@ class Engine {
     }
     this.applyBus(0);
   }
+
+  // ---- Volume -----------------------------------------------------------------------------------
 
   setMaster(value: number): void {
     const master = clamp01(value);
@@ -364,11 +373,14 @@ class Engine {
     this.cap = next;
     const master = masterAfterCapChange(this.state.master, previous, next);
     if (master !== this.state.master) this.setMaster(master);
+
     if (!this.graph) return;
     const t = this.graph.context.currentTime;
     this.graph.cap.hold(t);
     this.graph.cap.ramp(capGain(next), t + (next > previous ? RISE_SECONDS : CAP_LOWER_SECONDS));
   }
+
+  // ---- Timer: the chip --------------------------------------------------------------------------
 
   /** A timer chip. While sound plays or is paused the countdown restarts from now; while stopped it starts on play. */
   setTimer(choice: TimerChoice): void {
@@ -378,6 +390,8 @@ class Engine {
     this.armTimer();
   }
 
+  // ---- Lifecycle: play, pause, stop -------------------------------------------------------------
+
   play(): void {
     const status = this.state.status;
     if (status === 'playing' || this.state.layers.length === 0) return;
@@ -386,6 +400,7 @@ class Engine {
       this.finishTimer();
       return;
     }
+
     const graph = this.unlock();
     if (status === 'stopped') {
       const timer = this.state.timer;
@@ -396,8 +411,10 @@ class Engine {
     } else {
       this.update({ status: 'playing' });
     }
+
     // The bus follows the layers as they are now: a mix loaded while paused must not play at the old scale.
     this.applyBus(0);
+
     // A voice about to start at full gain with no fade of its own needs the transport at 0 first: a pause's
     // or a stop's own fade (0.3 s) may still be mid-ramp here, nowhere near 0 yet, if play() runs inside
     // that window (R1) — a mix loaded right after pausing, or right after the last tile fades out. Without
@@ -411,6 +428,7 @@ class Engine {
       graph.transport.set(0, t);
     }
     for (const layer of layers) this.startVoice(layer, 0);
+
     this.fadeIn(graph);
     this.armTimer();
   }
@@ -420,9 +438,11 @@ class Engine {
     this.update({ status: 'paused' });
     const graph = this.graph;
     if (!graph) return;
+
     const t = graph.context.currentTime;
     graph.transport.hold(t);
     graph.transport.ramp(0, t + PAUSE_FADE_SECONDS);
+
     this.cancelSuspend();
     this.suspendTimer = this.deps.setTimeout(
       () => {
@@ -438,6 +458,7 @@ class Engine {
     this.clearTimer();
     this.cancelSuspend();
     for (const soundId of [...this.voices.keys()]) this.fadeOutVoice(soundId, fade);
+
     const wasStopped = this.state.status === 'stopped';
     // The selection stays, but nothing is generated for a stopped engine: play() queues what it misses again.
     this.update({ status: 'stopped', endsAt: null, preparing: [] });
@@ -472,6 +493,7 @@ class Engine {
       layers.map((layer) => ({ soundId: layer.soundId, level: layer.gain })),
     );
     if (next.length === 0) return 'empty';
+
     const status = this.state.status;
     if (status === 'stopped' || status === 'paused') {
       for (const soundId of [...this.voices.keys()]) this.fadeOutVoice(soundId, 0);
@@ -479,6 +501,7 @@ class Engine {
       this.play(); // unlocks the context first, synchronously (R6); a no-op when the timer had run out
       return this.state.status === 'playing' ? 'started' : 'stopped';
     }
+
     // status is 'playing' or 'interrupted' here. An expired timer while interrupted stays stopped (R2):
     // checked before unlock(), so an expired timer never resumes the context just to load a new mix.
     if (status === 'interrupted' && this.timerExpired()) {
@@ -486,6 +509,7 @@ class Engine {
       this.update({ layers: next });
       return 'stopped';
     }
+
     // Playing or interrupted (not expired): the new layers start in this tap, crossfading with the old ones.
     const graph = this.unlock();
     const t = graph.context.currentTime;
@@ -502,12 +526,13 @@ class Engine {
         voice.gain.ramp(sliderGain(layer.level), t + START_FADE_SECONDS);
       }
     }
+
     // The old voices fade out over START_FADE_SECONDS too: the bus must not finish rising before they are gone.
     this.applyBus(START_FADE_SECONDS);
     return 'started';
   }
 
-  // ---- The outside world ---------------------------------------------------------------------------
+  // ---- Recovery ---------------------------------------------------------------------------------
 
   /** The page became visible again: a timer that ran out stops; an interrupted sound tries to come back. */
   onVisible(): void {
@@ -515,6 +540,7 @@ class Engine {
       this.finishTimer();
       return;
     }
+
     const graph = this.graph;
     if (!graph) return;
     const status = this.state.status;
@@ -562,6 +588,7 @@ class Engine {
       this.armTimer();
       return;
     }
+
     // Suspended by the system (a call, an alarm, Siri) while the parent meant it to play.
     if ((state === 'interrupted' || state === 'suspended') && this.state.status === 'playing')
       this.markInterrupted(graph);
@@ -575,7 +602,7 @@ class Engine {
     graph.transport.set(0, t);
   }
 
-  // ---- Voices ---------------------------------------------------------------------------------------
+  // ---- Layers: voices and loops -----------------------------------------------------------------
 
   private loopKey(soundId: SoundId, sampleRate: number): string {
     return `${soundId}@${sampleRate}`;
@@ -590,6 +617,7 @@ class Engine {
       this.prepare(layer.soundId);
       return;
     }
+
     cached.idleSince = null;
     const context = graph.context;
     const source = context.createBufferSource();
@@ -604,6 +632,7 @@ class Engine {
       gain.set(0, t);
       gain.ramp(sliderGain(layer.level), t + fade);
     }
+
     source.start();
     this.voices.set(layer.soundId, { source, node, gain });
   }
@@ -626,6 +655,7 @@ class Engine {
       voice.source.disconnect();
       voice.node.disconnect();
     }
+
     this.markIdle();
   }
 
@@ -690,10 +720,11 @@ class Engine {
       console.error(`Could not generate the sound ${soundId}`, error);
       const layers = this.state.layers.filter((entry) => entry.soundId !== soundId);
       this.update({ preparing: rest, layers });
-      // It was the only layer: nothing plays any more, so stop cleanly instead of a silent "playing" with no sound and the timer still counting down.
+      // The only layer: stop cleanly, not a silent "playing" with the timer still counting down.
       if (layers.length === 0 && this.state.status !== 'stopped') this.stop();
       else this.applyBus(0);
     }
+
     if (rest.length > 0)
       this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
     this.markIdle();
@@ -710,6 +741,7 @@ class Engine {
         ? []
         : this.state.layers.map((layer) => this.loopKey(layer.soundId, rate)),
     );
+
     let idle = false;
     for (const [key, loop] of this.loops) {
       if (playing.has(key)) loop.idleSince = null;
@@ -719,6 +751,7 @@ class Engine {
         else idle = true;
       }
     }
+
     if (idle && this.evictTimer === null) {
       this.evictTimer = this.deps.setTimeout(() => {
         this.evictTimer = null;
@@ -727,7 +760,7 @@ class Engine {
     }
   }
 
-  // ---- The sleep timer -----------------------------------------------------------------------------
+  // ---- Timer: the countdown ---------------------------------------------------------------------
 
   private timerExpired(): boolean {
     return this.state.endsAt !== null && this.deps.now() >= this.state.endsAt;
@@ -766,6 +799,7 @@ class Engine {
         if (token === this.timerToken && this.timerExpired()) this.finishTimer();
       }, endsAt - now);
     }
+
     const graph = this.graph;
     // The audio clock stands still while the context is paused or interrupted: the fade is scheduled when it runs again.
     if (!graph || this.state.status !== 'playing') return;
@@ -776,6 +810,7 @@ class Engine {
       return;
     }
     graph.sleep.steps(sleepSteps(endsAt, now, t, held));
+
     const token = this.timerToken;
     const sentinel = graph.context.createConstantSource();
     sentinel.offset.value = 0;

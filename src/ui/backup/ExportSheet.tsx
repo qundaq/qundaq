@@ -81,6 +81,7 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
       cancelled = true;
     };
   }, [kind, t, locale]);
+
   useEffect(() => () => downloads.revokeAll(), [downloads]);
 
   if (prepared === null) return <p aria-busy="true">{t(TEXT[kind].preparing)}</p>;
