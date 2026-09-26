@@ -3,6 +3,8 @@ import { db } from '../db/instance';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from '../db/settings';
 import { detectLocale } from '../i18n';
 import { ExportSheet } from './backup/ExportSheet';
+import { DEFAULT_CHOICES, readImportFile, type ImportChoices, type ImportSource } from './backup/importFile';
+import { ImportSheet } from './backup/ImportSheet';
 import { ErrorProvider, useReportError } from './ErrorBanner';
 import { ErrorBoundary } from './ErrorBoundary';
 import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from './history/LogScreen';
@@ -39,43 +41,69 @@ export function App() {
   return (
     <I18nProvider locale={settings.locale}>
       <ErrorProvider>
-        <Shell settings={settings} onSettingsSaved={setSettings} />
+        <Shell settings={settings} onSettingsReplaced={setSettings} />
       </ErrorProvider>
     </I18nProvider>
   );
 }
 
-function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSaved: (next: Settings) => void }) {
+/**
+ * The backup sheets. Only one <dialog> is open at a time: "Önce bu cihazın yedeğini al" swaps the import
+ * sheet for the export sheet, and closing the export sheet brings the import back while `pending` is set.
+ */
+interface BackupUi {
+  sheet: 'export' | 'import' | null;
+  pending: { source: ImportSource; choices: ImportChoices } | null;
+}
+
+const NO_BACKUP_UI: BackupUi = { sheet: null, pending: null };
+
+/** `onSettingsReplaced` takes settings read back after a save, an export or an import, so Home and Ayarlar follow at once. */
+function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSettingsReplaced: (next: Settings) => void }) {
   const report = useReportError();
   const [tab, setTab] = useState<Tab>('home');
   // Screen state lives here so it survives tab switches (and resets when the app restarts).
   const [logView, setLogView] = useState<LogView>(DEFAULT_LOG_VIEW);
   const [summaryView, setSummaryView] = useState<SummaryView>(DEFAULT_SUMMARY_VIEW);
-  // The backup sheets live here, outside the screens, so they open from any screen and still work
-  // when a screen has crashed.
-  const [exporting, setExporting] = useState(false);
+  // The backup sheets live here, outside the screens, so they open from any screen and still work when a
+  // screen has crashed.
+  const [backupUi, setBackupUi] = useState<BackupUi>(NO_BACKUP_UI);
 
   const updateSettings = async (patch: Partial<Settings>) => {
     try {
-      onSettingsSaved(await saveSettings(db, patch, fallbackLocale));
+      onSettingsReplaced(await saveSettings(db, patch, fallbackLocale));
     } catch (error) {
       report(error);
     }
   };
 
+  const openExport = () => setBackupUi((ui) => ({ ...ui, sheet: 'export' }));
+  // A dialog's close event also fires when Shell swaps sheets; each close only acts if its sheet is current.
+  const closeExport = () => setBackupUi((ui) => (ui.sheet === 'export' ? { ...ui, sheet: ui.pending ? 'import' : null } : ui));
+  const closeImport = () => setBackupUi((ui) => (ui.sheet === 'import' ? NO_BACKUP_UI : ui));
+  // The sheet opens at once and says "Yedek okunuyor…": reading 20 MB takes seconds on an older iPhone.
+  const pickImportFile = async (file: File) => {
+    const loading: ImportSource = { fileName: file.name, result: null };
+    setBackupUi({ sheet: 'import', pending: { source: loading, choices: DEFAULT_CHOICES } });
+    const result = await readImportFile(file, Date.now());
+    setBackupUi((ui) => (ui.pending?.source === loading ? { ...ui, pending: { ...ui.pending, source: { fileName: file.name, result } } } : ui));
+  };
+  const onImportFile = (file: File) => void pickImportFile(file);
+  const backupActions = { onExport: openExport, onImportFile };
+
   return (
     <>
       <main className="screen">
         {/* Keyed by tab: a crash on one screen never blocks the others, and switching tabs starts over. */}
-        <ErrorBoundary key={tab} fallback={(error) => <CrashScreen error={error} onBackup={() => setExporting(true)} />}>
+        <ErrorBoundary key={tab} fallback={(error) => <CrashScreen error={error} onBackup={openExport} onRestore={onImportFile} />}>
           {tab === 'home' ? (
-            <HomeScreen settings={settings} onSettingsChange={updateSettings} />
+            <HomeScreen settings={settings} onSettingsChange={updateSettings} onImportFile={onImportFile} />
           ) : tab === 'log' ? (
             <LogScreen view={logView} onViewChange={setLogView} />
           ) : tab === 'summary' ? (
             <SummaryScreen view={summaryView} onViewChange={setSummaryView} lastBabyIds={settings.lastBabyIds} />
           ) : tab === 'settings' ? (
-            <SettingsScreen settings={settings} onChange={updateSettings} backup={{ onExport: () => setExporting(true) }} />
+            <SettingsScreen settings={settings} onChange={updateSettings} backup={backupActions} />
           ) : (
             <ComingSoon tab={tab} />
           )}
@@ -83,9 +111,17 @@ function Shell({ settings, onSettingsSaved }: { settings: Settings; onSettingsSa
       </main>
       <TabBar current={tab} onSelect={setTab} />
       <ExportSheet
-        kind={exporting ? 'json' : null}
-        onClose={() => setExporting(false)}
+        kind={backupUi.sheet === 'export' ? 'json' : null}
+        onClose={closeExport}
         onBackedUp={(at) => void updateSettings({ lastBackupAt: at })}
+      />
+      <ImportSheet
+        source={backupUi.sheet === 'import' && backupUi.pending ? backupUi.pending.source : null}
+        choices={backupUi.pending?.choices ?? DEFAULT_CHOICES}
+        onChoicesChange={(choices) => setBackupUi((ui) => (ui.pending ? { ...ui, pending: { ...ui.pending, choices } } : ui))}
+        onBackupFirst={openExport}
+        onSettingsReplaced={onSettingsReplaced}
+        onClose={closeImport}
       />
     </>
   );

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { babyIdOf, putRawEvent, sharedFiles, stubShare } from './support/backup';
+import { babyIdOf, clearAppData, pickBackupFile, putRawEvent, sharedFiles, stubShare } from './support/backup';
 import { addBabyInSettings, babyCard, logDiaper, logRows, openRow, openTab } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -43,6 +43,7 @@ test('a crashing screen shows the fallback; its backup works, and Günlük can r
   await crashHome(page);
   await expect(page.getByText(/^Diğer sekmeler çalışmaya devam ediyor\./)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Yeniden yükle', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByLabel('Yedekten geri yükle', { exact: true })).toBeVisible();
 
   const backup = JSON.parse(await emergencyBackup(page)) as { events: { id: string; type: string; segments?: unknown }[] };
   expect(backup.events.map((event) => event.type).sort()).toEqual(['breastfeed', 'diaper']);
@@ -62,4 +63,23 @@ test('a crashing screen shows the fallback; its backup works, and Günlük can r
   await openTab(page, 'Ana');
   await expect(babyCard(page, 'Ada')).toContainText('ıslak');
   await expect(page.getByText('Bir şeyler ters gitti.')).toHaveCount(0);
+});
+
+test("the crash screen's backup restores its good entries; the bad one is named and skipped", async ({ page }) => {
+  await crashHome(page);
+  const backup = await emergencyBackup(page);
+
+  await clearAppData(page);
+  const sheet = await pickBackupFile(page, backup);
+  await expect(sheet).toContainText('1 kayıt okunamadı ve atlanacak.');
+  await sheet.getByText('Ayrıntılar', { exact: true }).click();
+  await expect(sheet.getByRole('listitem')).toHaveText(['26 Eyl 09:30 · Emzirme: ayrıntıları geçersiz']);
+  await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
+  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 1 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+
+  await openTab(page, 'Ana');
+  await expect(babyCard(page, 'Ada')).toContainText('ıslak');
+  await openTab(page, 'Günlük');
+  await expect(logRows(page)).toHaveCount(1);
 });

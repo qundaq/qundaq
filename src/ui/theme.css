@@ -182,3 +182,14 @@ legend { margin-bottom: 6px; }
 .backup-actions, .export-actions { display: grid; gap: 8px; margin-top: 12px; }
 .backup-actions .btn, .export-actions .btn { width: 100%; }
 .crash-message { overflow-wrap: anywhere; }
+/* The file input covers its label, invisible: a real tap on it opens the iOS picker. */
+.file-button { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; }
+.file-button input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; font: inherit; }
+.import-file p { margin-bottom: 4px; }
+.import-skipped { margin-bottom: 12px; }
+.import-skipped summary { min-height: var(--tap); display: flex; align-items: center; }
+.import-counts { display: grid; gap: 8px; margin: 0 0 12px; }
+.import-counts dt { font-weight: 600; }
+.import-counts dd { margin: 0; }
+.import-timers ul { margin: 0 0 8px; padding-left: 20px; }
+.home-restore { margin-top: 12px; }

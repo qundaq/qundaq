@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { browserDownloadDeps, canShareFiles, createDownloads, shareFiles } from '../../platform/share';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { useLocale, useT } from '../I18nProvider';
 import { Sheet, useSheetSession } from '../Sheet';
 import { prepareBackup, type Prepared } from './prepare';
+import { SheetMessage } from './SheetMessage';
 import type { ExportKind } from './text';
 
 interface Props {
@@ -18,7 +20,12 @@ export function ExportSheet({ kind, onClose, onBackedUp }: Props) {
   const session = useSheetSession(kind);
   return (
     <Sheet open={kind !== null} title={t('export.title')} onClose={onClose}>
-      {session && <ExportForm key={session.id} onClose={onClose} onBackedUp={onBackedUp} />}
+      {/* The sheet sits outside the screens' boundary: a render error here shows its failure, not a blank app. */}
+      {session && (
+        <ErrorBoundary key={session.id} fallback={() => <SheetMessage message={t('export.failed')} onClose={onClose} />}>
+          <ExportForm onClose={onClose} onBackedUp={onBackedUp} />
+        </ErrorBoundary>
+      )}
     </Sheet>
   );
 }
@@ -52,20 +59,7 @@ function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
   useEffect(() => () => downloads.revokeAll(), [downloads]);
 
   if (prepared === null) return <p aria-busy="true">{t('export.preparing')}</p>;
-  if (prepared === 'failed') {
-    return (
-      <>
-        <p role="alert" className="status-warn">
-          {t('export.failed')}
-        </p>
-        <div className="sheet-actions">
-          <button type="button" className="btn" onClick={onClose}>
-            {t('common.dismiss')}
-          </button>
-        </div>
-      </>
-    );
-  }
+  if (prepared === 'failed') return <SheetMessage message={t('export.failed')} onClose={onClose} />;
 
   const finish = (how: Done) => {
     if (prepared.countsAsBackup) onBackedUp(Date.now());

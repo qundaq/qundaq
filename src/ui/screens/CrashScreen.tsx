@@ -1,7 +1,15 @@
+import { RestoreButton } from '../backup/RestoreButton';
 import { useT } from '../I18nProvider';
 
-/** Shown in place of a screen that crashed. The backup reads the database itself, so it still works. */
-export function CrashScreen({ error, onBackup }: { error: Error; onBackup: () => void }) {
+interface Props {
+  error: Error;
+  onBackup: () => void;
+  /** Restoring (after a backup) replaces bad rows, even when the crashed screen is Ayarlar itself. */
+  onRestore: (file: File) => void;
+}
+
+/** Shown in place of a screen that crashed. The backup sheets read the database themselves, so they still work. */
+export function CrashScreen({ error, onBackup, onRestore }: Props) {
   const t = useT();
   return (
     <section>
@@ -12,6 +20,7 @@ export function CrashScreen({ error, onBackup }: { error: Error; onBackup: () =>
         <button type="button" className="btn btn-primary" onClick={onBackup}>
           {t('backup.export')}
         </button>
+        <RestoreButton onFile={onRestore} />
         <button type="button" className="btn" onClick={() => window.location.reload()}>
           {t('crash.reload')}
         </button>

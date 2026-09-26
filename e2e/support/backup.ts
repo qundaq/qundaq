@@ -128,3 +128,39 @@ export function babyIdOf(page: Page, name: string): Promise<string> {
     name,
   );
 }
+
+/** Ayarlar → Yedek al → share (the stub must be installed); returns the JSON text of the backup. */
+export async function takeBackup(page: Page): Promise<string> {
+  const before = (await sharedFiles(page)).length;
+  const sheet = await openExport(page);
+  await sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
+  await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+  const files = await sharedFiles(page);
+  if (files.length !== before + 1) throw new Error(`expected one new shared file, got ${files.length - before}`);
+  return files.at(-1)!.text;
+}
+
+/**
+ * "Clear data": leaves the app for a same-origin page that does not load it, deletes the database, and
+ * opens the app again, empty.
+ */
+export async function clearAppData(page: Page) {
+  await page.goto('./favicon.ico');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('qundaq');
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error('The database is still open somewhere'));
+      }),
+  );
+  await page.goto('./');
+}
+
+/** Ayarlar → Yedekten geri yükle with a file holding `text`; returns the import sheet. */
+export async function pickBackupFile(page: Page, text: string, name = 'qundaq-backup.json') {
+  await page.getByRole('navigation', { name: 'Ana gezinme' }).getByRole('button', { name: 'Ayarlar', exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(text) });
+  return page.getByRole('dialog', { name: 'Yedekten geri yükle' });
+}

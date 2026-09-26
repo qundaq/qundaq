@@ -1,6 +1,7 @@
 import { newId } from '../domain/ids';
 import { ValidationError, isOpen, isTimedType, validateEvent, type RuleViolation } from '../domain/rules';
 import { DAY } from '../domain/time';
+import { foldCase } from '../domain/text';
 import type { BreastSegment, EventDraft, GrowthEvent, Id, MedicationEvent, TrackerEvent } from '../domain/types';
 import type { TrackerDb } from './db';
 
@@ -65,11 +66,6 @@ export interface RecentMedication {
 }
 
 export const RECENT_MEDICATION_WINDOW_MS = 60 * DAY;
-
-/** Case-insensitive key that treats İ/I/ı/i alike, so "İbuprofen" and "ibuprofen" are one medicine. */
-function foldCase(name: string): string {
-  return name.normalize('NFKD').replace(/\u0307/g, '').toLowerCase().replace(/ı/g, 'i');
-}
 
 /**
  * Distinct medicine names used in the last 60 days, most recent first, each with the spelling and dose of
