@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { findSameBabies, planImport, planSignature, type ImportOptions, type ImportPlan, type TableStats } from '../../backup/merge';
 import type { StaleTimer, StoppedTimer } from '../../backup/running';
 import type { ParsedBackup, SkippedRow } from '../../backup/validate';
-import { applyImport, readSnapshot, type LocalData } from '../../db/backup';
+import { applyImport, readSnapshot, type ApplyResult, type LocalData } from '../../db/backup';
 import { db } from '../../db/instance';
 import { loadSettings, type Settings } from '../../db/settings';
 import type { Id } from '../../domain/types';
+import { useReportError } from '../ErrorBanner';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useLocale, useT } from '../I18nProvider';
 import { clockTime, formatNumber, longDate, shortDate, typeLabel } from '../history/describe';
@@ -20,18 +21,33 @@ interface Props {
   /** "Önce bu cihazın yedeğini al": Shell swaps to the export sheet and comes back here afterwards. */
   onBackupFirst: () => void;
   onSettingsReplaced: (next: Settings) => void;
+  /** The import was written (before the settings are read back), so Shell can start a crashed screen over. */
+  onImported: () => void;
   onClose: () => void;
 }
 
-export function ImportSheet({ source, onClose, ...rest }: Props) {
+export function ImportSheet({ source, onClose, onImported, ...rest }: Props) {
   const t = useT();
   const session = useSheetSession(source);
+  // The session whose import was written: a failure after that must not say that nothing changed.
+  const committed = useRef<number | null>(null);
   return (
     <Sheet open={source !== null} title={t('import.title')} onClose={onClose}>
       {/* The sheet sits outside the screens' boundary: a render error here shows its failure, not a blank app. */}
       {session && (
-        <ErrorBoundary key={session.id} fallback={() => <SheetMessage message={t('import.failed')} onClose={onClose} />}>
-          <ImportForm source={session.value} onClose={onClose} {...rest} />
+        <ErrorBoundary
+          key={session.id}
+          fallback={() => <SheetMessage message={t(committed.current === session.id ? 'import.failedAfter' : 'import.failed')} onClose={onClose} />}
+        >
+          <ImportForm
+            source={session.value}
+            onClose={onClose}
+            onCommitted={() => {
+              committed.current = session.id;
+              onImported();
+            }}
+            {...rest}
+          />
         </ErrorBoundary>
       )}
     </Sheet>
@@ -52,9 +68,12 @@ function range(values: readonly number[]): { min: number; max: number } | null {
   return { min, max };
 }
 
-function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSettingsReplaced, onClose }: Omit<Props, 'source'> & { source: ImportSource }) {
+type FormProps = Omit<Props, 'source' | 'onImported'> & { source: ImportSource; onCommitted: () => void };
+
+function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSettingsReplaced, onCommitted, onClose }: FormProps) {
   const t = useT();
   const locale = useLocale();
+  const report = useReportError();
   // The device as read for the preview, and the time the preview was planned at. applyImport plans again
   // with the same time, so a timer that crosses the "forgot to stop?" limit meanwhile changes nothing.
   const [device, setDevice] = useState<{ local: LocalData; now: number } | null>(null);
@@ -98,7 +117,12 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
   const mode = deviceEmpty ? 'merge' : choices.mode;
   const pairs = useMemo(() => (local && backup && mode === 'merge' ? findSameBabies(local.babies, backup.babies) : []), [local, backup, mode]);
   const options: ImportOptions = useMemo(
-    () => ({ mode, sameBabies: pairs.filter((pair) => !choices.notSame.includes(pair.localId)), stopStale: choices.stopStale }),
+    () => ({
+      mode,
+      sameBabies: pairs.filter((pair) => !choices.notSame.includes(pair.localId)),
+      stopStale: choices.stopStale,
+      keepApart: choices.notSame,
+    }),
     [mode, pairs, choices.notSame, choices.stopStale],
   );
   const plan = useMemo(() => {
@@ -137,24 +161,33 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
     if (busy.current || !plan || !backup || !device) return;
     busy.current = true;
     setPhase('applying');
+    let outcome: ApplyResult;
     try {
-      const outcome = await applyImport(db, { backup, options, expected: planSignature(plan), fallbackLocale: locale, now: device.now });
+      outcome = await applyImport(db, { backup, options, expected: planSignature(plan), fallbackLocale: locale, now: device.now });
       if (!outcome.applied) {
         setDevice({ local: await readSnapshot(db, locale), now: Date.now() });
         setChanged(true);
         setConfirmed(false);
         setPhase('preview');
-        busy.current = false;
         return;
       }
-      onSettingsReplaced(await loadSettings(db, locale));
-      setApplied(outcome.plan);
-      setPhase('done');
     } catch (error) {
       console.error('Import failed', error);
-      setPhase('failed');
+      setPhase('failed'); // the transaction rolled back: nothing changed
+      return;
+    } finally {
+      busy.current = false;
     }
-    busy.current = false;
+    // Written. The result is shown first; reading the settings back is separate, so its failure is
+    // reported as such and never as "nothing changed".
+    onCommitted();
+    setApplied(outcome.plan);
+    setPhase('done');
+    try {
+      onSettingsReplaced(await loadSettings(db, locale));
+    } catch (error) {
+      report(error, { messageKey: 'error.loadFailed' });
+    }
   };
 
   if (phase === 'done' && applied) {
@@ -212,11 +245,11 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
       )}
       <FileSummary backup={backup} />
       <SkippedList skipped={result.skipped} />
-      {result.warnings.outOfRange > 0 && <p className="muted small">{t('import.outOfRange', { n: result.warnings.outOfRange })}</p>}
+      {result.warnings.outOfRange > 0 && <p className="muted small">{t('import.outOfRange', { n: formatNumber(locale, result.warnings.outOfRange) })}</p>}
       {result.warnings.badBirthDate > 0 && (
         <p className="muted small">{t('import.badBirthDate', { n: formatNumber(locale, result.warnings.badBirthDate) })}</p>
       )}
-      {result.warnings.settings &&<p className="muted small">{t('import.settingsWarning')}</p>}
+      {result.warnings.settings && <p className="muted small">{t('import.settingsWarning')}</p>}
 
       {!deviceEmpty && (
         <fieldset>
@@ -242,26 +275,27 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
 
       {mode === 'merge' ? (
         <>
-          {pairs.length > 0 && (
+          {(pairs.length > 0 || plan.follows.length > 0) && (
             <fieldset>
               <legend>{t('import.sameBabyTitle')}</legend>
               <p className="muted small">{t('import.sameBabyHint')}</p>
-              {pairs.map((pair) => (
-                <label key={pair.localId} className="toggle">
+              {[
+                ...pairs.map((pair) => ({ id: pair.localId, label: t('import.sameBaby', { fileName: pair.name, localName: pair.localName }) })),
+                ...plan.follows.map((follow) => ({ id: follow.localId, label: t('import.follow', { localName: follow.name, name: follow.survivorName }) })),
+              ].map((item) => (
+                <label key={item.id} className="toggle">
                   <input
                     type="checkbox"
-                    checked={!choices.notSame.includes(pair.localId)}
+                    checked={!choices.notSame.includes(item.id)}
                     disabled={applying}
                     onChange={(event) =>
                       onChoicesChange({
                         ...choices,
-                        notSame: event.target.checked
-                          ? choices.notSame.filter((id) => id !== pair.localId)
-                          : [...choices.notSame, pair.localId],
+                        notSame: event.target.checked ? choices.notSame.filter((id) => id !== item.id) : [...choices.notSame, item.id],
                       })
                     }
                   />
-                  <span>{t('import.sameBaby', { fileName: pair.name, localName: pair.localName })}</span>
+                  <span>{item.label}</span>
                 </label>
               ))}
             </fieldset>
@@ -280,6 +314,11 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
             </div>
           </dl>
           {plan.removedBabies.length > 0 && <p className="status-warn">{t('import.removedBabies', { names: plan.removedBabies.join(', ') })}</p>}
+          {plan.hidden.map((baby, i) => (
+            <p key={i} className="status-warn">
+              {t('import.hidden', { name: baby.name, n: formatNumber(locale, baby.events) })}
+            </p>
+          ))}
           {plan.moves.map((move) => (
             <p key={move.name}>{t('import.moved', { n: formatNumber(locale, move.events), name: move.name })}</p>
           ))}

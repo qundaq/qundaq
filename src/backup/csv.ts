@@ -22,7 +22,7 @@ export function guardFormula(text: string): string {
 
 /** UTF-8 with a byte order mark (so Excel shows ş, ğ, ı), CRLF line ends, a CRLF after the last row too. */
 export function toCsv(rows: readonly (readonly string[])[], separator: CsvSeparator): string {
-  return `﻿${rows.map((row) => row.map((cell) => quoteCell(cell, separator)).join(separator)).join('\r\n')}\r\n`;
+  return `\uFEFF${rows.map((row) => row.map((cell) => quoteCell(cell, separator)).join(separator)).join('\r\n')}\r\n`;
 }
 
 export interface CsvText {
@@ -69,7 +69,8 @@ export function eventsToCsvRows(events: readonly TrackerEvent[], text: CsvText):
         end === undefined ? '' : String(durationMinutes(event, end)),
         guardFormula(text.typeLabel(event.type)),
         guardFormula(detail),
-        guardFormula(event.note ?? ''),
+        // A malformed row's note that is not text is left empty rather than failing the whole file.
+        guardFormula(typeof event.note === 'string' ? event.note : ''),
       ];
     });
   return [[...text.headers], ...rows];
@@ -121,7 +122,8 @@ export function buildCsvFiles(input: CsvInput): CsvFile[] {
   for (const baby of input.babies) {
     if (baby.deletedAt !== undefined || baby.archived) continue;
     const events = live.filter((event) => event.babyId === baby.id);
-    const label = sanitizeFileName(baby.name);
+    // A malformed device row whose name is not text gets the fallback label, like a name with nothing usable.
+    const label = typeof baby.name === 'string' ? sanitizeFileName(baby.name) : '';
     if (events.length > 0) groups.push({ label: /[\p{L}\p{N}]/u.test(label) ? label : input.fallbackLabel, events });
   }
   const pumps = live.filter((event) => event.babyId === null && event.type === 'pump');

@@ -14,7 +14,10 @@ export interface ImportSource {
 /** What the user chose in the preview. Kept in Shell, so a detour through the export sheet keeps it. */
 export interface ImportChoices {
   mode: ImportMode;
-  /** Device babies the user said are NOT the same child as the backup's baby of that name. */
+  /**
+   * Device babies the user said are NOT the same child as the other baby of that name: an "Aynı bebek" pair
+   * left unpaired, or a baby the backup deletes whose entries stay with it (ImportOptions.keepApart).
+   */
   notSame: Id[];
   stopStale: boolean;
 }

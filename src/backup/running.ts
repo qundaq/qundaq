@@ -36,18 +36,22 @@ function segmentsOf(event: TrackerEvent): unknown[] | null {
   return event.type === 'breastfeed' && Array.isArray(event.segments) ? event.segments : null;
 }
 
-function lastSideStart(event: TrackerEvent): number {
-  const last = segmentsOf(event)?.at(-1) as { start?: unknown } | undefined;
-  const start = last?.start;
-  return typeof start === 'number' && Number.isFinite(start) ? start : event.startAt;
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
+/** The latest time the last breastfeeding side reached: its end when it is closed (a pause), else its start. */
+function lastSideTime(event: TrackerEvent): number {
+  const last = segmentsOf(event)?.at(-1) as { start?: unknown; end?: unknown } | undefined;
+  const times = [last?.start, last?.end].filter(finite);
+  return times.length > 0 ? Math.max(...times) : event.startAt;
 }
 
 /**
- * The running timer ended at `at`, but never before it started or before its current side started (so a
- * side never ends before it begins). The last breastfeeding side is closed at the same time.
+ * The running timer ended at `at`, but never before it started, before its current side started (so a
+ * side never ends before it begins) or before a paused feed's last side ended. The last breastfeeding
+ * side is closed at the same time when it is still open.
  */
 export function stopTimerAt(event: TrackerEvent, at: number, now: number): TrackerEvent {
-  const endAt = Math.max(at, event.startAt, lastSideStart(event));
+  const endAt = Math.max(at, event.startAt, lastSideTime(event));
   const segments = segmentsOf(event);
   if (segments === null) return { ...event, endAt, updatedAt: now };
   const last = segments.length - 1;
@@ -99,10 +103,13 @@ export interface RepairContext {
 /**
  * Makes the merged rows obey "at most one running sleep and one running breastfeed per baby", and stops
  * what must not run on:
- * 1. stale timers the user chose to stop end at the backup's time;
- * 2. timers of a deleted baby end when the baby was deleted (as deleteBaby does);
+ * 1. stale timers the user chose to stop end at the backup's time, or when their baby was deleted if
+ *    that came first;
+ * 2. timers of a deleted baby end when the baby was deleted (as deleteBaby does), unless that time is
+ *    unreadable;
  * 3. of two or more running timers of one type for one baby, the one that started last keeps running (a
- *    tie goes to the larger id, so both phones agree) and every other one ends when it started.
+ *    tie goes to the larger id, so both phones agree) and every other one ends at the newest one's start.
+ * No timer ever ends before its own start or its current side's start (see stopTimerAt), nor after now.
  * Returns the rows it changed and what it stopped, for the preview.
  */
 export function repairRunning(
@@ -127,13 +134,17 @@ export function repairRunning(
 
   for (const id of context.stopStale) {
     const event = current.get(id);
-    if (event && isRunning(event)) stop(event, context.exportedAt, 'stale');
+    if (!event || !isRunning(event)) continue;
+    // A deleted baby's timer that is also stale ends at whichever came first.
+    const deletedAt = event.babyId === null ? undefined : babies.get(event.babyId)?.deletedAt;
+    stop(event, finite(deletedAt) ? Math.min(context.exportedAt, deletedAt) : context.exportedAt, 'stale');
   }
 
   for (const event of [...current.values()]) {
     if (!isRunning(event) || event.babyId === null) continue;
     const deletedAt = babies.get(event.babyId)?.deletedAt;
-    if (deletedAt !== undefined) stop(event, deletedAt, 'deleted-baby');
+    // An unreadable deletion time (a malformed device row) is not guessed at: the timer is left as it is.
+    if (finite(deletedAt)) stop(event, deletedAt, 'deleted-baby');
   }
 
   const groups = new Map<string, Extract<TrackerEvent, { type: TimerType }>[]>();

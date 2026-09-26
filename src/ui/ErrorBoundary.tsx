@@ -12,8 +12,8 @@ interface State {
 /**
  * Catches an error thrown while rendering a screen and shows `fallback` instead of a blank app. A class
  * component, because React 19 still offers error boundaries only as classes. React itself logs the caught
- * error with console.error (its default onCaughtError); nothing is reported anywhere. Shell keys it by tab,
- * so switching tabs starts over.
+ * error with console.error (its default onCaughtError); nothing is reported anywhere. Shell keys it by tab
+ * and by the imports written, so switching tabs or restoring a backup starts over.
  */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };

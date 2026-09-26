@@ -57,7 +57,7 @@ describe('cells and files', () => {
   });
 
   it('writes a BOM, CRLF line ends and a final CRLF', () => {
-    expect(toCsv([['a', 'b'], ['c;d', 'e']], ';')).toBe('﻿a;b\r\n"c;d";e\r\n');
+    expect(toCsv([['a', 'b'], ['c;d', 'e']], ';')).toBe('\uFEFFa;b\r\n"c;d";e\r\n');
   });
 });
 
@@ -106,6 +106,13 @@ describe('eventsToCsvRows', () => {
       '2026-09-26', '08:00', '', '', '', 'Uyku', '', '',
     ]);
   });
+
+  it('a malformed note (not text) is left empty instead of breaking the file', () => {
+    const odd = event('x', { type: 'diaper', babyId: 'a', startAt: at(26, 8), wet: true, dirty: false }, { note: 42 as unknown as string });
+    const rows = eventsToCsvRows([odd], TEXT);
+    expect(rows[1]).toEqual(['2026-09-26', '08:00', '', '', '', 'Bez', 'Islak', '']);
+    expect(() => toCsv(rows, ';')).not.toThrow();
+  });
 });
 
 describe('file names', () => {
@@ -147,11 +154,17 @@ describe('buildCsvFiles', () => {
       }),
     );
     expect(files.map((file) => file.name)).toEqual(['qundaq-Ada-2026-09-26.csv', 'qundaq-Ada-2-2026-09-26.csv', 'qundaq-Sağım-2026-09-26.csv']);
-    expect(files[0]!.text).toBe('﻿Tarih;Başlangıç;Bitiş tarihi;Bitiş saati;Süre (dk);Tür;Ayrıntı;Not\r\n2026-09-26;09:00;;;;Bez;Islak;\r\n');
+    expect(files[0]!.text).toBe('\uFEFFTarih;Başlangıç;Bitiş tarihi;Bitiş saati;Süre (dk);Tür;Ayrıntı;Not\r\n2026-09-26;09:00;;;;Bez;Islak;\r\n');
   });
 
   it('a name with nothing usable left gets the fallback label', () => {
     const files = buildCsvFiles(input({ babies: [baby('a', '///')], events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })] }));
+    expect(files.map((file) => file.name)).toEqual(['qundaq-bebek-2026-09-26.csv']);
+  });
+
+  it('a malformed baby whose name is not text gets the fallback label instead of breaking the export', () => {
+    const odd = { ...baby('a', 'x'), name: 42 } as unknown as Baby;
+    const files = buildCsvFiles(input({ babies: [odd], events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })] }));
     expect(files.map((file) => file.name)).toEqual(['qundaq-bebek-2026-09-26.csv']);
   });
 });
