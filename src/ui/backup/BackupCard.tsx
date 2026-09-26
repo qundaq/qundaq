@@ -7,6 +7,7 @@ import { lastBackupText } from './text';
 export interface BackupActions {
   onExport: () => void;
   onImportFile: (file: File) => void;
+  onCsv: () => void;
 }
 
 export function BackupCard({ lastBackupAt, actions }: { lastBackupAt: number | undefined; actions: BackupActions }) {
@@ -23,6 +24,9 @@ export function BackupCard({ lastBackupAt, actions }: { lastBackupAt: number | u
           {t('backup.export')}
         </button>
         <RestoreButton onFile={actions.onImportFile} />
+        <button type="button" className="btn" onClick={actions.onCsv}>
+          {t('backup.csv')}
+        </button>
       </div>
     </div>
   );

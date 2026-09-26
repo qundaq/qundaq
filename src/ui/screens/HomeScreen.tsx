@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
+import { backupReminder, snoozeUntil } from '../../backup/reminder';
 import { listBabies } from '../../db/babies';
-import { listRecentEvents, stopEvent, switchBreastSide } from '../../db/events';
+import { hasLiveEvents, listRecentEvents, stopEvent, switchBreastSide } from '../../db/events';
 import { db } from '../../db/instance';
 import type { Settings } from '../../db/settings';
 import { forgottenTimer } from '../../domain/health';
@@ -8,6 +9,7 @@ import { babyStatus } from '../../domain/status';
 import { DAY } from '../../domain/time';
 import type { Id, TrackerEvent } from '../../domain/types';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
+import { BackupBanner } from '../backup/BackupBanner';
 import { RestoreButton } from '../backup/RestoreButton';
 import { useReportError, useReportLoadError } from '../ErrorBanner';
 import { EditSheet } from '../history/EditSheet';
@@ -27,22 +29,26 @@ interface Props {
   onSettingsChange: (patch: Partial<Settings>) => Promise<void>;
   /** Opens the import sheet with a picked backup file (owned by Shell). */
   onImportFile: (file: File) => void;
+  /** Opens the export sheet (owned by Shell). */
+  onBackup: () => void;
 }
 
-export function HomeScreen({ settings, onSettingsChange, onImportFile }: Props) {
+export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup }: Props) {
   const t = useT();
   const tick = useNow();
   const report = useReportError();
   const reportLoadError = useReportLoadError();
   const babies = useLiveQuery(() => listBabies(db), [], reportLoadError);
   const events = useLiveQuery(() => listRecentEvents(db, Date.now() - RECENT_WINDOW), [], reportLoadError);
+  const hasEvents = useLiveQuery(() => hasLiveEvents(db), [], reportLoadError);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<TrackerEvent | null>(null);
   // Timer buttons already in flight, per event: a double tap must not run the same action twice.
   const busy = useRef<Set<Id>>(new Set());
 
-  if (babies === undefined || events === undefined) return <section aria-busy="true"><h1>{t('tab.home')}</h1></section>;
+  // Nothing shows until the banner decision is known too, so the cards never appear without it first.
+  if (babies === undefined || events === undefined || hasEvents === undefined) return <section aria-busy="true"><h1>{t('tab.home')}</h1></section>;
 
   // The tick can be up to 30 s old; data written since then must never look like it is in the future.
   const now = Math.max(tick, Date.now());
@@ -67,9 +73,18 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile }: Props) 
     );
   };
 
+  const reminder = backupReminder(settings, hasEvents, now);
+
   return (
     <section>
       <h1>{t('tab.home')}</h1>
+      {reminder.show && (
+        <BackupBanner
+          daysSince={reminder.daysSince}
+          onBackup={onBackup}
+          onSnooze={() => void onSettingsChange({ backupReminderSnoozedUntil: snoozeUntil(Date.now()) })}
+        />
+      )}
       {babies.length === 0 ? (
         <div className="card">
           <p>{t('home.empty')}</p>

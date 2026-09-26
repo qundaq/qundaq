@@ -32,7 +32,8 @@ describe('lastBackupText', () => {
 });
 
 describe('countsAsBackup', () => {
-  it('is true for the JSON backup', () => {
+  it('is true for the JSON backup, false for the CSV export', () => {
     expect(countsAsBackup('json')).toBe(true);
+    expect(countsAsBackup('csv')).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { downloadedText, failNextShare, openExport, pickBackupFile, stubShare, takeBackup } from './support/backup';
 import { addBabyInSettings, babyCard, logRows, openRow, openTab } from './support/tracking';
 
 // The browser may re-check the app's own sw.js for updates on navigation. That is the single request
@@ -37,10 +38,14 @@ test('makes no network requests after the first load', async ({ page, context, b
   const leaked: string[] = [];
   await context.route('**/*', (route) => {
     const url = route.request().url();
+    // A download of a file the page made itself (a blob: URL) is not a network request. Chromium does not
+    // route those today; should it start to, they must not count as leaked nor be blocked.
+    if (url.startsWith('blob:')) return route.continue();
     if (!isBrowserSwUpdateCheck(url)) leaked.push(url);
     return route.abort();
   });
 
+  await stubShare(page); // installed by the reload below
   await page.reload();
   const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
   for (const name of ['Günlük', 'Özet', 'Sesler', 'Ana', 'Ayarlar']) {
@@ -89,6 +94,28 @@ test('makes no network requests after the first load', async ({ page, context, b
 
   await openTab(page, 'Özet');
   await expect(page.getByRole('table', { name: 'Son 7 gün' })).toBeVisible();
+
+  // Backup, CSV, the download fallback and restoring stay on the device too: a file goes only where the
+  // user's share sheet sends it.
+  const backup = await takeBackup(page);
+  await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
+  const csv = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
+  await csv.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
+  await csv.getByRole('button', { name: 'Tamam', exact: true }).click();
+  const exportSheet = await openExport(page);
+  await failNextShare(page, 'DataError');
+  await exportSheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    exportSheet.getByRole('button', { name: 'Dosyayı indir', exact: true }).click(),
+  ]);
+  expect(JSON.parse(await downloadedText(download))).toMatchObject({ app: 'qundaq' });
+  await exportSheet.getByRole('button', { name: 'Evet', exact: true }).click();
+  await exportSheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+  const restore = await pickBackupFile(page, backup);
+  await restore.getByRole('button', { name: 'Geri yükle', exact: true }).click();
+  await expect(restore.getByRole('status')).toHaveText('Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await restore.getByRole('button', { name: 'Tamam', exact: true }).click();
 
   await openTab(page, 'Ayarlar');
   const nightSwitch = page.getByRole('switch');

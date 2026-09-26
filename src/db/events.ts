@@ -202,3 +202,8 @@ export async function deleteEvent(db: TrackerDb, id: Id, now = Date.now()): Prom
     await db.events.put({ ...stored, deletedAt: now, updatedAt: now });
   });
 }
+
+/** Whether any entry is not deleted, for Home's backup reminder. Stops at the first live row. */
+export async function hasLiveEvents(db: TrackerDb): Promise<boolean> {
+  return (await db.events.filter((event) => event.deletedAt === undefined).first()) !== undefined;
+}
