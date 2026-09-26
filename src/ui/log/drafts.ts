@@ -225,8 +225,8 @@ export function buildDrafts(
   note = '',
 ): EventDraft[] {
   const extra = noteField(note);
-  if (input.kind === 'pump') return [{ ...draftFor(input, null, at), ...extra } as EventDraft];
-  return babyIds.map((babyId) => ({ ...draftFor(input, babyId, at), ...extra }) as EventDraft);
+  if (input.kind === 'pump') return [{ ...draftFor(input, null, at), ...extra }];
+  return babyIds.map((babyId) => ({ ...draftFor(input, babyId, at), ...extra }));
 }
 
 // ---------------------------------------------------------------------------------------------------

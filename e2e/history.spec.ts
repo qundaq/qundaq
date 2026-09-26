@@ -217,7 +217,7 @@ test.describe('editing and deleting', () => {
       () =>
         new Promise<void>((resolve, reject) => {
           const open = indexedDB.open('qundaq');
-          open.onerror = () => reject(open.error);
+          open.onerror = () => reject(open.error ?? new Error('indexedDB open failed'));
           open.onsuccess = () => {
             const store = open.result.transaction('events', 'readwrite').objectStore('events');
             const hold = () => {

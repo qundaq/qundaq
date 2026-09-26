@@ -10,7 +10,7 @@ async function switchTo(request: APIRequestContext, build: 'v1' | 'v2') {
 }
 
 async function servedPaths(request: APIRequestContext): Promise<string[]> {
-  return (await request.get(`${APP}__log`)).json();
+  return (await (await request.get(`${APP}__log`)).json()) as string[];
 }
 
 async function offlineReadyVersion(page: Page): Promise<string> {

@@ -80,7 +80,7 @@ export function readEvents(page: Page): Promise<Record<string, unknown>[]> {
     () =>
       new Promise<Record<string, unknown>[]>((resolve, reject) => {
         const request = indexedDB.open('qundaq');
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onsuccess = () => {
           const db = request.result;
           const getAll = db.transaction('events', 'readonly').objectStore('events').getAll();
@@ -88,7 +88,7 @@ export function readEvents(page: Page): Promise<Record<string, unknown>[]> {
             db.close();
             resolve(getAll.result as Record<string, unknown>[]);
           };
-          getAll.onerror = () => reject(getAll.error);
+          getAll.onerror = () => reject(getAll.error ?? new Error('indexedDB getAll failed'));
         };
       }),
   );

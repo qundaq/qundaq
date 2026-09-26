@@ -348,7 +348,7 @@ function holdSettingsWrites(page: Page): Promise<void> {
     () =>
       new Promise<void>((resolve, reject) => {
         const open = indexedDB.open('qundaq');
-        open.onerror = () => reject(open.error);
+        open.onerror = () => reject(open.error ?? new Error('indexedDB open failed'));
         open.onsuccess = () => {
           const store = open.result.transaction('settings', 'readwrite').objectStore('settings');
           const hold = () => {
@@ -377,7 +377,7 @@ function storedCapAndMaster(page: Page): Promise<{ volumeCap: unknown; master: u
     () =>
       new Promise<{ volumeCap: unknown; master: unknown }>((resolve, reject) => {
         const open = indexedDB.open('qundaq');
-        open.onerror = () => reject(open.error);
+        open.onerror = () => reject(open.error ?? new Error('indexedDB open failed'));
         open.onsuccess = () => {
           const db = open.result;
           const getAll = db.transaction('settings', 'readonly').objectStore('settings').getAll();
@@ -389,7 +389,7 @@ function storedCapAndMaster(page: Page): Promise<{ volumeCap: unknown; master: u
             }[];
             resolve({ volumeCap: row?.volumeCap, master: row?.lastSound?.master });
           };
-          getAll.onerror = () => reject(getAll.error);
+          getAll.onerror = () => reject(getAll.error ?? new Error('indexedDB getAll failed'));
         };
       }),
   );

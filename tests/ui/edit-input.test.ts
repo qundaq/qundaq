@@ -21,11 +21,12 @@ const T0 = new Date(2026, 8, 25, 8, 0).getTime();
 const SECOND = 1000;
 
 function saved(draft: EventDraft): TrackerEvent {
-  return { ...draft, id: 'e1', createdAt: T0, updatedAt: T0 } as TrackerEvent;
+  return { ...draft, id: 'e1', createdAt: T0, updatedAt: T0 };
 }
 
 /** The draft part of a stored entry: everything but the bookkeeping fields. */
 function draftOf(event: TrackerEvent): EventDraft {
+  /* eslint-disable @typescript-eslint/no-unused-vars -- destructured only to drop the properties */
   const {
     id: _id,
     groupId: _groupId,
@@ -34,7 +35,8 @@ function draftOf(event: TrackerEvent): EventDraft {
     deletedAt: _deletedAt,
     ...draft
   } = event;
-  return draft as EventDraft;
+  /* eslint-enable @typescript-eslint/no-unused-vars */
+  return draft;
 }
 
 const SWITCH_AT = T0 + 7 * MINUTE + 3 * SECOND;

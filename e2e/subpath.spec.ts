@@ -9,7 +9,7 @@ const WEBKIT_SKIP =
   'Playwright WebKit: route()/setOffline() act before the service worker; iOS covered by docs/device-checklist.md';
 
 async function servedPaths(request: APIRequestContext): Promise<string[]> {
-  return (await request.get(`${ORIGIN}/__log`)).json();
+  return (await (await request.get(`${ORIGIN}/__log`)).json()) as string[];
 }
 
 test('served from /qundaq/, the app loads, caches only its own paths and works offline', async ({

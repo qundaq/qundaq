@@ -35,6 +35,7 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
   if (!row) return defaults;
   // Spread stored fields over the defaults so fields added by later versions survive a save,
   // then validate the fields this version knows about.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
   const { id: _id, ...rest } = row;
   const stored: Record<string, unknown> = rest;
   const locale = LOCALES.includes(stored.locale as Locale)
@@ -43,7 +44,7 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
   const nightMode = typeof stored.nightMode === 'boolean' ? stored.nightMode : defaults.nightMode;
   const lastBabyIds =
     Array.isArray(stored.lastBabyIds) && stored.lastBabyIds.every((id) => typeof id === 'string')
-      ? (stored.lastBabyIds as Id[])
+      ? stored.lastBabyIds
       : defaults.lastBabyIds;
   const settings: Settings = { ...defaults, ...stored, locale, nightMode, lastBabyIds };
   for (const key of OPTIONAL_TIMES) {

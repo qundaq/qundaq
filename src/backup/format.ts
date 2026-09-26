@@ -93,7 +93,10 @@ type UnorderedEventKeys = Exclude<KeysOf<TrackerEvent>, (typeof EVENT_KEYS)[numb
 type UnorderedBabyKeys = Exclude<keyof Baby, (typeof BABY_KEYS)[number]>;
 type UnorderedMixKeys = Exclude<keyof Mix, (typeof MIX_KEYS)[number]>;
 type ClassifiedSettingsKeys = keyof BackupSettings | (typeof DEVICE_ONLY_SETTINGS)[number];
+// Both directions on purpose: the union is `never` only while the classification is in sync, and the
+// second arm catches classified keys that no longer exist in Settings.
 type UnclassifiedSettingsKeys =
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
   Exclude<keyof Settings, ClassifiedSettingsKeys> | Exclude<ClassifiedSettingsKeys, keyof Settings>;
 export const EVERY_EVENT_KEY_ORDERED: [UnorderedEventKeys] extends [never]
   ? true

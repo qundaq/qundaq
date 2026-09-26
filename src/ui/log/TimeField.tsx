@@ -22,6 +22,8 @@ export function TimeField({
         {t('sheet.time')}
         <input
           type="datetime-local"
+          // An unset time means "now", read at render; useNow above re-renders to keep it current.
+          // eslint-disable-next-line react-hooks/purity
           value={toLocalInputValue(value ?? Date.now())}
           onChange={(e) => onChange(fromLocalInputValue(e.target.value))}
         />

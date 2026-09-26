@@ -16,7 +16,7 @@ import {
 const NOW = new Date(2026, 8, 25, 12, 0).getTime();
 
 function saved(draft: EventDraft, id = 'e1'): TrackerEvent {
-  return { ...draft, id, createdAt: NOW, updatedAt: NOW } as TrackerEvent;
+  return { ...draft, id, createdAt: NOW, updatedAt: NOW };
 }
 
 describe('validateEvent — common rules', () => {

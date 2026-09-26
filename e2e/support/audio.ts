@@ -124,7 +124,6 @@ export async function fakeAudio(page: Page) {
       }
 
       createConstantSource() {
-        const context = this;
         const source = new FakeBufferSource() as FakeBufferSource & { offset: FakeParam };
         source.offset = new FakeParam();
         source.start = () => {}; // the sentinel is not a sound: `sources` counts buffer sources only
@@ -132,7 +131,7 @@ export async function fakeAudio(page: Page) {
           if (when === undefined) return;
           setTimeout(
             () => source.onended?.(new Event('ended')),
-            Math.max(0, (when - context.currentTime) * 1000),
+            Math.max(0, (when - this.currentTime) * 1000),
           );
         };
         return source;

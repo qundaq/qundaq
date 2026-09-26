@@ -2,6 +2,7 @@ import { chromium, devices, expect, test } from '@playwright/test';
 import { addBabyInSettings, babyCard, openTab } from './support/tracking';
 
 const APP = 'http://localhost:4173/';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
 const { defaultBrowserType: _browser, ...pixel7 } = devices['Pixel 7'];
 const CONTEXT = { ...pixel7, locale: 'tr-TR', serviceWorkers: 'allow' as const };
 

@@ -142,7 +142,7 @@ export async function logEvents(
         ...(groupId ? { groupId } : {}),
         createdAt: now,
         updatedAt: now,
-      } as TrackerEvent);
+      });
     }
     if (violations.size > 0) throw new ValidationError([...violations], clashing);
     await db.events.bulkAdd(created);
@@ -169,7 +169,7 @@ export function stoppedAt(event: TrackerEvent, now: number): TrackerEvent {
     endAt,
     updatedAt: now,
     ...(event.type === 'breastfeed' ? { segments: closeLast(event.segments, endAt) } : {}),
-  } as TrackerEvent;
+  };
 }
 
 async function getLive(db: TrackerDb, id: Id): Promise<TrackerEvent> {

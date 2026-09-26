@@ -116,8 +116,8 @@ describe('compareRows', () => {
   });
 
   it('equal times, different content: both phones pick the same copy', () => {
-    const one = event('x', { note: 'a' } as Partial<EventDraft>);
-    const two = event('x', { note: 'b' } as Partial<EventDraft>);
+    const one = event('x', { note: 'a' });
+    const two = event('x', { note: 'b' });
     expect(compareRows(one, two)).toBe('update');
     expect(compareRows(two, one)).toBe('keep');
   });
@@ -177,7 +177,7 @@ describe('planImport: merge', () => {
 
   it('a newer deletion beats an older edit, and a newer edit beats an older deletion', () => {
     const deletedLater = event('x', {}, { deletedAt: T + 4, updatedAt: T + 4 });
-    const editedEarlier = event('x', { note: 'edit' } as Partial<EventDraft>, { updatedAt: T + 1 });
+    const editedEarlier = event('x', { note: 'edit' }, { updatedAt: T + 1 });
     // The file's deletion is newer than the device's edit: the row is deleted.
     const incomingDeletion = planImport(
       local({ events: [editedEarlier] }),
@@ -198,7 +198,7 @@ describe('planImport: merge', () => {
     expect(deviceDeletion.events).toEqual([]);
     expect(deviceDeletion.stats.events).toMatchObject({ keep: 1 });
     // An edit made after a deletion brings the row back, on either side.
-    const editedLater = event('x', { note: 'edit' } as Partial<EventDraft>, { updatedAt: T + 9 });
+    const editedLater = event('x', { note: 'edit' }, { updatedAt: T + 9 });
     expect(
       planImport(local({ events: [deletedLater] }), backup({ events: [editedLater] }), MERGE, NOW)
         .events,
@@ -248,7 +248,7 @@ describe('planImport: merge', () => {
 
   it('a live file row that revives one deleted on the device counts as an add, not an update', () => {
     const deletedHere = event('x', {}, { deletedAt: T + 1, updatedAt: T + 1 });
-    const revived = event('x', { note: 'back' } as Partial<EventDraft>, { updatedAt: T + 2 });
+    const revived = event('x', { note: 'back' }, { updatedAt: T + 2 });
     const plan = planImport(
       local({ events: [deletedHere] }),
       backup({ events: [revived] }),

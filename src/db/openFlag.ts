@@ -17,6 +17,7 @@ export function shouldBeOpen(row: FlaggableRow): boolean {
 
 /** A copy of `row` with `open: 1` when it is running and not deleted, and without the field otherwise. */
 export function withOpenFlag<T extends FlaggableRow>(row: T): T {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
   const { open: _previous, ...rest } = row;
   return (shouldBeOpen(row) ? { ...rest, open: 1 as const } : rest) as unknown as T;
 }

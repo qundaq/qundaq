@@ -98,7 +98,7 @@ export function putRawEvent(page: Page, row: Record<string, unknown>): Promise<v
     (value) =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('qundaq');
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onsuccess = () => {
           const db = request.result;
           const tx = db.transaction('events', 'readwrite');
@@ -107,7 +107,7 @@ export function putRawEvent(page: Page, row: Record<string, unknown>): Promise<v
             db.close();
             resolve();
           };
-          tx.onerror = () => reject(tx.error);
+          tx.onerror = () => reject(tx.error ?? new Error('indexedDB transaction failed'));
         };
       }),
     row,
@@ -120,7 +120,7 @@ export function babyIdOf(page: Page, name: string): Promise<string> {
     (wanted) =>
       new Promise<string>((resolve, reject) => {
         const request = indexedDB.open('qundaq');
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onsuccess = () => {
           const db = request.result;
           const getAll = db.transaction('babies', 'readonly').objectStore('babies').getAll();
@@ -132,7 +132,7 @@ export function babyIdOf(page: Page, name: string): Promise<string> {
             if (baby) resolve(baby.id);
             else reject(new Error(`No baby called ${wanted}`));
           };
-          getAll.onerror = () => reject(getAll.error);
+          getAll.onerror = () => reject(getAll.error ?? new Error('indexedDB getAll failed'));
         };
       }),
     name,
@@ -164,7 +164,7 @@ export async function clearAppData(page: Page) {
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.deleteDatabase('qundaq');
         request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onblocked = () => reject(new Error('The database is still open somewhere'));
       }),
   );

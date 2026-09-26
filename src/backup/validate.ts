@@ -269,7 +269,7 @@ const PAYLOADS: {
       dirty,
       ...(stoolColor === undefined ? {} : { stoolColor }),
       ...(consistency === undefined ? {} : { consistency }),
-    } as Payload;
+    };
   },
   pump: (row) => {
     const mlLeft = optionalInt(row, 'mlLeft', 1, MAX_PUMP_ML);

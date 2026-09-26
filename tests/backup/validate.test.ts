@@ -503,6 +503,7 @@ describe('whitelisting', () => {
     expect(backup.events).toEqual(samples);
     expect(backup.mixes).toEqual([m]);
     // Device-only settings stay behind on purpose; everything else comes back.
+    /* eslint-disable @typescript-eslint/no-unused-vars -- destructured only to drop the properties */
     const {
       lastBackupAt: _last,
       backupReminderSnoozedUntil: _snooze,
@@ -510,6 +511,7 @@ describe('whitelisting', () => {
       lastSound: _sound,
       ...portable
     } = settings;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     expect(backup.settings).toEqual(portable);
   });
 });
