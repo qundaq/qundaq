@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",
@@ -15,6 +17,8 @@
     "e2e": "npm run e2e:build-versions && playwright test",
     "e2e:build-versions": "GITHUB_SHA=1111111aaaaaaa vite build --outDir dist-e2e/v1 --emptyOutDir && node scripts/build-sw.mjs dist-e2e/v1 && node scripts/check-no-external-urls.mjs dist-e2e/v1 && GITHUB_SHA=2222222bbbbbbb vite build --outDir dist-e2e/v2 --emptyOutDir && node scripts/build-sw.mjs dist-e2e/v2 && node scripts/check-no-external-urls.mjs dist-e2e/v2",
     "check:licenses": "node scripts/check-licenses.mjs",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "verify": "npm run typecheck && npm test && npm run build && npm run check:licenses && npm run e2e"
   },
   "dependencies": {
@@ -29,6 +33,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
     "fake-indexeddb": "6.2.5",
+    "prettier": "3.9.9",
     "typescript": "7.0.2",
     "vite": "8.3.1",
     "vitest": "5.0.2"
