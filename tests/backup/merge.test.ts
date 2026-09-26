@@ -75,7 +75,7 @@ function backup(parts: Partial<ParsedBackup> = {}): ParsedBackup {
   };
 }
 
-/** What applyImport (Task 8) would do with a plan: overlay its writes onto the device's own rows. */
+/** What applyImport would do with a plan: overlay its writes onto the device's own rows. */
 function applyPlan(state: LocalState, plan: ImportPlan): LocalState {
   const babies = new Map(state.babies.map((row) => [row.id, row]));
   for (const row of plan.babies) babies.set(row.id, row);
