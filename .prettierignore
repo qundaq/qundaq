@@ -1,0 +1,10 @@
+dist/
+dist-e2e/
+coverage/
+test-results/
+playwright-report/
+package-lock.json
+public/icons/
+public/sounds/*.wav
+public/sounds/*.mp3
+public/sounds/*.m4a
