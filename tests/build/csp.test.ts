@@ -16,7 +16,9 @@ describe('CONTENT_SECURITY_POLICY', () => {
 describe('injectCsp', () => {
   it('inserts the meta tag as the first element of <head>', () => {
     const out = injectCsp('<html><head><title>x</title></head></html>');
-    expect(out).toMatch(/^<html><head>\s*<meta http-equiv="Content-Security-Policy" content="default-src 'self';[^"]*">\s*<title>/);
+    expect(out).toMatch(
+      /^<html><head>\s*<meta http-equiv="Content-Security-Policy" content="default-src 'self';[^"]*">\s*<title>/,
+    );
   });
 
   it('refuses html without a <head>', () => {

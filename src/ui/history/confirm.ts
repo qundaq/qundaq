@@ -11,7 +11,8 @@ export interface DeleteTap {
 }
 
 export function deleteTap(armedAt: number | null, now: number): DeleteTap {
-  if (armedAt === null || now < armedAt || now - armedAt > DELETE_CONFIRM_MAX_MS) return { armedAt: now, confirmed: false };
+  if (armedAt === null || now < armedAt || now - armedAt > DELETE_CONFIRM_MAX_MS)
+    return { armedAt: now, confirmed: false };
   // Too fast: re-arm from this tap, so a sleepy triple tap (0 / 300 / 650 ms) cannot delete either.
   if (now - armedAt < DELETE_CONFIRM_MIN_MS) return { armedAt: now, confirmed: false };
   return { armedAt: null, confirmed: true };

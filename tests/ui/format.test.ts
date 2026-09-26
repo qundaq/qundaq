@@ -3,8 +3,10 @@ import { translate } from '../../src/i18n';
 import { HOUR, MINUTE } from '../../src/domain/time';
 import { formatAgo, formatDuration } from '../../src/ui/format';
 
-const tr = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate('tr', key, vars);
-const en = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate('en', key, vars);
+const tr = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
+  translate('tr', key, vars);
+const en = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
+  translate('en', key, vars);
 
 describe('formatDuration', () => {
   it('shows minutes under an hour and hours + minutes above', () => {

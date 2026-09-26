@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { addBabyInSettings, filterGroup, logRows, openOther, openTab, quick } from './support/tracking';
+import {
+  addBabyInSettings,
+  filterGroup,
+  logRows,
+  openOther,
+  openTab,
+  quick,
+} from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
@@ -8,7 +15,9 @@ test.beforeEach(async ({ page }) => {
   await page.goto('./');
 });
 
-test('a medicine for "Hepsi" makes one row per baby, and is offered again with its dose', async ({ page }) => {
+test('a medicine for "Hepsi" makes one row per baby, and is offered again with its dose', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await addBabyInSettings(page, 'Can');
   await openTab(page, 'Ana');
@@ -27,7 +36,10 @@ test('a medicine for "Hepsi" makes one row per baby, and is offered again with i
   await openTab(page, 'Ana');
   await quick(page, 'Diğer').click();
   const again = page.getByRole('dialog', { name: 'İlaç' });
-  await again.getByRole('group', { name: 'Son kullanılanlar' }).getByRole('button', { name: 'D vitamini', exact: true }).click();
+  await again
+    .getByRole('group', { name: 'Son kullanılanlar' })
+    .getByRole('button', { name: 'D vitamini', exact: true })
+    .click();
   await expect(again.getByLabel('İlaç / vitamin')).toHaveValue('D vitamini');
   await expect(again.getByLabel('Doz (isteğe bağlı)')).toHaveValue('400 IU');
 });
@@ -67,7 +79,11 @@ test('a temperature of 38 °C or more shows the fever hint and marks the row', a
   await openTab(page, 'Ana');
   const sheet = await openOther(page, 'Ateş');
   await sheet.getByLabel('Ateş (°C)').fill('38,2');
-  await expect(sheet.getByText('38 °C ve üzeri ateş, özellikle 3 aydan küçük bebeklerde hemen doktora danışmayı gerektirir.')).toBeVisible();
+  await expect(
+    sheet.getByText(
+      '38 °C ve üzeri ateş, özellikle 3 aydan küçük bebeklerde hemen doktora danışmayı gerektirir.',
+    ),
+  ).toBeVisible();
   await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(sheet).toBeHidden();
 
@@ -95,7 +111,9 @@ test('pumping has no baby and shows under "Hepsi" only', async ({ page }) => {
   await expect(page.getByText('Filtreye uyan kayıt yok.')).toBeVisible();
 });
 
-test('switching the type keeps the time and the note; a health note needs text', async ({ page }) => {
+test('switching the type keeps the time and the note; a health note needs text', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   const sheet = await openOther(page, 'Not');
@@ -106,11 +124,17 @@ test('switching the type keeps the time and the note; a health note needs text',
 
   await sheet.getByLabel('Zaman').fill('2026-09-25T09:15');
   await sheet.getByLabel('Not', { exact: true }).fill('Aşı günü, huysuz');
-  await sheet.getByRole('group', { name: 'Kayıt türü', exact: true }).getByRole('button', { name: 'İlaç', exact: true }).click();
+  await sheet
+    .getByRole('group', { name: 'Kayıt türü', exact: true })
+    .getByRole('button', { name: 'İlaç', exact: true })
+    .click();
   await expect(page.getByRole('dialog', { name: 'İlaç' })).toBeVisible();
   await expect(sheet.getByLabel('Not (isteğe bağlı)')).toHaveValue('Aşı günü, huysuz');
   await expect(sheet.getByLabel('Zaman')).toHaveValue('2026-09-25T09:15');
-  await sheet.getByRole('group', { name: 'Kayıt türü', exact: true }).getByRole('button', { name: 'Not', exact: true }).click();
+  await sheet
+    .getByRole('group', { name: 'Kayıt türü', exact: true })
+    .getByRole('button', { name: 'Not', exact: true })
+    .click();
   await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(sheet).toBeHidden();
 
@@ -120,7 +144,9 @@ test('switching the type keeps the time and the note; a health note needs text',
   await expect(row).toContainText('Aşı günü, huysuz');
 });
 
-test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English', async ({ page }) => {
+test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   const check = async (groupName: string) => {
     const buttons = page.getByRole('group', { name: groupName, exact: true }).getByRole('button');
@@ -131,7 +157,10 @@ test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English'
         const box = await button.boundingBox();
         expect(box!.width, `${groupName} at ${width}px`).toBeGreaterThanOrEqual(48);
         expect(box!.height, `${groupName} at ${width}px`).toBeGreaterThanOrEqual(48);
-        expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth), `text clipped at ${width}px`).toBe(true);
+        expect(
+          await button.evaluate((el) => el.scrollWidth <= el.clientWidth),
+          `text clipped at ${width}px`,
+        ).toBe(true);
         if (width >= 360) {
           // overflow-wrap would hide a mid-word break from the check above: each label must be one line.
           const lines = await button.evaluate((el) => {
@@ -142,15 +171,19 @@ test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English'
           expect(lines, `label wraps at ${width}px`).toBe(1);
         }
       }
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `page overflow at ${width}px`).toBe(
-        true,
-      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        `page overflow at ${width}px`,
+      ).toBe(true);
     }
   };
   await openTab(page, 'Ana');
   await check('Hızlı kayıt');
   await openTab(page, 'Ayarlar');
   await page.getByRole('button', { name: 'English', exact: true }).click();
-  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Home', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('button', { name: 'Home', exact: true })
+    .click();
   await check('Quick log');
 });

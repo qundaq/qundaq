@@ -33,7 +33,11 @@ export function valueFor<T>(state: Keyed<T> | undefined, key: string): T | undef
  * previous day's rows under the new day's heading. `deps` must be primitives.
  * A failure is logged and, if given, passed to `onError` so the user can be told.
  */
-export function useLiveQuery<T>(query: () => Promise<T>, deps: DependencyList, onError?: (error: unknown) => void): T | undefined {
+export function useLiveQuery<T>(
+  query: () => Promise<T>,
+  deps: DependencyList,
+  onError?: (error: unknown) => void,
+): T | undefined {
   const key = depsKey(deps);
   const [state, setState] = useState<Keyed<T>>();
   const onErrorRef = useRef(onError);

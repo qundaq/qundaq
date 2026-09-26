@@ -39,7 +39,11 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   const report = useReportError();
   const reportLoadError = useReportLoadError();
   const babies = useLiveQuery(() => listBabies(db), [], reportLoadError);
-  const events = useLiveQuery(() => listRecentEvents(db, Date.now() - RECENT_WINDOW), [], reportLoadError);
+  const events = useLiveQuery(
+    () => listRecentEvents(db, Date.now() - RECENT_WINDOW),
+    [],
+    reportLoadError,
+  );
   const hasEvents = useLiveQuery(() => hasLiveEvents(db), [], reportLoadError);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
   const [adding, setAdding] = useState(false);
@@ -48,7 +52,12 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   const busy = useRef<Set<Id>>(new Set());
 
   // Nothing shows until the banner decision is known too, so the cards never appear without it first.
-  if (babies === undefined || events === undefined || hasEvents === undefined) return <section aria-busy="true"><h1>{t('tab.home')}</h1></section>;
+  if (babies === undefined || events === undefined || hasEvents === undefined)
+    return (
+      <section aria-busy="true">
+        <h1>{t('tab.home')}</h1>
+      </section>
+    );
 
   // The tick can be up to 30 s old; data written since then must never look like it is in the future.
   const now = Math.max(tick, Date.now());
@@ -67,7 +76,12 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
     const event = byId.get(eventId);
     if (!event || !forgottenTimer(event, now)) return null;
     return (
-      <button type="button" className="btn btn-link" aria-label={`${babyName}: ${t('timer.forgot')}`} onClick={() => setEditing(event)}>
+      <button
+        type="button"
+        className="btn btn-link"
+        aria-label={`${babyName}: ${t('timer.forgot')}`}
+        onClick={() => setEditing(event)}
+      >
         {t('timer.forgot')}
       </button>
     );
@@ -82,7 +96,9 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
         <BackupBanner
           daysSince={reminder.daysSince}
           onBackup={onBackup}
-          onSnooze={() => void onSettingsChange({ backupReminderSnoozedUntil: snoozeUntil(Date.now()) })}
+          onSnooze={() =>
+            void onSettingsChange({ backupReminderSnoozedUntil: snoozeUntil(Date.now()) })
+          }
         />
       )}
       {babies.length === 0 ? (
@@ -114,7 +130,9 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
                             type="button"
                             className="btn"
                             aria-label={`${baby.name}: ${t('timer.switchSide')}`}
-                            onClick={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}
+                            onClick={() =>
+                              act(running.eventId, () => switchBreastSide(db, running.eventId))
+                            }
                           >
                             {t('timer.switchSide')}
                           </button>
@@ -122,7 +140,9 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
                             type="button"
                             className="btn btn-primary"
                             aria-label={`${baby.name}: ${t('timer.stopFeed')}`}
-                            onClick={() => act(running.eventId, () => stopEvent(db, running.eventId))}
+                            onClick={() =>
+                              act(running.eventId, () => stopEvent(db, running.eventId))
+                            }
                           >
                             {t('timer.stopFeed')}
                           </button>
@@ -153,7 +173,11 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
           <QuickActions onPick={setSheet} />
         </>
       )}
-      <BabyFormDialog open={adding} usedColors={babies.map((b) => b.color)} onClose={() => setAdding(false)} />
+      <BabyFormDialog
+        open={adding}
+        usedColors={babies.map((b) => b.color)}
+        onClose={() => setAdding(false)}
+      />
       <LogSheet
         kind={sheet}
         babies={babies}

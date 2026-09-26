@@ -45,7 +45,11 @@ export async function updateBaby(
   patch: Partial<Pick<Baby, 'name' | 'color' | 'birthDate'>>,
   now = Date.now(),
 ): Promise<void> {
-  const changes = { ...patch, ...(patch.name === undefined ? {} : { name: cleanName(patch.name) }), updatedAt: now };
+  const changes = {
+    ...patch,
+    ...(patch.name === undefined ? {} : { name: cleanName(patch.name) }),
+    updatedAt: now,
+  };
   await db.transaction('rw', db.babies, async () => {
     const baby = await db.babies.get(id);
     if (!baby || baby.deletedAt !== undefined) throw new Error(`Baby ${id} not found`);

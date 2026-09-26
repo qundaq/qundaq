@@ -49,7 +49,9 @@ export interface SheetSession<T> {
  * fresh every time.
  */
 export function useSheetSession<T>(value: T | null): SheetSession<T> | null {
-  const [session, setSession] = useState<SheetSession<T> | null>(value === null ? null : { value, id: 1 });
+  const [session, setSession] = useState<SheetSession<T> | null>(
+    value === null ? null : { value, id: 1 },
+  );
   const [previous, setPrevious] = useState<T | null>(value);
   if (value !== previous) {
     setPrevious(value);

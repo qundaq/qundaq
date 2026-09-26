@@ -1,5 +1,15 @@
 /** The sounds this version can play, by id. A stored mix may name others (from a newer version): they are skipped. */
-export const SOUND_IDS = ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat', 'shush', 'airplane'] as const;
+export const SOUND_IDS = [
+  'white',
+  'pink',
+  'brown',
+  'rain',
+  'waves',
+  'wind',
+  'heartbeat',
+  'shush',
+  'airplane',
+] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
 
@@ -35,7 +45,9 @@ function isUnit(value: unknown): value is number {
  * value that decides loudness is never trusted from storage (a stored 5 would be a gain of 25).
  */
 export function readVolumeCap(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_CAP && value <= 1 ? value : DEFAULT_CAP;
+  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_CAP && value <= 1
+    ? value
+    : DEFAULT_CAP;
 }
 
 /** What the Sesler tab remembers between launches: the selection, never the playing state. */
@@ -53,12 +65,19 @@ export function readLastSound(value: unknown): LastSound | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
   const layers = record.layers;
-  if (!Array.isArray(layers) || layers.length > MAX_LAYERS || !isUnit(record.master) || !isTimerChoice(record.timerMin)) return undefined;
+  if (
+    !Array.isArray(layers) ||
+    layers.length > MAX_LAYERS ||
+    !isUnit(record.master) ||
+    !isTimerChoice(record.timerMin)
+  )
+    return undefined;
   const out: LastSound['layers'] = [];
   for (const layer of layers) {
     if (typeof layer !== 'object' || layer === null) return undefined;
     const { soundId, level } = layer as Record<string, unknown>;
-    if (!isSoundId(soundId) || !isUnit(level) || out.some((other) => other.soundId === soundId)) return undefined;
+    if (!isSoundId(soundId) || !isUnit(level) || out.some((other) => other.soundId === soundId))
+      return undefined;
     out.push({ soundId, level });
   }
   return { layers: out, master: record.master, timerMin: record.timerMin };

@@ -12,7 +12,11 @@ export function BackupBanner({ daysSince, onBackup, onSnooze }: Props) {
   const t = useT();
   return (
     <section className="card backup-banner" aria-label={t('reminder.label')}>
-      <p>{daysSince === null ? t('reminder.never') : t('reminder.since', { ago: backupAgo(t, daysSince) })}</p>
+      <p>
+        {daysSince === null
+          ? t('reminder.never')
+          : t('reminder.since', { ago: backupAgo(t, daysSince) })}
+      </p>
       <div className="timer-row">
         <button type="button" className="btn" onClick={onSnooze}>
           {t('reminder.snooze')}

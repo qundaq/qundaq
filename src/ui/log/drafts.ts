@@ -1,7 +1,16 @@
 import { parseDecimal, scaleToInt } from '../../domain/decimal';
 import { ValidationError, editedMinutesValid } from '../../domain/rules';
 import { MINUTE, fromLocalInputValue, toLocalInputValue } from '../../domain/time';
-import type { BottleContents, BreastSegment, Consistency, EventDraft, Id, Side, StoolColor, TrackerEvent } from '../../domain/types';
+import type {
+  BottleContents,
+  BreastSegment,
+  Consistency,
+  EventDraft,
+  Id,
+  Side,
+  StoolColor,
+  TrackerEvent,
+} from '../../domain/types';
 import type { Locale } from '../../i18n';
 
 /** What a quick button opens. "other" is the "Diğer" sheet, whose chip picks one of OTHER_TYPES. */
@@ -9,19 +18,50 @@ export type SheetKind = 'breastfeed' | 'bottle' | 'sleep' | 'diaper' | 'other';
 
 /** The record types of the "Diğer" sheet in chip order. The first is the default: daily vitamin D. */
 export type OtherType = 'medication' | 'growth' | 'temperature' | 'pump' | 'healthNote';
-export const OTHER_TYPES: readonly OtherType[] = ['medication', 'growth', 'temperature', 'pump', 'healthNote'];
+export const OTHER_TYPES: readonly OtherType[] = [
+  'medication',
+  'growth',
+  'temperature',
+  'pump',
+  'healthNote',
+];
 export const DEFAULT_OTHER_TYPE: OtherType = 'medication';
 
-export interface BreastfeedInput { side: Side; durationMin: number | null }
-export interface BottleInput { ml: number | null; contents: BottleContents }
-export interface SleepInput { durationMin: number | null }
-export interface DiaperInput { wet: boolean; dirty: boolean; stoolColor: StoolColor | null; consistency: Consistency | null }
+export interface BreastfeedInput {
+  side: Side;
+  durationMin: number | null;
+}
+export interface BottleInput {
+  ml: number | null;
+  contents: BottleContents;
+}
+export interface SleepInput {
+  durationMin: number | null;
+}
+export interface DiaperInput {
+  wet: boolean;
+  dirty: boolean;
+  stoolColor: StoolColor | null;
+  consistency: Consistency | null;
+}
 /** Whole millilitres exactly as typed; parsed on save, so "60.5" is reported instead of truncated. */
-export interface PumpInput { mlLeft: string; mlRight: string }
+export interface PumpInput {
+  mlLeft: string;
+  mlRight: string;
+}
 /** Decimal text exactly as typed ("3,45"). Parsed on save, so a typo is reported instead of silently dropped. */
-export interface GrowthInput { weightKg: string; heightCm: string; headCm: string }
-export interface TemperatureInput { celsius: string }
-export interface MedicationInput { name: string; dose: string }
+export interface GrowthInput {
+  weightKg: string;
+  heightCm: string;
+  headCm: string;
+}
+export interface TemperatureInput {
+  celsius: string;
+}
+export interface MedicationInput {
+  name: string;
+  dose: string;
+}
 export type HealthNoteInput = Record<string, never>;
 
 export type SheetInput =
@@ -65,17 +105,25 @@ function noteField(note: string): { note?: string } {
 }
 
 /** '' → no key; text that does not parse → NaN (so validation reports it); otherwise value × factor, rounded. */
-function decimalField<K extends string>(key: K, raw: string, factor: number): Partial<Record<K, number>> {
+function decimalField<K extends string>(
+  key: K,
+  raw: string,
+  factor: number,
+): Partial<Record<K, number>> {
   if (raw.trim() === '') return {};
   const value = parseDecimal(raw);
-  return { [key]: value === null ? Number.NaN : scaleToInt(value, factor) } as Partial<Record<K, number>>;
+  return { [key]: value === null ? Number.NaN : scaleToInt(value, factor) } as Partial<
+    Record<K, number>
+  >;
 }
 
 /** '' → no key; anything but digits → NaN (so validation reports it); otherwise the whole number. */
 function amountField<K extends string>(key: K, raw: string): Partial<Record<K, number>> {
   const trimmed = raw.trim();
   if (trimmed === '') return {};
-  return { [key]: /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN } as Partial<Record<K, number>>;
+  return { [key]: /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN } as Partial<
+    Record<K, number>
+  >;
 }
 
 /** °C rounded to one decimal before validation, so 37,95 becomes 38,0 and gets the fever hint. */
@@ -88,12 +136,25 @@ function draftFor(input: SheetInput, babyId: Id | null, at: number): EventDraft 
   switch (input.kind) {
     case 'breastfeed': {
       const { side, durationMin } = input.value;
-      if (durationMin === null) return { type: 'breastfeed', babyId, startAt: at, segments: [{ side, start: at }] };
+      if (durationMin === null)
+        return { type: 'breastfeed', babyId, startAt: at, segments: [{ side, start: at }] };
       const startAt = at - durationMin * MINUTE;
-      return { type: 'breastfeed', babyId, startAt, endAt: at, segments: [{ side, start: startAt, end: at }] };
+      return {
+        type: 'breastfeed',
+        babyId,
+        startAt,
+        endAt: at,
+        segments: [{ side, start: startAt, end: at }],
+      };
     }
     case 'bottle':
-      return { type: 'bottle', babyId, startAt: at, ml: input.value.ml ?? 0, contents: input.value.contents };
+      return {
+        type: 'bottle',
+        babyId,
+        startAt: at,
+        ml: input.value.ml ?? 0,
+        contents: input.value.contents,
+      };
     case 'sleep': {
       const { durationMin } = input.value;
       return durationMin === null
@@ -130,10 +191,21 @@ function draftFor(input: SheetInput, babyId: Id | null, at: number): EventDraft 
         ...decimalField('headMm', input.value.headCm, 10),
       };
     case 'temperature':
-      return { type: 'temperature', babyId, startAt: at, celsius: temperatureValue(input.value.celsius) };
+      return {
+        type: 'temperature',
+        babyId,
+        startAt: at,
+        celsius: temperatureValue(input.value.celsius),
+      };
     case 'medication': {
       const dose = input.value.dose.trim();
-      return { type: 'medication', babyId, startAt: at, name: input.value.name.trim(), ...(dose === '' ? {} : { dose }) };
+      return {
+        type: 'medication',
+        babyId,
+        startAt: at,
+        name: input.value.name.trim(),
+        ...(dose === '' ? {} : { dose }),
+      };
     }
     case 'healthNote':
       return { type: 'healthNote', babyId, startAt: at };
@@ -146,7 +218,12 @@ function draftFor(input: SheetInput, babyId: Id | null, at: number): EventDraft 
  * a timer STARTS at `at`; an entry with a duration ENDS at `at` ("fed 15 min, just finished"); instant
  * entries happen at `at`.
  */
-export function buildDrafts(input: SheetInput, babyIds: readonly Id[], at: number, note = ''): EventDraft[] {
+export function buildDrafts(
+  input: SheetInput,
+  babyIds: readonly Id[],
+  at: number,
+  note = '',
+): EventDraft[] {
   const extra = noteField(note);
   if (input.kind === 'pump') return [{ ...draftFor(input, null, at), ...extra } as EventDraft];
   return babyIds.map((babyId) => ({ ...draftFor(input, babyId, at), ...extra }) as EventDraft);
@@ -189,7 +266,13 @@ export interface BreastfeedEdit {
 
 export type InstantType = Exclude<InputKind, 'sleep' | 'breastfeed'>;
 export type InstantEdit = {
-  [K in InstantType]: { type: K; babyId: Id | null; startAt: number; value: InputValue<K>; note: string };
+  [K in InstantType]: {
+    type: K;
+    babyId: Id | null;
+    startAt: number;
+    value: InputValue<K>;
+    note: string;
+  };
 }[InstantType];
 
 export type EditInput = SleepEdit | BreastfeedEdit | InstantEdit;
@@ -215,11 +298,17 @@ export function segmentsChanged(input: BreastfeedEdit): boolean {
   const shown = shownSegments(input.original);
   return (
     input.segments.length !== shown.length ||
-    input.segments.some((segment, i) => segment.side !== shown[i]!.side || segment.minutes !== shown[i]!.minutes)
+    input.segments.some(
+      (segment, i) => segment.side !== shown[i]!.side || segment.minutes !== shown[i]!.minutes,
+    )
   );
 }
 
-function decimalText(value: number | undefined, divisor: number, decimal: DecimalSeparator): string {
+function decimalText(
+  value: number | undefined,
+  divisor: number,
+  decimal: DecimalSeparator,
+): string {
   if (value === undefined || !Number.isFinite(value)) return '';
   return String(value / divisor).replace('.', decimal);
 }
@@ -228,7 +317,13 @@ export function eventToInput(event: TrackerEvent, decimal: DecimalSeparator = '.
   const note = event.note ?? '';
   switch (event.type) {
     case 'sleep':
-      return { type: 'sleep', babyId: event.babyId as Id, startAt: event.startAt, endAt: event.endAt ?? null, note };
+      return {
+        type: 'sleep',
+        babyId: event.babyId as Id,
+        startAt: event.startAt,
+        endAt: event.endAt ?? null,
+        note,
+      };
     case 'breastfeed': {
       const original = (event.segments ?? []).map((segment) => ({ ...segment }));
       return {
@@ -244,13 +339,24 @@ export function eventToInput(event: TrackerEvent, decimal: DecimalSeparator = '.
       };
     }
     case 'bottle':
-      return { type: 'bottle', babyId: event.babyId, startAt: event.startAt, value: { ml: event.ml, contents: event.contents }, note };
+      return {
+        type: 'bottle',
+        babyId: event.babyId,
+        startAt: event.startAt,
+        value: { ml: event.ml, contents: event.contents },
+        note,
+      };
     case 'diaper':
       return {
         type: 'diaper',
         babyId: event.babyId,
         startAt: event.startAt,
-        value: { wet: event.wet, dirty: event.dirty, stoolColor: event.stoolColor ?? null, consistency: event.consistency ?? null },
+        value: {
+          wet: event.wet,
+          dirty: event.dirty,
+          stoolColor: event.stoolColor ?? null,
+          consistency: event.consistency ?? null,
+        },
         note,
       };
     case 'pump':
@@ -277,15 +383,31 @@ export function eventToInput(event: TrackerEvent, decimal: DecimalSeparator = '.
         note,
       };
     case 'temperature':
-      return { type: 'temperature', babyId: event.babyId, startAt: event.startAt, value: { celsius: decimalText(event.celsius, 1, decimal) }, note };
+      return {
+        type: 'temperature',
+        babyId: event.babyId,
+        startAt: event.startAt,
+        value: { celsius: decimalText(event.celsius, 1, decimal) },
+        note,
+      };
     case 'medication':
-      return { type: 'medication', babyId: event.babyId, startAt: event.startAt, value: { name: event.name, dose: event.dose ?? '' }, note };
+      return {
+        type: 'medication',
+        babyId: event.babyId,
+        startAt: event.startAt,
+        value: { name: event.name, dose: event.dose ?? '' },
+        note,
+      };
     case 'healthNote':
       return { type: 'healthNote', babyId: event.babyId, startAt: event.startAt, value: {}, note };
   }
 }
 
-function breastfeedTiming(input: BreastfeedEdit): { startAt: number; endAt?: number; segments: BreastSegment[] } {
+function breastfeedTiming(input: BreastfeedEdit): {
+  startAt: number;
+  endAt?: number;
+  segments: BreastSegment[];
+} {
   const { startAt, endAt, original } = input;
   const delta = startAt - input.originalStartAt;
   const last = original.length - 1;
@@ -296,7 +418,11 @@ function breastfeedTiming(input: BreastfeedEdit): { startAt: number; endAt?: num
     const segments = original.map((segment, i) => {
       const moved = i === 0 ? { ...segment, start: segment.start + delta } : { ...segment };
       if (i !== last) return moved;
-      return { ...moved, ...(side === undefined ? {} : { side }), ...(endAt === null ? {} : { end: endAt }) };
+      return {
+        ...moved,
+        ...(side === undefined ? {} : { side }),
+        ...(endAt === null ? {} : { end: endAt }),
+      };
     });
     return endAt === null ? { startAt, segments } : { startAt, endAt, segments };
   }
@@ -310,7 +436,8 @@ function breastfeedTiming(input: BreastfeedEdit): { startAt: number; endAt?: num
     return endAt === null ? { startAt, segments } : { startAt, endAt: endAt + delta, segments };
   }
   // Edited sides are laid back to back from the start; the feed ends where the last one does.
-  if (!editedMinutesValid(input.segments.map((segment) => segment.minutes))) throw new ValidationError(['segments-invalid']);
+  if (!editedMinutesValid(input.segments.map((segment) => segment.minutes)))
+    throw new ValidationError(['segments-invalid']);
   let cursor = startAt;
   const segments = input.segments.map((segment) => {
     const laid = { side: segment.side, start: cursor, end: cursor + segment.minutes * MINUTE };
@@ -332,18 +459,38 @@ export function inputToDraft(input: EditInput): EventDraft {
         ...noteField(input.note),
       };
     case 'breastfeed':
-      return { type: 'breastfeed', babyId: input.babyId, ...breastfeedTiming(input), ...noteField(input.note) };
+      return {
+        type: 'breastfeed',
+        babyId: input.babyId,
+        ...breastfeedTiming(input),
+        ...noteField(input.note),
+      };
     default:
-      return buildDrafts({ kind: input.type, value: input.value } as SheetInput, [input.babyId as Id], input.startAt, input.note)[0]!;
+      return buildDrafts(
+        { kind: input.type, value: input.value } as SheetInput,
+        [input.babyId as Id],
+        input.startAt,
+        input.note,
+      )[0]!;
   }
 }
 
 export function setSegmentSide(input: BreastfeedEdit, index: number, side: Side): BreastfeedEdit {
-  return { ...input, segments: input.segments.map((segment, i) => (i === index ? { ...segment, side } : segment)) };
+  return {
+    ...input,
+    segments: input.segments.map((segment, i) => (i === index ? { ...segment, side } : segment)),
+  };
 }
 
-export function setSegmentMinutes(input: BreastfeedEdit, index: number, minutes: number): BreastfeedEdit {
-  return { ...input, segments: input.segments.map((segment, i) => (i === index ? { ...segment, minutes } : segment)) };
+export function setSegmentMinutes(
+  input: BreastfeedEdit,
+  index: number,
+  minutes: number,
+): BreastfeedEdit {
+  return {
+    ...input,
+    segments: input.segments.map((segment, i) => (i === index ? { ...segment, minutes } : segment)),
+  };
 }
 
 /** Adds an empty row on the other side from the last one. */

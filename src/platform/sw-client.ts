@@ -1,6 +1,5 @@
 export type OfflineStatus =
-  | { state: 'ready'; version: string }
-  | { state: 'not-ready' | 'unsupported' | 'dev' | 'insecure' };
+  { state: 'ready'; version: string } | { state: 'not-ready' | 'unsupported' | 'dev' | 'insecure' };
 export type UpdateCheck = 'none' | 'ready' | 'failed';
 
 interface SwStatus {
@@ -36,7 +35,8 @@ export async function getOfflineStatus(): Promise<OfflineStatus> {
   const controller = navigator.serviceWorker.controller;
   if (!controller) return { state: 'not-ready' };
   const status = await ask(controller, 2000);
-  if (status && status.cached >= status.expected) return { state: 'ready', version: status.version };
+  if (status && status.cached >= status.expected)
+    return { state: 'ready', version: status.version };
   return { state: 'not-ready' };
 }
 
@@ -118,7 +118,12 @@ export function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
       resolve(installed);
     };
     const check = () => {
-      if (worker.state === 'installed' || worker.state === 'activating' || worker.state === 'activated') finish(true);
+      if (
+        worker.state === 'installed' ||
+        worker.state === 'activating' ||
+        worker.state === 'activated'
+      )
+        finish(true);
       else if (worker.state === 'redundant') finish(false);
     };
     const timer = setTimeout(() => finish(false), UPDATE_INSTALL_TIMEOUT_MS);
@@ -130,6 +135,8 @@ export function waitUntilInstalled(worker: ServiceWorker): Promise<boolean> {
 export async function applyUpdate(): Promise<void> {
   const registration = await navigator.serviceWorker.getRegistration();
   if (!registration?.waiting) return;
-  navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true });
+  navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), {
+    once: true,
+  });
   registration.waiting.postMessage({ type: 'SKIP_WAITING' });
 }

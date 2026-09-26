@@ -32,7 +32,12 @@ export interface SleepStep {
  * rises except, before a fade that is still more than RECOVER_SECONDS away, a ramp back to 1 over that long.
  * Inside the last 30 s it starts from the value the fade has reached by now, or from `current` if lower.
  */
-export function sleepSteps(endsAt: number, nowMs: number, audioNow: number, current: number): SleepStep[] {
+export function sleepSteps(
+  endsAt: number,
+  nowMs: number,
+  audioNow: number,
+  current: number,
+): SleepStep[] {
   const end = audioNow + Math.max(0, endsAt - nowMs) / 1000;
   const fadeStart = end - FADE_SECONDS;
   if (fadeStart >= audioNow + RECOVER_SECONDS) {

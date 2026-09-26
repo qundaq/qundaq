@@ -11,7 +11,12 @@ function cleanName(name: string): string {
 }
 
 /** Saves the current layers under a name (1–40 characters, trimmed; duplicates allowed). */
-export async function saveMix(db: TrackerDb, name: string, layers: readonly MixLayer[], now = Date.now()): Promise<Mix> {
+export async function saveMix(
+  db: TrackerDb,
+  name: string,
+  layers: readonly MixLayer[],
+  now = Date.now(),
+): Promise<Mix> {
   if (!validMixLayers(layers)) throw new ValidationError(['mix-layers-invalid']);
   const mix: Mix = {
     id: newId(),
@@ -27,11 +32,18 @@ export async function saveMix(db: TrackerDb, name: string, layers: readonly MixL
 /** Live mixes, oldest first. Sorted in memory: a row outside the index must still be listed. */
 export async function listMixes(db: TrackerDb): Promise<Mix[]> {
   const all = await db.mixes.toArray();
-  return all.filter((mix) => mix.deletedAt === undefined).sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+  return all
+    .filter((mix) => mix.deletedAt === undefined)
+    .sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
 }
 
 /** Renames a live mix with the same name check as saving. */
-export async function renameMix(db: TrackerDb, id: Id, name: string, now = Date.now()): Promise<void> {
+export async function renameMix(
+  db: TrackerDb,
+  id: Id,
+  name: string,
+  now = Date.now(),
+): Promise<void> {
   const cleaned = cleanName(name);
   await db.transaction('rw', db.mixes, async () => {
     const mix = await db.mixes.get(id);

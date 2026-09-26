@@ -1,9 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { downloadedText, failNextShare, openExport, removeShare, shareCalls, sharedFiles, stubShare } from './support/backup';
+import {
+  downloadedText,
+  failNextShare,
+  openExport,
+  removeShare,
+  shareCalls,
+  sharedFiles,
+  stubShare,
+} from './support/backup';
 import { addBabyInSettings, logDiaper, openOther, openTab, quick } from './support/tracking';
 
 test.describe('JSON backup', () => {
-  test('shares one JSON file with every baby and entry; Ayarlar then shows the backup', async ({ page }) => {
+  test('shares one JSON file with every baby and entry; Ayarlar then shows the backup', async ({
+    page,
+  }) => {
     await stubShare(page);
     await page.goto('./');
     await addBabyInSettings(page, 'Ada');
@@ -21,8 +31,16 @@ test.describe('JSON backup', () => {
     const [file] = await sharedFiles(page);
     expect(file?.name).toMatch(/^qundaq-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/);
     expect(file?.type).toBe('application/json');
-    const backup = JSON.parse(file!.text) as Record<string, unknown> & { babies: { name: string }[]; events: object[] };
-    expect(backup).toMatchObject({ app: 'qundaq', schemaVersion: 2, mixes: [], settings: { locale: 'tr', nightMode: false } });
+    const backup = JSON.parse(file!.text) as Record<string, unknown> & {
+      babies: { name: string }[];
+      events: object[];
+    };
+    expect(backup).toMatchObject({
+      app: 'qundaq',
+      schemaVersion: 2,
+      mixes: [],
+      settings: { locale: 'tr', nightMode: false },
+    });
     expect(backup.babies.map((baby) => baby.name)).toEqual(['Ada']);
     expect(backup.events).toHaveLength(1);
     expect(file!.text).not.toContain('"open"');
@@ -33,11 +51,14 @@ test.describe('JSON backup', () => {
     await expect(page.getByText(/^Son yedek: bugün \(/)).toBeVisible();
   });
 
-  test('a cancelled share changes nothing; a refused one asks for another tap', async ({ page }) => {
+  test('a cancelled share changes nothing; a refused one asks for another tap', async ({
+    page,
+  }) => {
     await stubShare(page);
     await page.goto('./');
     let sheet = await openExport(page);
-    const share = () => sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true });
+    const share = () =>
+      sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true });
 
     await failNextShare(page, 'AbortError');
     await share().click();
@@ -65,10 +86,14 @@ test.describe('JSON backup', () => {
     await failNextShare(page, 'DataError');
     await sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
     await expect(sheet.getByRole('button', { name: 'Dosyayı indir', exact: true })).toBeVisible();
-    await expect(sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true })).toHaveCount(0);
+    await expect(
+      sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }),
+    ).toHaveCount(0);
   });
 
-  test('without file sharing the file is downloaded, and it counts only after "Evet"', async ({ page }) => {
+  test('without file sharing the file is downloaded, and it counts only after "Evet"', async ({
+    page,
+  }) => {
     await removeShare(page);
     await page.goto('./');
     await addBabyInSettings(page, 'Ada');
@@ -77,7 +102,10 @@ test.describe('JSON backup', () => {
 
     const [first] = await Promise.all([page.waitForEvent('download'), download.click()]);
     expect(first.suggestedFilename()).toMatch(/^qundaq-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/);
-    expect(JSON.parse(await downloadedText(first))).toMatchObject({ app: 'qundaq', babies: [{ name: 'Ada' }] });
+    expect(JSON.parse(await downloadedText(first))).toMatchObject({
+      app: 'qundaq',
+      babies: [{ name: 'Ada' }],
+    });
     await expect(sheet).toContainText('Dosya kaydedildi mi?');
     await sheet.getByRole('button', { name: 'Hayır', exact: true }).click();
     await sheet.getByRole('button', { name: 'Vazgeç', exact: true }).click();
@@ -100,7 +128,9 @@ test.describe('CSV', () => {
     await page.clock.install({ time: new Date('2026-09-26T10:00:00+03:00') });
   });
 
-  test('shares one file per baby with entries, plus pumping, as a Turkish spreadsheet; it is not a backup', async ({ page }) => {
+  test('shares one file per baby with entries, plus pumping, as a Turkish spreadsheet; it is not a backup', async ({
+    page,
+  }) => {
     await stubShare(page);
     await page.goto('./');
     await addBabyInSettings(page, 'Ada');
@@ -122,7 +152,9 @@ test.describe('CSV', () => {
     await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
     const sheet = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
     // Can has no entries, so no file for Can.
-    await expect(sheet).toContainText('2 dosya: qundaq-Ada-2026-09-26.csv, qundaq-Sağım-2026-09-26.csv');
+    await expect(sheet).toContainText(
+      '2 dosya: qundaq-Ada-2026-09-26.csv, qundaq-Sağım-2026-09-26.csv',
+    );
     await sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
     await expect(sheet.getByRole('status')).toHaveText('Dosyalar paylaşıldı.');
 

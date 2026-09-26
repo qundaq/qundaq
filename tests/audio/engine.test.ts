@@ -11,18 +11,44 @@ import {
   createSoundEngine,
   type SoundEngine,
 } from '../../src/audio/engine';
-import { DEFAULT_TIMER, FADE_SECONDS, RECOVER_SECONDS, type TimerChoice } from '../../src/audio/timer';
-import { DEFAULT_CAP, DEFAULT_LEVEL, DEFAULT_MASTER, busScale, capGain, sliderGain } from '../../src/audio/volume';
+import {
+  DEFAULT_TIMER,
+  FADE_SECONDS,
+  RECOVER_SECONDS,
+  type TimerChoice,
+} from '../../src/audio/timer';
+import {
+  DEFAULT_CAP,
+  DEFAULT_LEVEL,
+  DEFAULT_MASTER,
+  busScale,
+  capGain,
+  sliderGain,
+} from '../../src/audio/volume';
 import { MINUTE } from '../../src/domain/time';
-import { FakeDeps, FakeParam, WALL_START, flush, type FakeContext, type FakeContextOptions } from '../support/fake-audio';
+import {
+  FakeDeps,
+  FakeParam,
+  WALL_START,
+  flush,
+  type FakeContext,
+  type FakeContextOptions,
+} from '../support/fake-audio';
 
-function setup(options: FakeContextOptions = {}): { engine: SoundEngine; deps: FakeDeps; context: FakeContext } {
+function setup(options: FakeContextOptions = {}): {
+  engine: SoundEngine;
+  deps: FakeDeps;
+  context: FakeContext;
+} {
   const deps = new FakeDeps(options);
   return { engine: createSoundEngine(deps), deps, context: deps.context };
 }
 
 /** A playing engine with `ids` enabled, their loops generated and their sources started. */
-function playing(ids: readonly ('white' | 'rain' | 'pink' | 'brown' | 'wind' | 'waves' | 'shush')[] = ['white'], options: FakeContextOptions = {}) {
+function playing(
+  ids: readonly ('white' | 'rain' | 'pink' | 'brown' | 'wind' | 'waves' | 'shush')[] = ['white'],
+  options: FakeContextOptions = {},
+) {
   const { engine, deps } = setup(options);
   for (const id of ids) engine.toggleLayer(id);
   deps.advance(100); // generation runs from a timer
@@ -47,7 +73,12 @@ function totalPower(context: FakeContext, at: number): number {
     return total + value * value;
   }, 0);
   const { bus, master, transport, sleep, cap } = context.graph;
-  const chain = master.gain.valueAt(at) * transport.gain.valueAt(at) * sleep.gain.valueAt(at) * cap.gain.valueAt(at) * bus.gain.valueAt(at);
+  const chain =
+    master.gain.valueAt(at) *
+    transport.gain.valueAt(at) *
+    sleep.gain.valueAt(at) *
+    cap.gain.valueAt(at) *
+    bus.gain.valueAt(at);
   return chain * Math.sqrt(sumSquares);
 }
 
@@ -62,7 +93,11 @@ describe('the first tap (R6)', () => {
     expect(deps.createContext).toHaveBeenCalledTimes(1);
     expect(deps.context.calls).toEqual(['resume']);
     expect(deps.generate).not.toHaveBeenCalled();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', preparing: ['white'], layers: [{ soundId: 'white', level: DEFAULT_LEVEL }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'playing',
+      preparing: ['white'],
+      layers: [{ soundId: 'white', level: DEFAULT_LEVEL }],
+    });
 
     deps.advance(100);
     expect(deps.generate).toHaveBeenCalledWith('white', 48_000);
@@ -74,7 +109,10 @@ describe('the first tap (R6)', () => {
     expect(engine.getSnapshot().preparing).toEqual([]);
     // The layer plays at its level; the transport brings the sound in over 2 s from silence.
     const t = deps.context.currentTime;
-    expect(deps.context.voiceGain(source!)?.gain.valueAt(t + START_FADE_SECONDS)).toBeCloseTo(sliderGain(DEFAULT_LEVEL), 9);
+    expect(deps.context.voiceGain(source!)?.gain.valueAt(t + START_FADE_SECONDS)).toBeCloseTo(
+      sliderGain(DEFAULT_LEVEL),
+      9,
+    );
     const { transport } = deps.context.graph;
     expect(transport.gain.valueAt(0)).toBe(0);
     expect(transport.gain.valueAt(START_FADE_SECONDS)).toBe(1);
@@ -91,7 +129,11 @@ describe('the first tap (R6)', () => {
     const [limiter] = context.compressors;
     expect(cap.outputs).toEqual([limiter]);
     expect(limiter?.outputs).toEqual([context.destination]);
-    expect(limiter).toMatchObject({ threshold: { value: LIMITER.threshold }, ratio: { value: LIMITER.ratio }, attack: { value: LIMITER.attack } });
+    expect(limiter).toMatchObject({
+      threshold: { value: LIMITER.threshold },
+      ratio: { value: LIMITER.ratio },
+      attack: { value: LIMITER.attack },
+    });
     expect(context.voiceGain(context.sources[0]!)?.outputs).toEqual([bus]);
     expect(cap.gain.value).toBe(capGain(DEFAULT_CAP));
     expect(master.gain.value).toBe(sliderGain(DEFAULT_MASTER));
@@ -109,7 +151,10 @@ describe('the first tap (R6)', () => {
     engine.pause();
     expect(engine.toggleLayer('rain')).toBe('added');
     deps.advance(1000);
-    expect(engine.getSnapshot()).toMatchObject({ status: 'paused', layers: [{ soundId: 'white' }, { soundId: 'rain' }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'paused',
+      layers: [{ soundId: 'white' }, { soundId: 'rain' }],
+    });
     expect(context.sources).toHaveLength(1);
     engine.play();
     deps.advance(100);
@@ -201,7 +246,10 @@ describe('sliders, the bus and the cap (R1)', () => {
       engine.setLevel(id, 1);
     }
     deps.advance(3000);
-    expect(context.graph.bus.gain.valueAt(context.currentTime)).toBeCloseTo(busScale([1, 1, 1, 1, 1, 1]), 3);
+    expect(context.graph.bus.gain.valueAt(context.currentTime)).toBeCloseTo(
+      busScale([1, 1, 1, 1, 1, 1]),
+      3,
+    );
   });
 
   it('the bus goes down at once and comes back up over 1.5 s when a layer leaves', () => {
@@ -214,7 +262,9 @@ describe('sliders, the bus and the cap (R1)', () => {
     const { bus } = context.graph;
     expect(bus.gain.valueAt(t + REMOVE_FADE_SECONDS)).toBeCloseTo(busScale([1, 1]), 3);
     expect(bus.gain.valueAt(t + REMOVE_FADE_SECONDS + RISE_SECONDS)).toBeCloseTo(1, 9);
-    expect(peakBetween(bus.gain, t, t + REMOVE_FADE_SECONDS + RISE_SECONDS)).toBeLessThanOrEqual(1 + 1e-9);
+    expect(peakBetween(bus.gain, t, t + REMOVE_FADE_SECONDS + RISE_SECONDS)).toBeLessThanOrEqual(
+      1 + 1e-9,
+    );
   });
 
   it('raising the cap lowers the master so that what plays stays the same, and nothing gets louder meanwhile', () => {
@@ -225,7 +275,8 @@ describe('sliders, the bus and the cap (R1)', () => {
     const before = master.gain.valueAt(t) * cap.gain.valueAt(t);
     engine.setCap(1);
     expect(engine.getSnapshot().master).toBeCloseTo(0.3, 9);
-    for (let at = t; at <= t + 5; at += 0.05) expect(master.gain.valueAt(at) * cap.gain.valueAt(at)).toBeLessThanOrEqual(before + 1e-6);
+    for (let at = t; at <= t + 5; at += 0.05)
+      expect(master.gain.valueAt(at) * cap.gain.valueAt(at)).toBeLessThanOrEqual(before + 1e-6);
     expect(master.gain.valueAt(t + 5) * cap.gain.valueAt(t + 5)).toBeCloseTo(before, 4);
     expect(cap.gain.valueAt(t + RISE_SECONDS)).toBe(1);
     expect(cap.gain.valueAt(t + RISE_SECONDS / 2)).toBeLessThan(1);
@@ -317,7 +368,12 @@ describe('the sleep timer (R1, R2)', () => {
     engine.toggleLayer('white');
     deps.advance(100);
     context.sentinels[0]!.fireEnded();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, timer: 15, layers: [{ soundId: 'white' }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      endsAt: null,
+      timer: 15,
+      layers: [{ soundId: 'white' }],
+    });
     expect(context.calls).toEqual(['resume', 'suspend']);
     expect(context.sources[0]?.stops).toEqual([undefined]);
     expect(context.graph.sleep.gain.valueAt(context.currentTime + 1)).toBe(1);
@@ -331,7 +387,10 @@ describe('the sleep timer (R1, R2)', () => {
     deps.advance(15 * MINUTE);
     expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, timer: 15 });
     engine.play();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', endsAt: WALL_START + 30 * MINUTE });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'playing',
+      endsAt: WALL_START + 30 * MINUTE,
+    });
     expect(context.sentinels).toHaveLength(2);
     expect(context.sentinels[1]?.stops).toEqual([context.currentTime + 15 * 60]);
   });
@@ -365,7 +424,8 @@ describe('the sleep timer (R1, R2)', () => {
     const end = t + 10 * 60;
     expect(sleep.gain.valueAt(end - FADE_SECONDS)).toBe(1);
     expect(sleep.gain.valueAt(end)).toBe(0);
-    for (const param of [sleep, transport, cap, bus]) expect(peakBetween(param.gain, t, end)).toBeLessThanOrEqual(param.gain.valueAt(t) + 1e-9);
+    for (const param of [sleep, transport, cap, bus])
+      expect(peakBetween(param.gain, t, end)).toBeLessThanOrEqual(param.gain.valueAt(t) + 1e-9);
   });
 
   it('cancelling inside the fade holds the value where it is and comes back over 3 s', () => {
@@ -433,7 +493,8 @@ describe('the sleep timer (R1, R2)', () => {
     expect(transport.gain.valueAt(t + START_FADE_SECONDS)).toBe(1);
     // The resume raises nothing but the transport's own fade-in (R1).
     const { bus, master, cap } = context.graph;
-    for (const param of [bus, master, cap]) expect(peakBetween(param.gain, t, t + 10)).toBeLessThanOrEqual(param.gain.valueAt(t) + 1e-9);
+    for (const param of [bus, master, cap])
+      expect(peakBetween(param.gain, t, t + 10)).toBeLessThanOrEqual(param.gain.valueAt(t) + 1e-9);
     expect(peakBetween(sleep.gain, t, t + 10)).toBeLessThanOrEqual(1);
     deps.advance(5 * MINUTE);
     expect(engine.getSnapshot()).toMatchObject({ status: 'stopped' });
@@ -521,7 +582,10 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(context.sources).toHaveLength(sources + 1); // rain starts in this call, at its full level
     const { transport } = context.graph;
     expect(transport.gain.valueAt(t)).toBe(0);
-    for (let at = t; at <= t + START_FADE_SECONDS + 0.5; at += 0.02) expect(transport.gain.valueAt(at)).toBeLessThanOrEqual(Math.min(1, (at - t) / START_FADE_SECONDS) + 1e-9);
+    for (let at = t; at <= t + START_FADE_SECONDS + 0.5; at += 0.02)
+      expect(transport.gain.valueAt(at)).toBeLessThanOrEqual(
+        Math.min(1, (at - t) / START_FADE_SECONDS) + 1e-9,
+      );
     expect(transport.gain.valueAt(t + START_FADE_SECONDS)).toBe(1);
   });
 
@@ -541,7 +605,8 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(transport.gain.valueAt(t)).toBe(0);
     expect(transport.gain.valueAt(t + START_FADE_SECONDS)).toBe(1);
     const { bus, master, cap, sleep } = context.graph;
-    for (const param of [bus, master, cap]) expect(peakBetween(param.gain, t, t + 10)).toBeLessThanOrEqual(param.gain.valueAt(t) + 1e-9);
+    for (const param of [bus, master, cap])
+      expect(peakBetween(param.gain, t, t + 10)).toBeLessThanOrEqual(param.gain.valueAt(t) + 1e-9);
     expect(peakBetween(sleep.gain, t, t + 10)).toBeLessThanOrEqual(1);
   });
 
@@ -598,7 +663,10 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(deps.prepareSession).toHaveBeenCalledTimes(2);
     expect(context.calls).toEqual(['resume', 'resume']);
     await flush();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', layers: [{ soundId: 'white' }, { soundId: 'rain' }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'playing',
+      layers: [{ soundId: 'white' }, { soundId: 'rain' }],
+    });
   });
 
   it('a tile tap while interrupted with an expired timer stops without resuming the context (R2)', async () => {
@@ -609,7 +677,11 @@ describe('pause, resume and interruptions (R14)', () => {
     const resumes = context.calls.filter((call) => call === 'resume').length;
     deps.wall += 20 * MINUTE; // iOS freezes JS timers during an interruption: the wall clock moves, no timeout fires
     expect(engine.toggleLayer('rain')).toBe('added');
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, layers: [{ soundId: 'white' }, { soundId: 'rain' }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      endsAt: null,
+      layers: [{ soundId: 'white' }, { soundId: 'rain' }],
+    });
     expect(context.calls.filter((call) => call === 'resume')).toHaveLength(resumes);
   });
 
@@ -617,7 +689,12 @@ describe('pause, resume and interruptions (R14)', () => {
     const { engine, deps, context } = playing(['white', 'rain']);
     engine.setTimer(30);
     engine.stop();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, timer: 30, layers: [{ soundId: 'white' }, { soundId: 'rain' }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      endsAt: null,
+      timer: 30,
+      layers: [{ soundId: 'white' }, { soundId: 'rain' }],
+    });
     for (const source of context.sources) {
       expect(source.stops).toEqual([undefined]);
       expect(source.disconnected).toBe(true);
@@ -716,7 +793,13 @@ describe('mixes and the last selection (R7)', () => {
     expect(engine.getSnapshot().layers).toEqual([{ soundId: 'white', level: DEFAULT_LEVEL }]);
     deps.advance(3000);
     const t = context.currentTime;
-    expect(engine.loadMix([{ soundId: 'train', gain: 0.5 }, { soundId: 'rain', gain: 0.4 }, { soundId: 'rain', gain: 0.9 }])).toBe('started');
+    expect(
+      engine.loadMix([
+        { soundId: 'train', gain: 0.5 },
+        { soundId: 'rain', gain: 0.4 },
+        { soundId: 'rain', gain: 0.9 },
+      ]),
+    ).toBe('started');
     expect(engine.getSnapshot().layers).toEqual([{ soundId: 'rain', level: 0.4 }]);
     const old = context.voiceGain(context.sources[0]!)!.gain;
     expect(old.valueAt(t + START_FADE_SECONDS)).toBe(0);
@@ -782,7 +865,12 @@ describe('mixes and the last selection (R7)', () => {
       throw new RangeError('Array buffer allocation failed');
     });
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(engine.loadMix([{ soundId: 'white', gain: 1 }, { soundId: 'heartbeat', gain: 1 }])).toBe('started');
+    expect(
+      engine.loadMix([
+        { soundId: 'white', gain: 1 },
+        { soundId: 'heartbeat', gain: 1 },
+      ]),
+    ).toBe('started');
     deps.advance(100); // heartbeat's generation runs from a timer and throws: its tile goes back to off
     expect(engine.getSnapshot().layers).toEqual([{ soundId: 'white', level: 1 }]);
     const settled = t + START_FADE_SECONDS + RISE_SECONDS + 0.2;
@@ -805,7 +893,8 @@ describe('mixes and the last selection (R7)', () => {
     expect(engine.loadMix(six.map((soundId) => ({ soundId, gain: 1 })))).toBe('started');
     const t = context.currentTime;
     expect(totalPower(context, t)).toBeLessThanOrEqual(before + 1e-3); // no instant jump right when the new voices start
-    for (let at = t; at <= t + START_FADE_SECONDS + 0.1; at += 0.02) expect(totalPower(context, at)).toBeLessThanOrEqual(before + 1e-3);
+    for (let at = t; at <= t + START_FADE_SECONDS + 0.1; at += 0.02)
+      expect(totalPower(context, at)).toBeLessThanOrEqual(before + 1e-3);
     deps.advance(2100); // past the transport's own fade-in
     expect(totalPower(context, context.currentTime)).toBeCloseTo(before, 3); // six full layers: the same ceiling
   });
@@ -822,7 +911,8 @@ describe('mixes and the last selection (R7)', () => {
     deps.advance(100); // 0.1 s into the 0.3 s stop fade: white's own fading tail is still audible
     expect(engine.loadMix(six.map((soundId) => ({ soundId, gain: 1 })))).toBe('started');
     const t = context.currentTime;
-    for (let at = t; at <= t + START_FADE_SECONDS + 0.1; at += 0.02) expect(totalPower(context, at)).toBeLessThanOrEqual(before + 1e-3);
+    for (let at = t; at <= t + START_FADE_SECONDS + 0.1; at += 0.02)
+      expect(totalPower(context, at)).toBeLessThanOrEqual(before + 1e-3);
     deps.advance(2100);
     expect(totalPower(context, context.currentTime)).toBeCloseTo(before, 3);
   });
@@ -853,7 +943,12 @@ describe('mixes and the last selection (R7)', () => {
     engine.toggleLayer('rain'); // removes it again; the loop stays cached
     deps.advance(3000);
     const t = context.currentTime;
-    expect(engine.loadMix([{ soundId: 'white', gain: DEFAULT_LEVEL }, { soundId: 'rain', gain: 1 }])).toBe('started');
+    expect(
+      engine.loadMix([
+        { soundId: 'white', gain: DEFAULT_LEVEL },
+        { soundId: 'rain', gain: 1 },
+      ]),
+    ).toBe('started');
     expect(deps.generate).toHaveBeenCalledTimes(2); // no new generation: the loop was already cached
     const source = context.sources.at(-1)!;
     const gain = context.voiceGain(source)!.gain;
@@ -872,7 +967,9 @@ describe('mixes and the last selection (R7)', () => {
     const source = context.sources.at(-1)!;
     const gain = context.voiceGain(source)!.gain;
     expect(gain.valueAt(t)).toBe(0);
-    expect(gain.valueAt(t + START_FADE_SECONDS / 2)).toBeLessThan(sliderGain(DEFAULT_LEVEL) / 2 + 0.05);
+    expect(gain.valueAt(t + START_FADE_SECONDS / 2)).toBeLessThan(
+      sliderGain(DEFAULT_LEVEL) / 2 + 0.05,
+    );
     expect(gain.valueAt(t + START_FADE_SECONDS)).toBeCloseTo(sliderGain(DEFAULT_LEVEL), 9);
   });
 
@@ -890,7 +987,10 @@ describe('mixes and the last selection (R7)', () => {
     engine.pause();
     deps.advance(1000);
     const t = context.currentTime;
-    const six = ['white', 'pink', 'brown', 'rain', 'wind', 'waves'].map((soundId) => ({ soundId, gain: 1 }));
+    const six = ['white', 'pink', 'brown', 'rain', 'wind', 'waves'].map((soundId) => ({
+      soundId,
+      gain: 1,
+    }));
     expect(engine.loadMix(six)).toBe('started');
     deps.advance(6 * GENERATE_GAP_MS); // five loops to generate, one gap before each
     const { bus } = context.graph;
@@ -908,7 +1008,11 @@ describe('mixes and the last selection (R7)', () => {
     engine.toggleLayer('white');
     engine.toggleLayer('rain');
     deps.advance(100);
-    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', layers: [{ soundId: 'rain' }], preparing: [] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'playing',
+      layers: [{ soundId: 'rain' }],
+      preparing: [],
+    });
     expect(context.sources).toHaveLength(1);
     expect(error).toHaveBeenCalledTimes(1);
     error.mockRestore();
@@ -916,9 +1020,20 @@ describe('mixes and the last selection (R7)', () => {
 
   it('loadMix while stopped unlocks the context in the tap and starts the mix', () => {
     const { engine, deps } = setup();
-    expect(engine.loadMix([{ soundId: 'white', gain: 0.5 }, { soundId: 'pink', gain: 0.6 }])).toBe('started');
+    expect(
+      engine.loadMix([
+        { soundId: 'white', gain: 0.5 },
+        { soundId: 'pink', gain: 0.6 },
+      ]),
+    ).toBe('started');
     expect(deps.context.calls).toEqual(['resume']);
-    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', layers: [{ soundId: 'white', level: 0.5 }, { soundId: 'pink', level: 0.6 }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'playing',
+      layers: [
+        { soundId: 'white', level: 0.5 },
+        { soundId: 'pink', level: 0.6 },
+      ],
+    });
   });
 
   it('loadMix while paused with an expired timer ends stopped, not "started"', () => {
@@ -928,7 +1043,11 @@ describe('mixes and the last selection (R7)', () => {
     deps.advance(1000);
     deps.wall += 20 * MINUTE; // iOS freezes JS timers: the wall clock jumps, no timeout fires
     expect(engine.loadMix([{ soundId: 'rain', gain: 0.5 }])).toBe('stopped');
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, layers: [{ soundId: 'rain', level: 0.5 }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      endsAt: null,
+      layers: [{ soundId: 'rain', level: 0.5 }],
+    });
   });
 
   it('loadMix while interrupted with an expired timer stops without resuming the context (R2)', async () => {
@@ -940,11 +1059,15 @@ describe('mixes and the last selection (R7)', () => {
     const resumes = context.calls.filter((call) => call === 'resume').length;
     deps.wall += 20 * MINUTE;
     expect(engine.loadMix([{ soundId: 'rain', gain: 0.5 }])).toBe('stopped');
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, layers: [{ soundId: 'rain', level: 0.5 }] });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      endsAt: null,
+      layers: [{ soundId: 'rain', level: 0.5 }],
+    });
     expect(context.calls.filter((call) => call === 'resume')).toHaveLength(resumes);
   });
 
-  it("the only layer's generator throwing stops cleanly instead of a silent \"playing\" with nothing left", () => {
+  it('the only layer\'s generator throwing stops cleanly instead of a silent "playing" with nothing left', () => {
     const { engine, deps } = setup();
     deps.generate.mockImplementationOnce(() => {
       throw new RangeError('Array buffer allocation failed');
@@ -973,7 +1096,15 @@ describe('mixes and the last selection (R7)', () => {
       },
       0.8,
     );
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', layers: [{ soundId: 'white', level: 1 }, { soundId: 'pink', level: 0 }], master: 0.4, timer: null });
+    expect(engine.getSnapshot()).toMatchObject({
+      status: 'stopped',
+      layers: [
+        { soundId: 'white', level: 1 },
+        { soundId: 'pink', level: 0 },
+      ],
+      master: 0.4,
+      timer: null,
+    });
     expect(deps.createContext).not.toHaveBeenCalled();
     engine.play();
     expect(deps.context.graph.cap.gain.value).toBe(capGain(0.8));

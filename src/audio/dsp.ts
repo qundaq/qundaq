@@ -13,7 +13,14 @@ export interface Biquad {
 }
 
 // Coefficients from the RBJ "Audio EQ Cookbook".
-function normalised(b0: number, b1: number, b2: number, a0: number, a1: number, a2: number): Biquad {
+function normalised(
+  b0: number,
+  b1: number,
+  b2: number,
+  a0: number,
+  a1: number,
+  a2: number,
+): Biquad {
   return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a1: a1 / a0, a2: a2 / a0 };
 }
 
@@ -79,7 +86,11 @@ export function filter(input: Float32Array, c: Biquad): Float32Array {
 }
 
 /** 1st-order low-pass (6 dB per octave) into a new array. */
-export function onePoleLowPass(input: Float32Array, sampleRate: number, cutoff: number): Float32Array {
+export function onePoleLowPass(
+  input: Float32Array,
+  sampleRate: number,
+  cutoff: number,
+): Float32Array {
   const k = 1 - Math.exp((-2 * Math.PI * cutoff) / sampleRate);
   const out = new Float32Array(input.length);
   let y = 0;
@@ -91,7 +102,11 @@ export function onePoleLowPass(input: Float32Array, sampleRate: number, cutoff: 
 }
 
 /** 1st-order high-pass (the input minus its 1st-order low-pass) into a new array. */
-export function onePoleHighPass(input: Float32Array, sampleRate: number, cutoff: number): Float32Array {
+export function onePoleHighPass(
+  input: Float32Array,
+  sampleRate: number,
+  cutoff: number,
+): Float32Array {
   const low = onePoleLowPass(input, sampleRate, cutoff);
   for (let i = 0; i < low.length; i++) low[i] = input[i]! - low[i]!;
   return low;
@@ -140,7 +155,12 @@ export function softLimit(samples: Float32Array, limit: number, knee = limit * (
  * Scales `samples` in place to a weighted RMS of `targetDb` dBFS. If a peak then exceeds `peakLimit`,
  * the soft-knee limiter takes the transients down (the weighted RMS drops a little with them).
  */
-export function normalise(samples: Float32Array, sampleRate: number, targetDb: number, peakLimit = 0.9): Float32Array {
+export function normalise(
+  samples: Float32Array,
+  sampleRate: number,
+  targetDb: number,
+  peakLimit = 0.9,
+): Float32Array {
   const current = weightedRms(samples, sampleRate);
   if (current === 0) return samples;
   const gain = 10 ** (targetDb / 20) / current;
@@ -156,10 +176,15 @@ export function normalise(samples: Float32Array, sampleRate: number, targetDb: n
  * neighbour. Equal power keeps the level of uncorrelated content (noise) steady through the crossfade;
  * never use it for content in step with itself (a rhythm), which gains up to 3 dB there.
  */
-export function makeLoop(samples: Float32Array, sampleRate: number, fadeSeconds: number): Float32Array {
+export function makeLoop(
+  samples: Float32Array,
+  sampleRate: number,
+  fadeSeconds: number,
+): Float32Array {
   const fade = Math.round(fadeSeconds * sampleRate);
   const length = samples.length - fade;
-  if (fade <= 0 || length < fade) throw new Error('makeLoop: the signal must be at least twice the crossfade');
+  if (fade <= 0 || length < fade)
+    throw new Error('makeLoop: the signal must be at least twice the crossfade');
   const out = samples.slice(0, length);
   for (let i = 0; i < fade; i++) {
     const angle = ((i + 0.5) / fade) * (Math.PI / 2);
@@ -174,7 +199,12 @@ export function periodSamples(seconds: number, sampleRate: number): number {
 }
 
 /** Adds `source` into `target` starting at `offset`, wrapping around the end: placing a sound on a circle. */
-export function addCircular(target: Float32Array, source: Float32Array, offset: number, gain = 1): void {
+export function addCircular(
+  target: Float32Array,
+  source: Float32Array,
+  offset: number,
+  gain = 1,
+): void {
   const length = target.length;
   for (let i = 0; i < source.length; i++) {
     const at = (offset + i) % length;

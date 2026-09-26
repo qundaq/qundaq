@@ -7,7 +7,9 @@ const CONTEXT = { ...pixel7, locale: 'tr-TR', serviceWorkers: 'allow' as const }
 
 // offline.spec.ts reopens a page in the same, still running browser. This closes the browser entirely and
 // relaunches it from the same profile with the network off, as when the phone restarts in airplane mode.
-test('the app opens from a closed browser with the network off, data included', async ({ browserName }) => {
+test('the app opens from a closed browser with the network off, data included', async ({
+  browserName,
+}) => {
   test.skip(
     browserName !== 'chromium',
     'Playwright WebKit: route()/setOffline() act before the service worker; iOS covered by docs/device-checklist.md',

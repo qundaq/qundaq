@@ -17,13 +17,25 @@ interface Props {
 export function BabyFormDialog({ open, baby, usedColors, onClose }: Props) {
   const t = useT();
   return (
-    <Sheet open={open} title={t(baby ? 'babies.formTitle.edit' : 'babies.formTitle.add')} onClose={onClose}>
+    <Sheet
+      open={open}
+      title={t(baby ? 'babies.formTitle.edit' : 'babies.formTitle.add')}
+      onClose={onClose}
+    >
       <BabyForm baby={baby} usedColors={usedColors} onDone={onClose} />
     </Sheet>
   );
 }
 
-function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: readonly string[]; onDone: () => void }) {
+function BabyForm({
+  baby,
+  usedColors,
+  onDone,
+}: {
+  baby?: Baby;
+  usedColors: readonly string[];
+  onDone: () => void;
+}) {
   const t = useT();
   const colorGroup = useId();
   const [name, setName] = useState(baby?.name ?? '');
@@ -51,7 +63,12 @@ function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: reado
     <form onSubmit={(event) => void submit(event)} noValidate>
       <label className="field">
         {t('babies.name')}
-        <input value={name} maxLength={BABY_NAME_MAX} autoComplete="off" onChange={(e) => setName(e.target.value)} />
+        <input
+          value={name}
+          maxLength={BABY_NAME_MAX}
+          autoComplete="off"
+          onChange={(e) => setName(e.target.value)}
+        />
       </label>
       <fieldset>
         <legend>{t('babies.color')}</legend>
@@ -72,7 +89,13 @@ function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: reado
       </fieldset>
       <label className="field">
         {t('babies.birthDate')}
-        <input type="date" value={birthDate} min="1900-01-01" max="9999-12-31" onChange={(e) => setBirthDate(e.target.value)} />
+        <input
+          type="date"
+          value={birthDate}
+          min="1900-01-01"
+          max="9999-12-31"
+          onChange={(e) => setBirthDate(e.target.value)}
+        />
       </label>
       {error && (
         <p role="alert" className="status-warn">

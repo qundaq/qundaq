@@ -1,7 +1,12 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { generateSound } from '../../audio/catalog';
 import { createSoundEngine, type EngineState, type SoundEngine } from '../../audio/engine';
-import { browserCreateMetadata, setPlaybackSession, updateMediaSession, watchAudioSession } from '../../platform/media';
+import {
+  browserCreateMetadata,
+  setPlaybackSession,
+  updateMediaSession,
+  watchAudioSession,
+} from '../../platform/media';
 
 let engine: SoundEngine | null = null;
 

@@ -1,8 +1,26 @@
 import { MAX_LAYERS, isSoundId, type SoundId } from '../domain/sounds';
 import { MINUTE } from '../domain/time';
 import { Automation } from './automation';
-import { DEFAULT_TIMER, isTimerChoice, recoverSteps, sleepSteps, timerEndsAt, type SleepStep, type TimerChoice } from './timer';
-import { DEFAULT_CAP, DEFAULT_MASTER, DEFAULT_LEVEL, busScale, capGain, clamp01, clampCap, masterAfterCapChange, sliderGain } from './volume';
+import {
+  DEFAULT_TIMER,
+  isTimerChoice,
+  recoverSteps,
+  sleepSteps,
+  timerEndsAt,
+  type SleepStep,
+  type TimerChoice,
+} from './timer';
+import {
+  DEFAULT_CAP,
+  DEFAULT_MASTER,
+  DEFAULT_LEVEL,
+  busScale,
+  capGain,
+  clamp01,
+  clampCap,
+  masterAfterCapChange,
+  sliderGain,
+} from './volume';
 
 // The parts of the Web Audio API the engine uses, so tests can hand it a fake. The browser's own
 // AudioContext fits these shapes (src/ui/sounds/useSoundEngine.ts passes it in without a cast).
@@ -216,7 +234,10 @@ interface CachedLoop {
 }
 
 function sameLayers(a: readonly EngineLayer[], b: readonly EngineLayer[]): boolean {
-  return a.length === b.length && a.every((layer, i) => layer.soundId === b[i]!.soundId && layer.level === b[i]!.level);
+  return (
+    a.length === b.length &&
+    a.every((layer, i) => layer.soundId === b[i]!.soundId && layer.level === b[i]!.level)
+  );
 }
 
 /**
@@ -226,7 +247,14 @@ function sameLayers(a: readonly EngineLayer[], b: readonly EngineLayer[]): boole
  * for ever makes the sound louder.
  */
 class Engine {
-  private state: EngineState = { status: 'stopped', layers: [], master: DEFAULT_MASTER, timer: DEFAULT_TIMER, endsAt: null, preparing: [] };
+  private state: EngineState = {
+    status: 'stopped',
+    layers: [],
+    master: DEFAULT_MASTER,
+    timer: DEFAULT_TIMER,
+    endsAt: null,
+    preparing: [],
+  };
   private readonly listeners = new Set<() => void>();
   private graph: Graph | null = null;
   private cap = DEFAULT_CAP;
@@ -285,7 +313,8 @@ class Engine {
   private usable(layers: readonly { soundId: string; level: number }[]): EngineLayer[] {
     const out: EngineLayer[] = [];
     for (const layer of layers) {
-      if (!isSoundId(layer.soundId) || out.some((other) => other.soundId === layer.soundId)) continue;
+      if (!isSoundId(layer.soundId) || out.some((other) => other.soundId === layer.soundId))
+        continue;
       if (out.length === MAX_LAYERS) break;
       out.push({ soundId: layer.soundId, level: clamp01(layer.level) });
     }
@@ -351,7 +380,8 @@ class Engine {
   private resumeContext(context: ContextLike): void {
     context.resume().then(
       () => {
-        if (this.state.status === 'interrupted' && context.state === 'running') this.contextStateChanged();
+        if (this.state.status === 'interrupted' && context.state === 'running')
+          this.contextStateChanged();
       },
       (error: unknown) => console.error('Could not start the sound', error),
     );
@@ -360,7 +390,9 @@ class Engine {
   private suspendContext(): void {
     const context = this.graph?.context;
     if (!context || context.state !== 'running') return;
-    context.suspend().catch((error: unknown) => console.error('Could not suspend the sound', error));
+    context
+      .suspend()
+      .catch((error: unknown) => console.error('Could not suspend the sound', error));
   }
 
   private cancelSuspend(): void {
@@ -411,7 +443,11 @@ class Engine {
   setLevel(soundId: SoundId, level: number): void {
     const value = clamp01(level);
     if (!this.state.layers.some((layer) => layer.soundId === soundId)) return;
-    this.update({ layers: this.state.layers.map((layer) => (layer.soundId === soundId ? { soundId, level: value } : layer)) });
+    this.update({
+      layers: this.state.layers.map((layer) =>
+        layer.soundId === soundId ? { soundId, level: value } : layer,
+      ),
+    });
     const voice = this.voices.get(soundId);
     if (voice && this.graph) {
       const t = this.graph.context.currentTime;
@@ -463,7 +499,10 @@ class Engine {
     const graph = this.unlock();
     if (status === 'stopped') {
       const timer = this.state.timer;
-      this.update({ status: 'playing', endsAt: timer === null ? null : timerEndsAt(this.deps.now(), timer) });
+      this.update({
+        status: 'playing',
+        endsAt: timer === null ? null : timerEndsAt(this.deps.now(), timer),
+      });
     } else {
       this.update({ status: 'playing' });
     }
@@ -495,10 +534,13 @@ class Engine {
     graph.transport.hold(t);
     graph.transport.ramp(0, t + PAUSE_FADE_SECONDS);
     this.cancelSuspend();
-    this.suspendTimer = this.deps.setTimeout(() => {
-      this.suspendTimer = null;
-      if (this.state.status === 'paused') this.suspendContext();
-    }, PAUSE_FADE_SECONDS * 1000 + 50);
+    this.suspendTimer = this.deps.setTimeout(
+      () => {
+        this.suspendTimer = null;
+        if (this.state.status === 'paused') this.suspendContext();
+      },
+      PAUSE_FADE_SECONDS * 1000 + 50,
+    );
   }
 
   /** Stops everything and forgets the countdown; the selection and the chip stay. `fade` seconds for a removed last layer. */
@@ -519,10 +561,13 @@ class Engine {
     } else {
       graph.transport.hold(t);
       graph.transport.ramp(0, t + fade);
-      this.suspendTimer = this.deps.setTimeout(() => {
-        this.suspendTimer = null;
-        if (this.state.status === 'stopped') this.suspendContext();
-      }, fade * 1000 + 50);
+      this.suspendTimer = this.deps.setTimeout(
+        () => {
+          this.suspendTimer = null;
+          if (this.state.status === 'stopped') this.suspendContext();
+        },
+        fade * 1000 + 50,
+      );
     }
   }
 
@@ -533,7 +578,9 @@ class Engine {
    * so, rather than claiming a start that did not happen.
    */
   loadMix(layers: readonly { soundId: string; gain: number }[]): 'started' | 'stopped' | 'empty' {
-    const next = this.usable(layers.map((layer) => ({ soundId: layer.soundId, level: layer.gain })));
+    const next = this.usable(
+      layers.map((layer) => ({ soundId: layer.soundId, level: layer.gain })),
+    );
     if (next.length === 0) return 'empty';
     const status = this.state.status;
     if (status === 'stopped' || status === 'paused') {
@@ -553,7 +600,8 @@ class Engine {
     const graph = this.unlock();
     const t = graph.context.currentTime;
     for (const soundId of [...this.voices.keys()]) {
-      if (!next.some((layer) => layer.soundId === soundId)) this.fadeOutVoice(soundId, START_FADE_SECONDS);
+      if (!next.some((layer) => layer.soundId === soundId))
+        this.fadeOutVoice(soundId, START_FADE_SECONDS);
     }
     this.update({ layers: next, preparing: this.stillSelected(next) });
     for (const layer of next) {
@@ -593,7 +641,10 @@ class Engine {
       if (this.state.status === 'interrupted') {
         if (this.timerExpired()) this.finishTimer();
         else this.resumeContext(graph.context);
-      } else if ((this.state.status === 'stopped' || this.state.status === 'paused') && graph.context.state === 'running') {
+      } else if (
+        (this.state.status === 'stopped' || this.state.status === 'paused') &&
+        graph.context.state === 'running'
+      ) {
         // The interruption ended on its own after a timer expiry or a pause had already silenced the sound
         // (their own suspend() was a no-op then, the context not being 'running' yet): no silent awake context.
         this.suspendContext();
@@ -622,7 +673,8 @@ class Engine {
       return;
     }
     // Suspended by the system (a call, an alarm, Siri) while the parent meant it to play.
-    if ((state === 'interrupted' || state === 'suspended') && this.state.status === 'playing') this.markInterrupted(graph);
+    if ((state === 'interrupted' || state === 'suspended') && this.state.status === 'playing')
+      this.markInterrupted(graph);
   }
 
   private markInterrupted(graph: Graph): void {
@@ -723,7 +775,8 @@ class Engine {
   private prepare(soundId: SoundId): void {
     if (this.state.preparing.includes(soundId)) return;
     this.update({ preparing: [...this.state.preparing, soundId] });
-    if (this.generating === null) this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
+    if (this.generating === null)
+      this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
   }
 
   private generateNext(): void {
@@ -740,7 +793,8 @@ class Engine {
       this.update({ preparing: rest });
       const layer = this.state.layers.find((entry) => entry.soundId === soundId);
       const status = this.state.status;
-      if (layer && (status === 'playing' || status === 'interrupted')) this.startVoice(layer, START_FADE_SECONDS);
+      if (layer && (status === 'playing' || status === 'interrupted'))
+        this.startVoice(layer, START_FADE_SECONDS);
     } catch (error) {
       // Out of memory on an old phone, say: the tile goes back to off instead of staying on "Hazırlanıyor…".
       console.error(`Could not generate the sound ${soundId}`, error);
@@ -750,7 +804,8 @@ class Engine {
       if (layers.length === 0 && this.state.status !== 'stopped') this.stop();
       else this.applyBus(0);
     }
-    if (rest.length > 0) this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
+    if (rest.length > 0)
+      this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
     this.markIdle();
   }
 
@@ -761,7 +816,9 @@ class Engine {
     const now = this.deps.now();
     const rate = graph.context.sampleRate;
     const playing = new Set<string>(
-      this.state.status === 'stopped' ? [] : this.state.layers.map((layer) => this.loopKey(layer.soundId, rate)),
+      this.state.status === 'stopped'
+        ? []
+        : this.state.layers.map((layer) => this.loopKey(layer.soundId, rate)),
     );
     let idle = false;
     for (const [key, loop] of this.loops) {

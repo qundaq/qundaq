@@ -15,10 +15,18 @@ export const CONTENT_SECURITY_POLICY = [
 ].join('; ');
 
 export function injectCsp(html: string): string {
-  if (!html.includes('<head>')) throw new Error('index.html has no <head> tag to attach the CSP to');
-  return html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}">`);
+  if (!html.includes('<head>'))
+    throw new Error('index.html has no <head> tag to attach the CSP to');
+  return html.replace(
+    '<head>',
+    `<head>\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}">`,
+  );
 }
 
 export function cspPlugin(): Plugin {
-  return { name: 'qundaq:csp', apply: 'build', transformIndexHtml: { order: 'post', handler: injectCsp } };
+  return {
+    name: 'qundaq:csp',
+    apply: 'build',
+    transformIndexHtml: { order: 'post', handler: injectCsp },
+  };
 }

@@ -15,9 +15,15 @@ export interface Prepared {
   countsAsBackup: boolean; // only a JSON backup sets lastBackupAt
 }
 
-export async function prepareBackup(t: TranslateFn, locale: Locale, now = Date.now()): Promise<Prepared> {
+export async function prepareBackup(
+  t: TranslateFn,
+  locale: Locale,
+  now = Date.now(),
+): Promise<Prepared> {
   const snapshot = await readSnapshot(db, locale);
-  const text = serializeBackup(buildBackup(snapshot, { exportedAt: now, appVersion: __APP_VERSION__ }));
+  const text = serializeBackup(
+    buildBackup(snapshot, { exportedAt: now, appVersion: __APP_VERSION__ }),
+  );
   const file = new File([text], backupFileName(now), { type: BACKUP_MIME });
   const summary = t('export.contents', {
     babies: formatNumber(locale, countLive(snapshot.babies)),
@@ -39,7 +45,11 @@ const CSV_HEADERS: readonly MessageKey[] = [
 ];
 
 /** One CSV per baby (and one for pumping), for the pediatrician. Never counts as a backup. */
-export async function prepareCsv(t: TranslateFn, locale: Locale, now = Date.now()): Promise<Prepared> {
+export async function prepareCsv(
+  t: TranslateFn,
+  locale: Locale,
+  now = Date.now(),
+): Promise<Prepared> {
   const snapshot = await readSnapshot(db, locale);
   const csv = buildCsvFiles({
     babies: snapshot.babies,
@@ -58,6 +68,9 @@ export async function prepareCsv(t: TranslateFn, locale: Locale, now = Date.now(
   const summary =
     files.length === 0
       ? t('csv.empty')
-      : t('csv.contents', { n: formatNumber(locale, files.length), names: csv.map((file) => file.name).join(', ') });
+      : t('csv.contents', {
+          n: formatNumber(locale, files.length),
+          names: csv.map((file) => file.name).join(', '),
+        });
   return { files, summary, countsAsBackup: countsAsBackup('csv') };
 }

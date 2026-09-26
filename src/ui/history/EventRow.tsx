@@ -19,7 +19,11 @@ export function EventRow({ event, baby, day, now, onOpen }: Props) {
     <button type="button" className="log-row" onClick={onOpen}>
       <span className="log-time">{timeRange(t, locale, event, day)}</span>
       <span className="log-main">
-        <span className="dot" style={baby ? { background: baby.color } : undefined} aria-hidden="true" />
+        <span
+          className="dot"
+          style={baby ? { background: baby.color } : undefined}
+          aria-hidden="true"
+        />
         <span>{baby ? baby.name : t('log.mother')}</span>
         <span className="muted">· {typeLabel(t, event.type)}</span>
         {hasAlert(event) && (

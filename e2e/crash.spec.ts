@@ -1,6 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
-import { babyIdOf, clearAppData, pickBackupFile, putRawEvent, sharedFiles, stubShare } from './support/backup';
-import { addBabyInSettings, babyCard, logDiaper, logRows, openRow, openTab } from './support/tracking';
+import {
+  babyIdOf,
+  clearAppData,
+  pickBackupFile,
+  putRawEvent,
+  sharedFiles,
+  stubShare,
+} from './support/backup';
+import {
+  addBabyInSettings,
+  babyCard,
+  logDiaper,
+  logRows,
+  openRow,
+  openTab,
+} from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
@@ -21,9 +35,20 @@ async function crashHome(page: Page) {
   await logDiaper(page, { at: '2026-09-26T09:00' });
   const babyId = await babyIdOf(page, 'Ada');
   const at = NOW - 30 * MINUTE;
-  await putRawEvent(page, { id: 'bad-feed', type: 'breastfeed', babyId, startAt: at, endAt: at + 10 * MINUTE, segments: [], createdAt: at, updatedAt: at });
+  await putRawEvent(page, {
+    id: 'bad-feed',
+    type: 'breastfeed',
+    babyId,
+    startAt: at,
+    endAt: at + 10 * MINUTE,
+    segments: [],
+    createdAt: at,
+    updatedAt: at,
+  });
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'Bir şeyler ters gitti.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Bir şeyler ters gitti.' }),
+  ).toBeVisible();
 }
 
 /** The crash screen's "Yedek al"; returns the backup's JSON text. */
@@ -39,13 +64,19 @@ async function emergencyBackup(page: Page): Promise<string> {
   return file!.text;
 }
 
-test('a crashing screen shows the fallback; its backup works, and Günlük can remove the bad entry', async ({ page }) => {
+test('a crashing screen shows the fallback; its backup works, and Günlük can remove the bad entry', async ({
+  page,
+}) => {
   await crashHome(page);
   await expect(page.getByText(/^Diğer sekmeler çalışmaya devam ediyor\./)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Yeniden yükle', exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByLabel('Yedekten geri yükle', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('main').getByLabel('Yedekten geri yükle', { exact: true }),
+  ).toBeVisible();
 
-  const backup = JSON.parse(await emergencyBackup(page)) as { events: { id: string; type: string; segments?: unknown }[] };
+  const backup = JSON.parse(await emergencyBackup(page)) as {
+    events: { id: string; type: string; segments?: unknown }[];
+  };
   expect(backup.events.map((event) => event.type).sort()).toEqual(['breastfeed', 'diaper']);
   expect(backup.events.find((event) => event.id === 'bad-feed')).toMatchObject({ segments: [] });
 
@@ -65,7 +96,9 @@ test('a crashing screen shows the fallback; its backup works, and Günlük can r
   await expect(page.getByText('Bir şeyler ters gitti.')).toHaveCount(0);
 });
 
-test("the crash screen's backup restores its good entries; the bad one is named and skipped", async ({ page }) => {
+test("the crash screen's backup restores its good entries; the bad one is named and skipped", async ({
+  page,
+}) => {
   await crashHome(page);
   const backup = await emergencyBackup(page);
 
@@ -73,9 +106,13 @@ test("the crash screen's backup restores its good entries; the bad one is named 
   const sheet = await pickBackupFile(page, backup);
   await expect(sheet).toContainText('1 kayıt okunamadı ve atlanacak.');
   await sheet.getByText('Ayrıntılar', { exact: true }).click();
-  await expect(sheet.getByRole('listitem')).toHaveText(['26 Eyl 09:30 · Emzirme: ayrıntıları geçersiz']);
+  await expect(sheet.getByRole('listitem')).toHaveText([
+    '26 Eyl 09:30 · Emzirme: ayrıntıları geçersiz',
+  ]);
   await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
-  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 1 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await expect(sheet.getByRole('status')).toHaveText(
+    'Geri yüklendi: 1 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.',
+  );
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
 
   await openTab(page, 'Ana');
@@ -84,20 +121,29 @@ test("the crash screen's backup restores its good entries; the bad one is named 
   await expect(logRows(page)).toHaveCount(1);
 });
 
-test('a restore from the crash screen that replaces the bad entry brings the screen back at once', async ({ page }) => {
+test('a restore from the crash screen that replaces the bad entry brings the screen back at once', async ({
+  page,
+}) => {
   await crashHome(page);
   const backup = await emergencyBackup(page);
 
   // Straight from the crash screen, without leaving the tab.
-  await page.getByRole('main').getByLabel('Yedekten geri yükle', { exact: true }).setInputFiles({
-    name: 'qundaq-backup.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(backup),
-  });
+  await page
+    .getByRole('main')
+    .getByLabel('Yedekten geri yükle', { exact: true })
+    .setInputFiles({
+      name: 'qundaq-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(backup),
+    });
   const sheet = page.getByRole('dialog', { name: 'Yedekten geri yükle' });
   await expect(sheet).toContainText('1 kayıt okunamadı ve atlanacak.');
   await sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true }).click();
-  await sheet.getByRole('checkbox', { name: 'Yedeğin bu cihazdaki tüm verilerin yerini alacağını anlıyorum' }).check();
+  await sheet
+    .getByRole('checkbox', {
+      name: 'Yedeğin bu cihazdaki tüm verilerin yerini alacağını anlıyorum',
+    })
+    .check();
   await sheet.getByRole('button', { name: 'Değiştir', exact: true }).click();
   await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 1 bebek ve 1 kayıt.');
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();

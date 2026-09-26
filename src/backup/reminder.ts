@@ -34,17 +34,27 @@ export interface Reminder {
  * Home's banner: shown when there is at least one live entry and no backup, or the last one is older than
  * seven days, unless the user snoozed it.
  */
-export function backupReminder(settings: ReminderSettings, hasEvents: boolean, now: number): Reminder {
+export function backupReminder(
+  settings: ReminderSettings,
+  hasEvents: boolean,
+  now: number,
+): Reminder {
   const last = believable(settings.lastBackupAt, now + DAY);
   const snoozedUntil = believable(settings.backupReminderSnoozedUntil, now + MAX_SNOOZE_MS);
   const daysSince = last === undefined ? null : daysSinceBackup(last, now);
-  if (!hasEvents || (snoozedUntil !== undefined && now < snoozedUntil)) return { show: false, daysSince };
+  if (!hasEvents || (snoozedUntil !== undefined && now < snoozedUntil))
+    return { show: false, daysSince };
   return { show: last === undefined || now - last > REMIND_AFTER_MS, daysSince };
 }
 
 /** "Yarın hatırlat": 09:00 local on the next calendar day, and at least 12 hours from now. */
 export function snoozeUntil(now: number): number {
   const today = new Date(now);
-  const nextMorning = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, SNOOZE_HOUR).getTime();
+  const nextMorning = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 1,
+    SNOOZE_HOUR,
+  ).getTime();
   return Math.max(nextMorning, now + MIN_SNOOZE_MS);
 }

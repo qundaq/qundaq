@@ -28,7 +28,11 @@ afterEach(async () => {
 describe('logEvents', () => {
   it('stores a single event without a group', async () => {
     const db = freshDb();
-    const [diaper] = await logEvents(db, [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }], NOW);
+    const [diaper] = await logEvents(
+      db,
+      [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }],
+      NOW,
+    );
     expect(diaper).toMatchObject({ type: 'diaper', babyId: 'a', createdAt: NOW, updatedAt: NOW });
     expect(diaper!.groupId).toBeUndefined();
     expect(await listRecentEvents(db, NOW - DAY)).toEqual([diaper]);
@@ -106,7 +110,19 @@ describe('logEvents', () => {
     const db = freshDb();
     const start = NOW - 5 * HOUR;
     await expect(
-      logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, endAt: NOW, segments: [{ side: 'L', start, end: NOW }] }], NOW),
+      logEvents(
+        db,
+        [
+          {
+            type: 'breastfeed',
+            babyId: 'a',
+            startAt: start,
+            endAt: NOW,
+            segments: [{ side: 'L', start, end: NOW }],
+          },
+        ],
+        NOW,
+      ),
     ).rejects.toMatchObject({ violations: ['too-long'] });
   });
 });
@@ -134,7 +150,11 @@ describe('listRecentEvents', () => {
 describe('timers', () => {
   it('stopEvent ends a running sleep', async () => {
     const db = freshDb();
-    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    const [sleep] = await logEvents(
+      db,
+      [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }],
+      NOW - 40 * MINUTE,
+    );
     await stopEvent(db, sleep!.id, NOW);
     expect(await db.events.get(sleep!.id)).toMatchObject({ endAt: NOW, updatedAt: NOW });
   });
@@ -142,30 +162,55 @@ describe('timers', () => {
   it('stopEvent closes the open breastfeeding segment', async () => {
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
-    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }],
+      start,
+    );
     await stopEvent(db, feed!.id, NOW);
-    expect(await db.events.get(feed!.id)).toMatchObject({ endAt: NOW, segments: [{ side: 'L', start, end: NOW }] });
+    expect(await db.events.get(feed!.id)).toMatchObject({
+      endAt: NOW,
+      segments: [{ side: 'L', start, end: NOW }],
+    });
   });
 
   it('switchBreastSide closes the current side and opens the other', async () => {
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
-    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }],
+      start,
+    );
     await switchBreastSide(db, feed!.id, NOW);
     const stored = await db.events.get(feed!.id);
-    expect(stored).toMatchObject({ segments: [{ side: 'L', start, end: NOW }, { side: 'R', start: NOW }], updatedAt: NOW });
+    expect(stored).toMatchObject({
+      segments: [
+        { side: 'L', start, end: NOW },
+        { side: 'R', start: NOW },
+      ],
+      updatedAt: NOW,
+    });
     expect(stored!.endAt).toBeUndefined();
   });
 
   it('stopEvent reports true when it stopped the event', async () => {
     const db = freshDb();
-    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    const [sleep] = await logEvents(
+      db,
+      [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }],
+      NOW - 40 * MINUTE,
+    );
     expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);
   });
 
   it('stopping an already finished event is a no-op (double tap on "Emzirmeyi bitir" or "Uyandı")', async () => {
     const db = freshDb();
-    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    const [sleep] = await logEvents(
+      db,
+      [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }],
+      NOW - 40 * MINUTE,
+    );
     expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);
     expect(await stopEvent(db, sleep!.id, NOW + 5000)).toBe(false);
     expect(await db.events.get(sleep!.id)).toMatchObject({ endAt: NOW, updatedAt: NOW });
@@ -173,7 +218,11 @@ describe('timers', () => {
 
   it('stopEvent still refuses a missing or deleted event', async () => {
     const db = freshDb();
-    const [sleep] = await logEvents(db, [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }], NOW - 40 * MINUTE);
+    const [sleep] = await logEvents(
+      db,
+      [{ type: 'sleep', babyId: 'a', startAt: NOW - 40 * MINUTE }],
+      NOW - 40 * MINUTE,
+    );
     await db.events.put({ ...sleep!, deletedAt: NOW });
     await expect(stopEvent(db, sleep!.id, NOW)).rejects.toThrow(/not found/);
     await expect(stopEvent(db, 'missing', NOW)).rejects.toThrow(/not found/);
@@ -182,7 +231,11 @@ describe('timers', () => {
   it('switchBreastSide reports true when it switched', async () => {
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
-    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }],
+      start,
+    );
     expect(await switchBreastSide(db, feed!.id, NOW)).toBe(true);
   });
 
@@ -190,11 +243,18 @@ describe('timers', () => {
     expect(SWITCH_DEBOUNCE_MS).toBe(2000);
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
-    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }],
+      start,
+    );
     expect(await switchBreastSide(db, feed!.id, NOW)).toBe(true);
     expect(await switchBreastSide(db, feed!.id, NOW + SWITCH_DEBOUNCE_MS - 1)).toBe(false);
     expect(await db.events.get(feed!.id)).toMatchObject({
-      segments: [{ side: 'L', start, end: NOW }, { side: 'R', start: NOW }],
+      segments: [
+        { side: 'L', start, end: NOW },
+        { side: 'R', start: NOW },
+      ],
       updatedAt: NOW,
     });
     expect(await switchBreastSide(db, feed!.id, NOW + SWITCH_DEBOUNCE_MS)).toBe(true);
@@ -210,10 +270,17 @@ describe('timers', () => {
   it('switching a finished feed is a no-op', async () => {
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
-    const [feed] = await logEvents(db, [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }], start);
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }],
+      start,
+    );
     await stopEvent(db, feed!.id, NOW);
     expect(await switchBreastSide(db, feed!.id, NOW + 10_000)).toBe(false);
-    expect(await db.events.get(feed!.id)).toMatchObject({ endAt: NOW, segments: [{ side: 'L', start, end: NOW }] });
+    expect(await db.events.get(feed!.id)).toMatchObject({
+      endAt: NOW,
+      segments: [{ side: 'L', start, end: NOW }],
+    });
   });
 
   it('switchBreastSide still refuses a missing, deleted or non-breastfeed event', async () => {
@@ -262,8 +329,14 @@ describe('running events', () => {
 
   it('stopEvent refuses an entry that is not a timer', async () => {
     const db = freshDb();
-    const [diaper] = await logEvents(db, [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }], NOW);
-    await expect(stopEvent(db, diaper!.id, NOW)).rejects.toThrow(`Event ${diaper!.id} is not a timer`);
+    const [diaper] = await logEvents(
+      db,
+      [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }],
+      NOW,
+    );
+    await expect(stopEvent(db, diaper!.id, NOW)).rejects.toThrow(
+      `Event ${diaper!.id} is not a timer`,
+    );
   });
 });
 
@@ -271,7 +344,11 @@ describe('hasLiveEvents', () => {
   it('is true only while an entry that is not deleted exists', async () => {
     const db = freshDb();
     expect(await hasLiveEvents(db)).toBe(false);
-    const [diaper] = await logEvents(db, [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }], NOW);
+    const [diaper] = await logEvents(
+      db,
+      [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }],
+      NOW,
+    );
     expect(await hasLiveEvents(db)).toBe(true);
     await deleteEvent(db, diaper!.id, NOW);
     expect(await hasLiveEvents(db)).toBe(false);

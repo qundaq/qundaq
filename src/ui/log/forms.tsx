@@ -35,10 +35,20 @@ export function DiaperForm({ value, onChange }: FormProps<DiaperInput>) {
       <fieldset>
         <legend>{t('diaper.kind')}</legend>
         <div className="chips">
-          <button type="button" className="chip" aria-pressed={value.wet} onClick={() => onChange({ ...value, wet: !value.wet })}>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={value.wet}
+            onClick={() => onChange({ ...value, wet: !value.wet })}
+          >
             {t('diaper.wet.button')}
           </button>
-          <button type="button" className="chip" aria-pressed={value.dirty} onClick={() => onChange({ ...value, dirty: !value.dirty })}>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={value.dirty}
+            onClick={() => onChange({ ...value, dirty: !value.dirty })}
+          >
             {t('diaper.dirty.button')}
           </button>
         </div>
@@ -98,7 +108,13 @@ function parsePositiveInt(raw: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function DurationField({ value, onChange }: { value: number | null; onChange: (next: number | null) => void }) {
+function DurationField({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (next: number | null) => void;
+}) {
   const t = useT();
   return (
     <label className="field">
@@ -123,19 +139,33 @@ export function BreastfeedForm({ value, onChange }: FormProps<BreastfeedInput>) 
         <legend>{t('sheet.side')}</legend>
         <div className="chips">
           {SIDES.map((side) => (
-            <button key={side} type="button" className="chip" aria-pressed={value.side === side} onClick={() => onChange({ ...value, side })}>
+            <button
+              key={side}
+              type="button"
+              className="chip"
+              aria-pressed={value.side === side}
+              onClick={() => onChange({ ...value, side })}
+            >
               {t(`side.${side}.button`)}
             </button>
           ))}
         </div>
       </fieldset>
-      <DurationField value={value.durationMin} onChange={(durationMin) => onChange({ ...value, durationMin })} />
+      <DurationField
+        value={value.durationMin}
+        onChange={(durationMin) => onChange({ ...value, durationMin })}
+      />
     </>
   );
 }
 
 export function SleepForm({ value, onChange }: FormProps<SleepInput>) {
-  return <DurationField value={value.durationMin} onChange={(durationMin) => onChange({ ...value, durationMin })} />;
+  return (
+    <DurationField
+      value={value.durationMin}
+      onChange={(durationMin) => onChange({ ...value, durationMin })}
+    />
+  );
 }
 
 export function BottleForm({ value, onChange }: FormProps<BottleInput>) {
@@ -155,7 +185,13 @@ export function BottleForm({ value, onChange }: FormProps<BottleInput>) {
       </label>
       <div className="chips">
         {QUICK_ML.map((ml) => (
-          <button key={ml} type="button" className="chip" aria-pressed={value.ml === ml} onClick={() => onChange({ ...value, ml })}>
+          <button
+            key={ml}
+            type="button"
+            className="chip"
+            aria-pressed={value.ml === ml}
+            onClick={() => onChange({ ...value, ml })}
+          >
             {t('unit.ml', { ml })}
           </button>
         ))}
@@ -181,7 +217,15 @@ export function BottleForm({ value, onChange }: FormProps<BottleInput>) {
 }
 
 /** A multi-line note; optional on every entry, required on a health note. */
-export function NoteField({ value, required, onChange }: { value: string; required: boolean; onChange: (next: string) => void }) {
+export function NoteField({
+  value,
+  required,
+  onChange,
+}: {
+  value: string;
+  required: boolean;
+  onChange: (next: string) => void;
+}) {
   const t = useT();
   return (
     <label className="field">
@@ -205,7 +249,13 @@ export function OtherTypeChips({ value, onChange }: FormProps<OtherType>) {
       <legend>{t('other.type')}</legend>
       <div className="chips">
         {OTHER_TYPES.map((type) => (
-          <button key={type} type="button" className="chip" aria-pressed={value === type} onClick={() => onChange(type)}>
+          <button
+            key={type}
+            type="button"
+            className="chip"
+            aria-pressed={value === type}
+            onClick={() => onChange(type)}
+          >
             {t(`other.chip.${type}`)}
           </button>
         ))}
@@ -247,11 +297,25 @@ export function PumpForm({ value, onChange }: FormProps<PumpInput>) {
  * A decimal field. type="text" because an iOS number field with the Turkish keypad reports "3,45" as an
  * empty value; inputMode="decimal" still brings up the keypad with the comma.
  */
-function DecimalField({ label, value, onChange }: { label: string; value: string; onChange: (next: string) => void }) {
+function DecimalField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+}) {
   return (
     <label className="field">
       {label}
-      <input type="text" inputMode="decimal" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} />
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </label>
   );
 }
@@ -260,9 +324,21 @@ export function GrowthForm({ value, onChange }: FormProps<GrowthInput>) {
   const t = useT();
   return (
     <>
-      <DecimalField label={t('growth.weight')} value={value.weightKg} onChange={(weightKg) => onChange({ ...value, weightKg })} />
-      <DecimalField label={t('growth.height')} value={value.heightCm} onChange={(heightCm) => onChange({ ...value, heightCm })} />
-      <DecimalField label={t('growth.head')} value={value.headCm} onChange={(headCm) => onChange({ ...value, headCm })} />
+      <DecimalField
+        label={t('growth.weight')}
+        value={value.weightKg}
+        onChange={(weightKg) => onChange({ ...value, weightKg })}
+      />
+      <DecimalField
+        label={t('growth.height')}
+        value={value.heightCm}
+        onChange={(heightCm) => onChange({ ...value, heightCm })}
+      />
+      <DecimalField
+        label={t('growth.head')}
+        value={value.headCm}
+        onChange={(headCm) => onChange({ ...value, headCm })}
+      />
     </>
   );
 }
@@ -278,7 +354,11 @@ export function TemperatureForm({ value, onChange }: FormProps<TemperatureInput>
   if ((parsed !== null || value.celsius.trim() === '') && alert !== shown) setShown(alert);
   return (
     <>
-      <DecimalField label={t('temperature.value')} value={value.celsius} onChange={(celsius) => onChange({ celsius })} />
+      <DecimalField
+        label={t('temperature.value')}
+        value={value.celsius}
+        onChange={(celsius) => onChange({ celsius })}
+      />
       <p className="stool-alert" aria-live="polite" hidden={shown === null}>
         {shown === null ? '' : t(`temperature.alert.${shown}`)}
       </p>
@@ -286,7 +366,11 @@ export function TemperatureForm({ value, onChange }: FormProps<TemperatureInput>
   );
 }
 
-export function MedicationForm({ value, onChange, recent }: FormProps<MedicationInput> & { recent: readonly RecentMedication[] }) {
+export function MedicationForm({
+  value,
+  onChange,
+  recent,
+}: FormProps<MedicationInput> & { recent: readonly RecentMedication[] }) {
   const t = useT();
   return (
     <>

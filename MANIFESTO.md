@@ -34,19 +34,19 @@ commitments, that is a bug — please report it as a security issue.
 
 Every push that changes code runs these checks, and the app is deployed only if all of them pass:
 
-| Check | Where |
-|---|---|
-| Strict Content-Security-Policy in every production build (own origin only, no inline scripts) | `build/csp.ts`, `e2e/privacy.spec.ts` |
-| Zero network requests after the first load, while using the app (Chromium; iOS verified with docs/device-checklist.md) | `e2e/offline.spec.ts` |
-| Cold start with the network disabled (Chromium; iOS verified with docs/device-checklist.md) | `e2e/offline.spec.ts` |
-| Playing sounds, saving a mix and opening the sound sources make no network request (Chromium) and cause no CSP violations | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts` |
-| Backing up, exporting CSV and restoring make no network request (Chromium) and cause no CSP violations | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts` |
-| Update gate: a new version on the server is neither downloaded nor installed until you tap "Check for updates" — only `sw.js` is fetched (Chromium) | `e2e/update.spec.ts`, `tests/sw/service-worker.test.ts` |
-| Integrity check: every file of a new version must match the SHA-256 recorded at build time, or nothing is installed | `tests/scripts/sw-manifest.test.ts`, `tests/sw/service-worker.test.ts` (install behaviour) |
-| No CSP violations while using the app | `e2e/privacy.spec.ts` |
-| Bundle scan: no external URLs in the built files | `scripts/check-no-external-urls.mjs` |
-| License policy for every installed package | `scripts/check-licenses.mjs` |
-| Known-vulnerability audit | `npm audit` in `.github/workflows/ci.yml` |
+| Check                                                                                                                                               | Where                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Strict Content-Security-Policy in every production build (own origin only, no inline scripts)                                                       | `build/csp.ts`, `e2e/privacy.spec.ts`                                                      |
+| Zero network requests after the first load, while using the app (Chromium; iOS verified with docs/device-checklist.md)                              | `e2e/offline.spec.ts`                                                                      |
+| Cold start with the network disabled (Chromium; iOS verified with docs/device-checklist.md)                                                         | `e2e/offline.spec.ts`                                                                      |
+| Playing sounds, saving a mix and opening the sound sources make no network request (Chromium) and cause no CSP violations                           | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts`                                               |
+| Backing up, exporting CSV and restoring make no network request (Chromium) and cause no CSP violations                                              | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts`                                               |
+| Update gate: a new version on the server is neither downloaded nor installed until you tap "Check for updates" — only `sw.js` is fetched (Chromium) | `e2e/update.spec.ts`, `tests/sw/service-worker.test.ts`                                    |
+| Integrity check: every file of a new version must match the SHA-256 recorded at build time, or nothing is installed                                 | `tests/scripts/sw-manifest.test.ts`, `tests/sw/service-worker.test.ts` (install behaviour) |
+| No CSP violations while using the app                                                                                                               | `e2e/privacy.spec.ts`                                                                      |
+| Bundle scan: no external URLs in the built files                                                                                                    | `scripts/check-no-external-urls.mjs`                                                       |
+| License policy for every installed package                                                                                                          | `scripts/check-licenses.mjs`                                                               |
+| Known-vulnerability audit                                                                                                                           | `npm audit` in `.github/workflows/ci.yml`                                                  |
 
 ## What we cannot control
 

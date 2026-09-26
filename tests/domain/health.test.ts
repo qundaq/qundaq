@@ -25,23 +25,49 @@ describe('temperatureAlert', () => {
 
 describe('forgottenTimer', () => {
   it('a sleep running for more than 12 hours', () => {
-    expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: NOW - 12 * HOUR - MINUTE }), NOW)).toBe(true);
-    expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: NOW - 12 * HOUR }), NOW)).toBe(false);
-  });
-
-  it('a feed running for more than 2 hours', () => {
-    const start = NOW - 2 * HOUR - MINUTE;
-    expect(forgottenTimer(ev({ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }), NOW)).toBe(true);
-    const recent = NOW - 2 * HOUR;
-    expect(forgottenTimer(ev({ type: 'breastfeed', babyId: 'a', startAt: recent, segments: [{ side: 'L', start: recent }] }), NOW)).toBe(
+    expect(
+      forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: NOW - 12 * HOUR - MINUTE }), NOW),
+    ).toBe(true);
+    expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: NOW - 12 * HOUR }), NOW)).toBe(
       false,
     );
   });
 
+  it('a feed running for more than 2 hours', () => {
+    const start = NOW - 2 * HOUR - MINUTE;
+    expect(
+      forgottenTimer(
+        ev({ type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] }),
+        NOW,
+      ),
+    ).toBe(true);
+    const recent = NOW - 2 * HOUR;
+    expect(
+      forgottenTimer(
+        ev({
+          type: 'breastfeed',
+          babyId: 'a',
+          startAt: recent,
+          segments: [{ side: 'L', start: recent }],
+        }),
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
   it('never a finished, deleted or instant entry', () => {
     const old = NOW - 20 * HOUR;
-    expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: old, endAt: NOW }), NOW)).toBe(false);
-    expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: old }, { deletedAt: NOW }), NOW)).toBe(false);
-    expect(forgottenTimer(ev({ type: 'diaper', babyId: 'a', startAt: old, wet: true, dirty: false }), NOW)).toBe(false);
+    expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: old, endAt: NOW }), NOW)).toBe(
+      false,
+    );
+    expect(
+      forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: old }, { deletedAt: NOW }), NOW),
+    ).toBe(false);
+    expect(
+      forgottenTimer(
+        ev({ type: 'diaper', babyId: 'a', startAt: old, wet: true, dirty: false }),
+        NOW,
+      ),
+    ).toBe(false);
   });
 });

@@ -11,7 +11,15 @@ const PADDING = 24;
  * An inline SVG line in the baby's color with a dot per measurement, then the measurements as a table.
  * The table is the exact and accessible source; the chart's name summarises it.
  */
-export function GrowthChart({ points, metric, color }: { points: readonly GrowthPoint[]; metric: GrowthMetric; color: string }) {
+export function GrowthChart({
+  points,
+  metric,
+  color,
+}: {
+  points: readonly GrowthPoint[];
+  metric: GrowthMetric;
+  color: string;
+}) {
   const t = useT();
   const locale = useLocale();
   const first = points[0];
@@ -23,12 +31,28 @@ export function GrowthChart({ points, metric, color }: { points: readonly Growth
   const summary =
     points.length === 1
       ? t('growth.summaryOne', { metric: name, value: format(first.value) })
-      : t('growth.summary', { metric: name, first: format(first.value), last: format(last.value), count: points.length });
+      : t('growth.summary', {
+          metric: name,
+          first: format(first.value),
+          last: format(last.value),
+          count: points.length,
+        });
   return (
     <>
-      <svg className="growth-chart" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label={summary}>
+      <svg
+        className="growth-chart"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        role="img"
+        aria-label={summary}
+      >
         <line className="chart-axis" x1={PADDING} y1={PADDING} x2={PADDING} y2={HEIGHT - PADDING} />
-        <line className="chart-axis" x1={PADDING} y1={HEIGHT - PADDING} x2={WIDTH - PADDING} y2={HEIGHT - PADDING} />
+        <line
+          className="chart-axis"
+          x1={PADDING}
+          y1={HEIGHT - PADDING}
+          x2={WIDTH - PADDING}
+          y2={HEIGHT - PADDING}
+        />
         <text className="chart-label" x={PADDING + 4} y={PADDING + 12}>
           {format(geometry.yMax)}
         </text>
@@ -37,7 +61,9 @@ export function GrowthChart({ points, metric, color }: { points: readonly Growth
             {format(geometry.yMin)}
           </text>
         )}
-        {geometry.polyline && <polyline points={geometry.polyline} fill="none" stroke={color} strokeWidth={2} />}
+        {geometry.polyline && (
+          <polyline points={geometry.polyline} fill="none" stroke={color} strokeWidth={2} />
+        )}
         {geometry.dots.map((dot, i) => (
           <circle key={i} cx={dot.x} cy={dot.y} r={4} fill={color} />
         ))}

@@ -20,12 +20,23 @@ export function BabyPicker({ babies, selected, onChange }: Props) {
       <legend>{t('sheet.babies')}</legend>
       <div className="chips">
         {babies.length > 1 && (
-          <button type="button" className="chip" aria-pressed={allSelected} onClick={() => onChange(babies.map((b) => b.id))}>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={allSelected}
+            onClick={() => onChange(babies.map((b) => b.id))}
+          >
             {t('sheet.all')}
           </button>
         )}
         {babies.map((baby) => (
-          <button key={baby.id} type="button" className="chip" aria-pressed={selected.includes(baby.id)} onClick={() => toggle(baby.id)}>
+          <button
+            key={baby.id}
+            type="button"
+            className="chip"
+            aria-pressed={selected.includes(baby.id)}
+            onClick={() => toggle(baby.id)}
+          >
             {baby.name}
           </button>
         ))}
@@ -35,14 +46,28 @@ export function BabyPicker({ babies, selected, onChange }: Props) {
 }
 
 /** Exactly one baby, no "All": for a measurement, and for the edit sheet (one entry, one baby). */
-export function SingleBabyPicker({ babies, selected, onChange }: { babies: readonly Baby[]; selected: Id | null; onChange: (id: Id) => void }) {
+export function SingleBabyPicker({
+  babies,
+  selected,
+  onChange,
+}: {
+  babies: readonly Baby[];
+  selected: Id | null;
+  onChange: (id: Id) => void;
+}) {
   const t = useT();
   return (
     <fieldset>
       <legend>{t('sheet.babies')}</legend>
       <div className="chips">
         {babies.map((baby) => (
-          <button key={baby.id} type="button" className="chip" aria-pressed={selected === baby.id} onClick={() => onChange(baby.id)}>
+          <button
+            key={baby.id}
+            type="button"
+            className="chip"
+            aria-pressed={selected === baby.id}
+            onClick={() => onChange(baby.id)}
+          >
             {baby.name}
           </button>
         ))}

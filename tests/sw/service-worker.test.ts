@@ -44,7 +44,9 @@ function loadServiceWorker(options: Options = {}) {
   const fetch = async (request: Request) => {
     fetched.push({ url: request.url, cache: request.cache });
     const body = served[new URL(request.url).pathname];
-    return body === undefined ? new Response('missing', { status: 404 }) : new Response(body as BodyInit);
+    return body === undefined
+      ? new Response('missing', { status: 404 })
+      : new Response(body as BodyInit);
   };
   const self = {
     addEventListener: (type: string, listener: Listener) => {
@@ -76,12 +78,18 @@ function loadServiceWorker(options: Options = {}) {
     activate: () => dispatch('activate'),
     status: async () => {
       let reply: unknown;
-      await dispatch('message', { data: { type: 'GET_STATUS' }, ports: [{ postMessage: (m: unknown) => (reply = m) }] });
+      await dispatch('message', {
+        data: { type: 'GET_STATUS' },
+        ports: [{ postMessage: (m: unknown) => (reply = m) }],
+      });
       return reply;
     },
     fetch: async (request: { url: string; method?: string; mode?: string }) => {
       let response: Promise<Response> | Response | undefined;
-      listeners.fetch?.({ request: { method: 'GET', mode: 'cors', ...request }, respondWith: (r: Promise<Response>) => (response = r) });
+      listeners.fetch?.({
+        request: { method: 'GET', mode: 'cors', ...request },
+        respondWith: (r: Promise<Response>) => (response = r),
+      });
       return response;
     },
   };
@@ -98,10 +106,14 @@ describe('service worker install: first install', () => {
   it('downloads every file with cache: reload, verifies it and caches it under the app prefix', async () => {
     const sw = loadServiceWorker();
     await expect(sw.install()).resolves.toBeUndefined();
-    expect(sw.fetched.map((f) => f.url).sort()).toEqual(FILES.map((f) => `${ORIGIN}/${f.path}`).sort());
+    expect(sw.fetched.map((f) => f.url).sort()).toEqual(
+      FILES.map((f) => `${ORIGIN}/${f.path}`).sort(),
+    );
     expect(sw.fetched.every((f) => f.cache === 'reload')).toBe(true);
     const cache = sw.caches.stores.get(APP_CACHE);
-    expect([...(cache?.entries.keys() ?? [])].sort()).toEqual(FILES.map((f) => `${ORIGIN}/${f.path}`).sort());
+    expect([...(cache?.entries.keys() ?? [])].sort()).toEqual(
+      FILES.map((f) => `${ORIGIN}/${f.path}`).sort(),
+    );
     const png = await cache?.match('./icon.png');
     expect(sha256(new Uint8Array(await png!.arrayBuffer()))).toBe(sha256(FILES[2]!.content));
   });
@@ -114,7 +126,11 @@ describe('service worker install: first install', () => {
 
 describe('service worker install: integrity', () => {
   it('fails, caches nothing and keeps no cache when a file does not match its SHA-256', async () => {
-    const served = { '/index.html': FILES[0]!.content, '/assets/app-abc.js': 'console.log("tampered")', '/icon.png': FILES[2]!.content };
+    const served = {
+      '/index.html': FILES[0]!.content,
+      '/assets/app-abc.js': 'console.log("tampered")',
+      '/icon.png': FILES[2]!.content,
+    };
     const sw = loadServiceWorker({ served });
     await expect(sw.install()).rejects.toThrow(/SHA-256/);
     expect(await sw.caches.has(APP_CACHE)).toBe(false);
@@ -177,7 +193,8 @@ describe('service worker install: update gate', () => {
 describe('service worker activate', () => {
   it('deletes older app caches only, keeping the control cache and unrelated caches', async () => {
     const caches = new FakeCacheStorage(`${ORIGIN}/`);
-    for (const name of ['qundaq-app-oldversion1', CONTROL_CACHE, 'someone-else']) await caches.open(name);
+    for (const name of ['qundaq-app-oldversion1', CONTROL_CACHE, 'someone-else'])
+      await caches.open(name);
     const sw = loadServiceWorker({ caches });
     await sw.install();
     await sw.activate();
@@ -197,8 +214,12 @@ describe('service worker messages and fetch', () => {
     const sw = loadServiceWorker();
     await sw.install();
     const downloads = sw.fetched.length;
-    expect(await (await sw.fetch({ url: `${ORIGIN}/assets/app-abc.js` }))?.text()).toBe('console.log(1)');
-    expect(await (await sw.fetch({ url: `${ORIGIN}/some/route`, mode: 'navigate' }))?.text()).toContain('<title>t</title>');
+    expect(await (await sw.fetch({ url: `${ORIGIN}/assets/app-abc.js` }))?.text()).toBe(
+      'console.log(1)',
+    );
+    expect(
+      await (await sw.fetch({ url: `${ORIGIN}/some/route`, mode: 'navigate' }))?.text(),
+    ).toContain('<title>t</title>');
     expect((await sw.fetch({ url: `${ORIGIN}/not-cached.js` }))?.type).toBe('error');
     expect((await sw.fetch({ url: 'https://evil.example/x.js' }))?.type).toBe('error');
     expect((await sw.fetch({ url: `${ORIGIN}/index.html`, method: 'POST' }))?.type).toBe('error');

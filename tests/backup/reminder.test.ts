@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { backupReminder, believable, daysSinceBackup, snoozeUntil } from '../../src/backup/reminder';
+import {
+  backupReminder,
+  believable,
+  daysSinceBackup,
+  snoozeUntil,
+} from '../../src/backup/reminder';
 
 let previousTz: string | undefined;
 beforeEach(() => {
@@ -11,7 +16,8 @@ afterEach(() => {
   else process.env.TZ = previousTz;
 });
 
-const at = (day: number, hour: number, minute = 0) => new Date(2026, 8, day, hour, minute).getTime();
+const at = (day: number, hour: number, minute = 0) =>
+  new Date(2026, 8, day, hour, minute).getTime();
 
 describe('daysSinceBackup', () => {
   it('counts calendar days, not 24-hour periods', () => {
@@ -48,9 +54,18 @@ describe('backupReminder', () => {
   });
 
   it('shows once the last backup is more than seven days old', () => {
-    expect(backupReminder({ lastBackupAt: at(19, 21, 1) }, true, NOW)).toEqual({ show: false, daysSince: 7 });
-    expect(backupReminder({ lastBackupAt: at(19, 20, 59) }, true, NOW)).toEqual({ show: true, daysSince: 7 });
-    expect(backupReminder({ lastBackupAt: at(17, 9) }, true, NOW)).toEqual({ show: true, daysSince: 9 });
+    expect(backupReminder({ lastBackupAt: at(19, 21, 1) }, true, NOW)).toEqual({
+      show: false,
+      daysSince: 7,
+    });
+    expect(backupReminder({ lastBackupAt: at(19, 20, 59) }, true, NOW)).toEqual({
+      show: true,
+      daysSince: 7,
+    });
+    expect(backupReminder({ lastBackupAt: at(17, 9) }, true, NOW)).toEqual({
+      show: true,
+      daysSince: 9,
+    });
   });
 
   it('stays hidden while snoozed', () => {
@@ -59,7 +74,10 @@ describe('backupReminder', () => {
   });
 
   it('ignores times from a clock that was far ahead', () => {
-    expect(backupReminder({ lastBackupAt: at(28, 22) }, true, NOW)).toEqual({ show: true, daysSince: null });
+    expect(backupReminder({ lastBackupAt: at(28, 22) }, true, NOW)).toEqual({
+      show: true,
+      daysSince: null,
+    });
     expect(backupReminder({ backupReminderSnoozedUntil: at(29, 22) }, true, NOW).show).toBe(true);
   });
 });

@@ -4,7 +4,12 @@ import { defaultSettings, loadSettings, saveSettings, type Settings } from '../d
 import { DEFAULT_CAP } from '../domain/sounds';
 import { detectLocale } from '../i18n';
 import { ExportSheet } from './backup/ExportSheet';
-import { DEFAULT_CHOICES, readImportFile, type ImportChoices, type ImportSource } from './backup/importFile';
+import {
+  DEFAULT_CHOICES,
+  readImportFile,
+  type ImportChoices,
+  type ImportSource,
+} from './backup/importFile';
 import { ImportSheet } from './backup/ImportSheet';
 import { ErrorProvider, useReportError } from './ErrorBanner';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -16,7 +21,13 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { NowPlayingBar } from './sounds/NowPlayingBar';
 import { SoundsScreen } from './sounds/SoundsScreen';
-import { lastSoundOf, lastSoundToPersist, layerNames, sameLastSound, toSavedSound } from './sounds/text';
+import {
+  lastSoundOf,
+  lastSoundToPersist,
+  layerNames,
+  sameLastSound,
+  toSavedSound,
+} from './sounds/text';
 import { useMediaSession, useSoundEngine } from './sounds/useSoundEngine';
 import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from './summary/SummaryScreen';
 
@@ -63,7 +74,13 @@ interface BackupUi {
 const NO_BACKUP_UI: BackupUi = { sheet: null, pending: null };
 
 /** `onSettingsReplaced` takes settings read back after a save, an export or an import, so Home and Ayarlar follow at once. */
-function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSettingsReplaced: (next: Settings) => void }) {
+function Shell({
+  settings,
+  onSettingsReplaced,
+}: {
+  settings: Settings;
+  onSettingsReplaced: (next: Settings) => void;
+}) {
   const t = useT();
   const report = useReportError();
   const [tab, setTab] = useState<Tab>('home');
@@ -105,7 +122,10 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   };
 
   useEffect(() => {
-    engine.restore(settings.lastSound ? toSavedSound(settings.lastSound) : undefined, settings.volumeCap ?? DEFAULT_CAP);
+    engine.restore(
+      settings.lastSound ? toSavedSound(settings.lastSound) : undefined,
+      settings.volumeCap ?? DEFAULT_CAP,
+    );
     restored.current = true;
   }, [engine]);
   // A no-op after updateSettings: the engine already holds the cap.
@@ -134,14 +154,22 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   const openCsv = () => setBackupUi((ui) => ({ ...ui, sheet: 'csv' }));
   // A dialog's close event also fires when Shell swaps sheets; each close only acts if its sheet is current.
   const closeExport = () =>
-    setBackupUi((ui) => (ui.sheet === 'export' || ui.sheet === 'csv' ? { ...ui, sheet: ui.pending ? 'import' : null } : ui));
+    setBackupUi((ui) =>
+      ui.sheet === 'export' || ui.sheet === 'csv'
+        ? { ...ui, sheet: ui.pending ? 'import' : null }
+        : ui,
+    );
   const closeImport = () => setBackupUi((ui) => (ui.sheet === 'import' ? NO_BACKUP_UI : ui));
   // The sheet opens at once and says "Yedek okunuyor…": reading 20 MB takes seconds on an older iPhone.
   const pickImportFile = async (file: File) => {
     const loading: ImportSource = { fileName: file.name, result: null };
     setBackupUi({ sheet: 'import', pending: { source: loading, choices: DEFAULT_CHOICES } });
     const result = await readImportFile(file, Date.now());
-    setBackupUi((ui) => (ui.pending?.source === loading ? { ...ui, pending: { ...ui.pending, source: { fileName: file.name, result } } } : ui));
+    setBackupUi((ui) =>
+      ui.pending?.source === loading
+        ? { ...ui, pending: { ...ui.pending, source: { fileName: file.name, result } } }
+        : ui,
+    );
   };
   const onImportFile = (file: File) => void pickImportFile(file);
   const backupActions = { onExport: openExport, onImportFile, onCsv: openCsv };
@@ -151,13 +179,27 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
       <main className="screen">
         {/* Keyed by tab and import: a crash on one screen never blocks the others, and switching tabs or
             restoring a backup starts over. */}
-        <ErrorBoundary key={`${tab}:${imports}`} fallback={(error) => <CrashScreen error={error} onBackup={openExport} onRestore={onImportFile} />}>
+        <ErrorBoundary
+          key={`${tab}:${imports}`}
+          fallback={(error) => (
+            <CrashScreen error={error} onBackup={openExport} onRestore={onImportFile} />
+          )}
+        >
           {tab === 'home' ? (
-            <HomeScreen settings={settings} onSettingsChange={updateSettings} onImportFile={onImportFile} onBackup={openExport} />
+            <HomeScreen
+              settings={settings}
+              onSettingsChange={updateSettings}
+              onImportFile={onImportFile}
+              onBackup={openExport}
+            />
           ) : tab === 'log' ? (
             <LogScreen view={logView} onViewChange={setLogView} />
           ) : tab === 'summary' ? (
-            <SummaryScreen view={summaryView} onViewChange={setSummaryView} lastBabyIds={settings.lastBabyIds} />
+            <SummaryScreen
+              view={summaryView}
+              onViewChange={setSummaryView}
+              lastBabyIds={settings.lastBabyIds}
+            />
           ) : tab === 'settings' ? (
             <SettingsScreen settings={settings} onChange={updateSettings} backup={backupActions} />
           ) : (
@@ -166,7 +208,14 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
         </ErrorBoundary>
       </main>
       {/* Outside the boundary: a crashed Sesler screen can still be paused from any tab. */}
-      {nowPlaying && <NowPlayingBar state={sound} onOpen={() => setTab('sounds')} onPlay={() => engine.play()} onPause={() => engine.pause()} />}
+      {nowPlaying && (
+        <NowPlayingBar
+          state={sound}
+          onOpen={() => setTab('sounds')}
+          onPlay={() => engine.play()}
+          onPause={() => engine.pause()}
+        />
+      )}
       <TabBar current={tab} onSelect={setTab} />
       <ExportSheet
         kind={backupUi.sheet === 'export' ? 'json' : backupUi.sheet === 'csv' ? 'csv' : null}
@@ -176,7 +225,9 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
       <ImportSheet
         source={backupUi.sheet === 'import' && backupUi.pending ? backupUi.pending.source : null}
         choices={backupUi.pending?.choices ?? DEFAULT_CHOICES}
-        onChoicesChange={(choices) => setBackupUi((ui) => (ui.pending ? { ...ui, pending: { ...ui.pending, choices } } : ui))}
+        onChoicesChange={(choices) =>
+          setBackupUi((ui) => (ui.pending ? { ...ui, pending: { ...ui.pending, choices } } : ui))
+        }
         onBackupFirst={openExport}
         onSettingsReplaced={onSettingsReplaced}
         onImported={() => setImports((n) => n + 1)}

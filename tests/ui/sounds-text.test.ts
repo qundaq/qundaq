@@ -1,14 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { translate, type MessageKey } from '../../src/i18n';
-import { lastSoundOf, lastSoundToPersist, layerNames, mixLayerNames, remainingText, sameLastSound, statusText, toSavedSound } from '../../src/ui/sounds/text';
+import {
+  lastSoundOf,
+  lastSoundToPersist,
+  layerNames,
+  mixLayerNames,
+  remainingText,
+  sameLastSound,
+  statusText,
+  toSavedSound,
+} from '../../src/ui/sounds/text';
 
 const t = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
 const NOW = 1_790_000_000_000;
 
 describe('names and status', () => {
   it('joins the layer names in order, and names a mix by the sounds this version knows', () => {
-    expect(layerNames(t, [{ soundId: 'white' }, { soundId: 'rain' }])).toBe('Beyaz gürültü + Yağmur');
-    expect(mixLayerNames(t, [{ soundId: 'train', gain: 1 }, { soundId: 'shush', gain: 0.5 }])).toBe('Şşş');
+    expect(layerNames(t, [{ soundId: 'white' }, { soundId: 'rain' }])).toBe(
+      'Beyaz gürültü + Yağmur',
+    );
+    expect(
+      mixLayerNames(t, [
+        { soundId: 'train', gain: 1 },
+        { soundId: 'shush', gain: 0.5 },
+      ]),
+    ).toBe('Şşş');
     expect(mixLayerNames(t, [{ soundId: 'train', gain: 1 }])).toBe('(bilinmeyen ses)');
   });
 
@@ -28,12 +44,20 @@ describe('names and status', () => {
 });
 
 describe('the last selection', () => {
-  const state = { layers: [{ soundId: 'white' as const, level: 0.7 }], master: 0.5, timer: 30 as const };
+  const state = {
+    layers: [{ soundId: 'white' as const, level: 0.7 }],
+    master: 0.5,
+    timer: 30 as const,
+  };
 
   it('is the layers, the master and the chip, and maps back to what the engine restores', () => {
     const last = lastSoundOf(state);
     expect(last).toEqual({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.5, timerMin: 30 });
-    expect(toSavedSound(last)).toEqual({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.5, timer: 30 });
+    expect(toSavedSound(last)).toEqual({
+      layers: [{ soundId: 'white', level: 0.7 }],
+      master: 0.5,
+      timer: 30,
+    });
   });
 
   describe('what the persist timer writes, read from the engine when it fires', () => {
@@ -42,7 +66,11 @@ describe('the last selection', () => {
       const rescaled = { ...state, master: 0.25 };
       expect(lastSoundToPersist(rescaled, lastSoundOf(rescaled))).toBeNull();
       // A write that fires before the cap write lands stores the engine's 0.25, not the old 0.5.
-      expect(lastSoundToPersist(rescaled, lastSoundOf(state))).toEqual({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.25, timerMin: 30 });
+      expect(lastSoundToPersist(rescaled, lastSoundOf(state))).toEqual({
+        layers: [{ soundId: 'white', level: 0.7 }],
+        master: 0.25,
+        timerMin: 30,
+      });
     });
 
     it('at a cold start: the restored selection matches storage, and a fresh app writes nothing', () => {
@@ -62,7 +90,9 @@ describe('the last selection', () => {
     const last = lastSoundOf(state);
     expect(sameLastSound(last, { ...last, layers: [...last.layers] })).toBe(true);
     expect(sameLastSound(last, { ...last, master: 0.6 })).toBe(false);
-    expect(sameLastSound(last, { ...last, layers: [{ soundId: 'white', level: 0.8 }] })).toBe(false);
+    expect(sameLastSound(last, { ...last, layers: [{ soundId: 'white', level: 0.8 }] })).toBe(
+      false,
+    );
     expect(sameLastSound(last, undefined)).toBe(false);
     expect(sameLastSound({ layers: [], master: 0.6, timerMin: 60 }, undefined)).toBe(true);
   });

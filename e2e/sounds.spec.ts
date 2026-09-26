@@ -7,7 +7,9 @@ test.use({ timezoneId: 'Europe/Istanbul' });
 
 const NIGHT = new Date('2026-09-26T22:00:00+03:00');
 
-test('two sounds play, the status names them, and the now-playing bar on Home pauses them above the quick actions', async ({ page }) => {
+test('two sounds play, the status names them, and the now-playing bar on Home pauses them above the quick actions', async ({
+  page,
+}) => {
   await fakeAudio(page);
   await page.goto('./');
   await addBabyInSettings(page, 'Ada');
@@ -19,7 +21,9 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   await expect(tile(page, 'Beyaz gürültü')).toHaveAttribute('aria-pressed', 'true');
   await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 60 dk kaldı');
   // VoiceOver reads the state changes; the countdown stays out of the live region, or it is read every minute.
-  await expect(soundStatus(page).locator('[aria-live="polite"]')).toHaveText('Çalıyor · Beyaz gürültü');
+  await expect(soundStatus(page).locator('[aria-live="polite"]')).toHaveText(
+    'Çalıyor · Beyaz gürültü',
+  );
   await expect(page.getByLabel('Beyaz gürültü seviyesi')).toHaveValue('0.7');
   await tile(page, 'Yağmur').click();
   await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Yağmur · 60 dk kaldı');
@@ -29,7 +33,8 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 1, resumes: 1, sources: 2 });
 
   // A seventh sound is refused with a message.
-  for (const name of ['Pembe gürültü', 'Kahverengi gürültü', 'Dalgalar', 'Rüzgâr']) await tile(page, name).click();
+  for (const name of ['Pembe gürültü', 'Kahverengi gürültü', 'Dalgalar', 'Rüzgâr'])
+    await tile(page, name).click();
   await tile(page, 'Şşş').click();
   await expect(page.getByRole('status')).toHaveText('En fazla 6 ses birlikte çalabilir.');
   await expect(tile(page, 'Şşş')).toHaveAttribute('aria-pressed', 'false');
@@ -49,12 +54,17 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   await expect(bar).toHaveCount(0);
 });
 
-test('the 15-minute timer counts down and stops the sound; play restarts it with the same chip; the selection survives a reload', async ({ page }) => {
+test('the 15-minute timer counts down and stops the sound; play restarts it with the same chip; the selection survives a reload', async ({
+  page,
+}) => {
   await page.clock.install({ time: NIGHT });
   await fakeAudio(page);
   await page.goto('./');
   await openTab(page, 'Sesler');
-  await expect(page.getByRole('radio', { name: '60 dk', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('radio', { name: '60 dk', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
   await page.getByRole('radio', { name: '15 dk', exact: true }).click();
   await tile(page, 'Beyaz gürültü').click();
   await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 15 dk kaldı');
@@ -83,11 +93,16 @@ test('the 15-minute timer counts down and stops the sound; play restarts it with
   await expect(soundStatus(page)).toHaveText('Durdu');
   await expect(tile(page, 'Beyaz gürültü')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.3');
-  await expect(page.getByRole('radio', { name: 'Zamanlayıcı yok', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('radio', { name: 'Zamanlayıcı yok', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
   expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 0 });
 });
 
-test('a mix is saved, plays after a reload from the list, and can be renamed and deleted with two taps', async ({ page }) => {
+test('a mix is saved, plays after a reload from the list, and can be renamed and deleted with two taps', async ({
+  page,
+}) => {
   await page.clock.install({ time: NIGHT });
   await fakeAudio(page);
   await page.goto('./');
@@ -125,13 +140,17 @@ test('a mix is saved, plays after a reload from the list, and can be renamed and
   await expect(renamed).toBeVisible();
   await renamed.getByRole('button', { name: 'Derin uyku: Sil', exact: true }).click();
   await page.clock.fastForward(1000);
-  await renamed.getByRole('button', { name: 'Derin uyku: Silmek için tekrar dokunun', exact: true }).click();
+  await renamed
+    .getByRole('button', { name: 'Derin uyku: Silmek için tekrar dokunun', exact: true })
+    .click();
   await expect(page.getByRole('listitem').filter({ hasText: 'Derin uyku' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Kayıtlı karışımlar' })).toHaveCount(0);
   await expect(soundStatus(page)).toContainText('Çalıyor'); // deleting the mix leaves the sound alone
 });
 
-test('on a 320 px screen a mix row keeps its name readable and 16 px between rename and delete', async ({ page }) => {
+test('on a 320 px screen a mix row keeps its name readable and 16 px between rename and delete', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 640 });
   await fakeAudio(page);
   await page.goto('./');
@@ -143,12 +162,21 @@ test('on a 320 px screen a mix row keeps its name readable and 16 px between ren
   await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(sheet).toBeHidden();
   const row = page.getByRole('listitem').filter({ hasText: 'Gece' });
-  const name = (await row.getByRole('button', { name: 'Gece karışımını çal', exact: true }).boundingBox())!;
-  const rename = (await row.getByRole('button', { name: 'Gece: Yeniden adlandır', exact: true }).boundingBox())!;
+  const name = (await row
+    .getByRole('button', { name: 'Gece karışımını çal', exact: true })
+    .boundingBox())!;
+  const rename = (await row
+    .getByRole('button', { name: 'Gece: Yeniden adlandır', exact: true })
+    .boundingBox())!;
   const remove = row.getByRole('button', { name: /^Gece: Sil/ });
   const check = async () => {
     const box = (await remove.boundingBox())!;
-    const apart = Math.max(box.x - (rename.x + rename.width), rename.x - (box.x + box.width), box.y - (rename.y + rename.height), rename.y - (box.y + box.height));
+    const apart = Math.max(
+      box.x - (rename.x + rename.width),
+      rename.x - (box.x + box.width),
+      box.y - (rename.y + rename.height),
+      rename.y - (box.y + box.height),
+    );
     expect(apart).toBeGreaterThanOrEqual(16);
   };
   await check();
@@ -172,9 +200,20 @@ test('a saved mix travels in the backup and comes back in a restore', async ({ p
   await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
   await expect(sheet).toBeHidden();
   const backup = await takeBackup(page);
-  const parsed = JSON.parse(backup) as { schemaVersion: number; mixes: { name: string; layers: unknown[] }[] };
+  const parsed = JSON.parse(backup) as {
+    schemaVersion: number;
+    mixes: { name: string; layers: unknown[] }[];
+  };
   expect(parsed.schemaVersion).toBe(2);
-  expect(parsed.mixes).toEqual([{ id: expect.any(String), name: 'Gece', layers: [{ soundId: 'shush', gain: 0.7 }], createdAt: expect.any(Number), updatedAt: expect.any(Number) }]);
+  expect(parsed.mixes).toEqual([
+    {
+      id: expect.any(String),
+      name: 'Gece',
+      layers: [{ soundId: 'shush', gain: 0.7 }],
+      createdAt: expect.any(Number),
+      updatedAt: expect.any(Number),
+    },
+  ]);
   expect(backup).not.toContain('volumeCap');
   expect(backup).not.toContain('lastSound');
 
@@ -183,7 +222,9 @@ test('a saved mix travels in the backup and comes back in a restore', async ({ p
   const mixesRow = restore.locator('.import-counts > div').filter({ hasText: 'Karışımlar' });
   await expect(mixesRow).toContainText('Eklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0');
   await restore.getByRole('button', { name: 'Geri yükle', exact: true }).click();
-  await expect(restore.getByRole('status')).toHaveText('Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await expect(restore.getByRole('status')).toHaveText(
+    'Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.',
+  );
   await restore.getByRole('button', { name: 'Tamam', exact: true }).click();
   await openTab(page, 'Sesler');
   await expect(page.getByRole('listitem').filter({ hasText: 'Gece' })).toContainText('Şşş');
@@ -191,7 +232,9 @@ test('a saved mix travels in the backup and comes back in a restore', async ({ p
   await expect(soundStatus(page)).toHaveText('Çalıyor · Şşş · 60 dk kaldı');
 });
 
-test('raising the cap warns and never makes the sound louder; the sound sources open in-app', async ({ page }) => {
+test('raising the cap warns and never makes the sound louder; the sound sources open in-app', async ({
+  page,
+}) => {
   // A paused clock: the selection's persist timer and the cap's save fire only when the test says so.
   await page.clock.install({ time: NIGHT });
   await page.clock.pauseAt(new Date(NIGHT.getTime() + 60_000));
@@ -211,7 +254,9 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
   // tap, master 0.6) comes due: whatever that timer writes lands after the cap, so it must be the lowered master.
   await holdSettingsWrites(page);
   await cap.fill('1');
-  await expect(page.getByRole('alert')).toContainText('Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun');
+  await expect(page.getByRole('alert')).toContainText(
+    'Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun',
+  );
   await page.clock.runFor(1500);
   await releaseSettingsWrites(page);
   // The master slider drops so that the sound stays as loud as it was (R1); the headroom is there to be used.
@@ -244,7 +289,9 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
   await expect(sheet).toBeHidden();
 });
 
-test('a lower cap chosen while the previous move is still being saved is kept', async ({ page }) => {
+test('a lower cap chosen while the previous move is still being saved is kept', async ({
+  page,
+}) => {
   await page.clock.install({ time: NIGHT });
   await page.clock.pauseAt(new Date(NIGHT.getTime() + 60_000));
   await page.goto('./');
@@ -264,8 +311,14 @@ test('a lower cap chosen while the previous move is still being saved is kept', 
   await expect(cap).toHaveValue('0.3');
 });
 
-test('the real AudioContext builds the graph and plays without errors', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'One real-context check is enough; headless WebKit on the CI runner may not run Web Audio (R11)');
+test('the real AudioContext builds the graph and plays without errors', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'One real-context check is enough; headless WebKit on the CI runner may not run Web Audio (R11)',
+  );
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
@@ -283,7 +336,9 @@ test('the real AudioContext builds the graph and plays without errors', async ({
   await expect(soundStatus(page)).toContainText('Duraklatıldı');
   await page.getByRole('button', { name: 'Çal', exact: true }).click();
   await expect(soundStatus(page)).toContainText('Çalıyor');
-  expect(await page.evaluate(() => 'AudioContext' in window && !('__fakeAudio' in window))).toBe(true);
+  expect(await page.evaluate(() => 'AudioContext' in window && !('__fakeAudio' in window))).toBe(
+    true,
+  );
   expect(errors).toEqual([]);
 });
 
@@ -297,7 +352,8 @@ function holdSettingsWrites(page: Page): Promise<void> {
         open.onsuccess = () => {
           const store = open.result.transaction('settings', 'readwrite').objectStore('settings');
           const hold = () => {
-            if (!(window as unknown as { __release?: boolean }).__release) store.get('none').onsuccess = hold;
+            if (!(window as unknown as { __release?: boolean }).__release)
+              store.get('none').onsuccess = hold;
           };
           hold();
           resolve();
@@ -327,7 +383,10 @@ function storedCapAndMaster(page: Page): Promise<{ volumeCap: unknown; master: u
           const getAll = db.transaction('settings', 'readonly').objectStore('settings').getAll();
           getAll.onsuccess = () => {
             db.close();
-            const [row] = getAll.result as { volumeCap?: unknown; lastSound?: { master?: unknown } }[];
+            const [row] = getAll.result as {
+              volumeCap?: unknown;
+              lastSound?: { master?: unknown };
+            }[];
             resolve({ volumeCap: row?.volumeCap, master: row?.lastSound?.master });
           };
           getAll.onerror = () => reject(getAll.error);

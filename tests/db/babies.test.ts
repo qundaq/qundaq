@@ -19,15 +19,27 @@ afterEach(async () => {
 describe('babies repository', () => {
   it('adds a baby with a trimmed name and lists babies in creation order', async () => {
     const db = freshDb();
-    const ada = await addBaby(db, { name: '  Ada ', color: '#7cb7ff', birthDate: '2026-09-01' }, 1000);
+    const ada = await addBaby(
+      db,
+      { name: '  Ada ', color: '#7cb7ff', birthDate: '2026-09-01' },
+      1000,
+    );
     await addBaby(db, { name: 'Can', color: '#ff9ecb' }, 2000);
-    expect(ada).toMatchObject({ name: 'Ada', color: '#7cb7ff', birthDate: '2026-09-01', archived: false, createdAt: 1000 });
+    expect(ada).toMatchObject({
+      name: 'Ada',
+      color: '#7cb7ff',
+      birthDate: '2026-09-01',
+      archived: false,
+      createdAt: 1000,
+    });
     expect((await listBabies(db)).map((b) => b.name)).toEqual(['Ada', 'Can']);
   });
 
   it('rejects a blank name and truncates long ones', async () => {
     const db = freshDb();
-    await expect(addBaby(db, { name: '   ', color: '#7cb7ff' })).rejects.toEqual(new ValidationError(['name-required']));
+    await expect(addBaby(db, { name: '   ', color: '#7cb7ff' })).rejects.toEqual(
+      new ValidationError(['name-required']),
+    );
     const long = await addBaby(db, { name: 'x'.repeat(100), color: '#7cb7ff' });
     expect(long.name).toHaveLength(BABY_NAME_MAX);
   });
@@ -36,7 +48,9 @@ describe('babies repository', () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
     await updateBaby(db, ada.id, { name: ' Ada Nur ', color: '#8fdc9a' }, 2000);
-    expect(await listBabies(db)).toMatchObject([{ name: 'Ada Nur', color: '#8fdc9a', updatedAt: 2000 }]);
+    expect(await listBabies(db)).toMatchObject([
+      { name: 'Ada Nur', color: '#8fdc9a', updatedAt: 2000 },
+    ]);
     await expect(updateBaby(db, ada.id, { name: '' })).rejects.toBeInstanceOf(ValidationError);
   });
 
@@ -72,7 +86,10 @@ describe('babies repository', () => {
           type: 'breastfeed',
           babyId: ada.id,
           startAt: start,
-          segments: [{ side: 'L', start, end: switched }, { side: 'R', start: switched }],
+          segments: [
+            { side: 'L', start, end: switched },
+            { side: 'R', start: switched },
+          ],
         },
         { type: 'sleep', babyId: ada.id, startAt: start - 60 * MINUTE, endAt: start - 30 * MINUTE },
         { type: 'sleep', babyId: can.id, startAt: start },
@@ -81,7 +98,12 @@ describe('babies repository', () => {
       start,
     );
     // A deleted running entry is left alone.
-    const deletedFeed = { ...feed!, id: 'deleted-feed', deletedAt: start, segments: [{ side: 'L' as const, start }] };
+    const deletedFeed = {
+      ...feed!,
+      id: 'deleted-feed',
+      deletedAt: start,
+      segments: [{ side: 'L' as const, start }],
+    };
     await db.events.add(deletedFeed);
 
     await deleteBaby(db, ada.id, now);
@@ -90,7 +112,10 @@ describe('babies repository', () => {
     expect(await db.events.get(feed!.id)).toMatchObject({
       endAt: now,
       updatedAt: now,
-      segments: [{ side: 'L', start, end: switched }, { side: 'R', start: switched, end: now }],
+      segments: [
+        { side: 'L', start, end: switched },
+        { side: 'R', start: switched, end: now },
+      ],
     });
     expect(await db.events.get(doneSleep!.id)).toEqual(doneSleep);
     expect(await db.events.get(canSleep!.id)).toEqual({ ...canSleep!, open: 1 });
@@ -117,7 +142,9 @@ describe('babies repository', () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
     await deleteBaby(db, ada.id, 5000);
-    await expect(updateBaby(db, ada.id, { name: 'Ada Nur' }, 6000)).rejects.toThrow(`Baby ${ada.id} not found`);
+    await expect(updateBaby(db, ada.id, { name: 'Ada Nur' }, 6000)).rejects.toThrow(
+      `Baby ${ada.id} not found`,
+    );
     expect(await db.babies.get(ada.id)).toMatchObject({ name: 'Ada', updatedAt: 5000 });
   });
 });

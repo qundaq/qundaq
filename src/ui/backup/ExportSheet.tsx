@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { browserDownloadDeps, canShareFiles, createDownloads, shareFiles } from '../../platform/share';
+import {
+  browserDownloadDeps,
+  canShareFiles,
+  createDownloads,
+  shareFiles,
+} from '../../platform/share';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useLocale, useT } from '../I18nProvider';
 import { Sheet, useSheetSession } from '../Sheet';
@@ -16,8 +21,18 @@ interface Props {
 
 /** The sheet's texts for each kind: a CSV export is not a backup and must not say so. */
 const TEXT = {
-  json: { title: 'export.title', preparing: 'export.preparing', warning: 'export.warning', failed: 'export.failed' },
-  csv: { title: 'csv.title', preparing: 'csv.preparing', warning: 'csv.warning', failed: 'csv.failed' },
+  json: {
+    title: 'export.title',
+    preparing: 'export.preparing',
+    warning: 'export.warning',
+    failed: 'export.failed',
+  },
+  csv: {
+    title: 'csv.title',
+    preparing: 'csv.preparing',
+    warning: 'csv.warning',
+    failed: 'csv.failed',
+  },
 } as const;
 
 /** Prepares the files when it opens; a second tap shares them (or downloads them when sharing is not possible). */
@@ -29,7 +44,10 @@ export function ExportSheet({ kind, onClose, onBackedUp }: Props) {
     <Sheet open={kind !== null} title={t(text.title)} onClose={onClose}>
       {/* The sheet sits outside the screens' boundary: a render error here shows its failure, not a blank app. */}
       {session && (
-        <ErrorBoundary key={session.id} fallback={() => <SheetMessage message={t(text.failed)} onClose={onClose} />}>
+        <ErrorBoundary
+          key={session.id}
+          fallback={() => <SheetMessage message={t(text.failed)} onClose={onClose} />}
+        >
           <ExportForm kind={session.value} onClose={onClose} onBackedUp={onBackedUp} />
         </ErrorBoundary>
       )}
@@ -66,7 +84,8 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
   useEffect(() => () => downloads.revokeAll(), [downloads]);
 
   if (prepared === null) return <p aria-busy="true">{t(TEXT[kind].preparing)}</p>;
-  if (prepared === 'failed') return <SheetMessage message={t(TEXT[kind].failed)} onClose={onClose} />;
+  if (prepared === 'failed')
+    return <SheetMessage message={t(TEXT[kind].failed)} onClose={onClose} />;
 
   const finish = (how: Done) => {
     if (prepared.countsAsBackup) onBackedUp(Date.now());
@@ -130,8 +149,15 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
             </button>
           ) : (
             files.map((file) => (
-              <button key={file.name} type="button" className="btn btn-primary" onClick={() => download(file)}>
-                {files.length === 1 ? t('export.download') : t('export.downloadNamed', { name: file.name })}
+              <button
+                key={file.name}
+                type="button"
+                className="btn btn-primary"
+                onClick={() => download(file)}
+              >
+                {files.length === 1
+                  ? t('export.download')
+                  : t('export.downloadNamed', { name: file.name })}
               </button>
             ))
           )}

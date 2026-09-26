@@ -24,13 +24,33 @@ afterEach(() => {
   else process.env.TZ = previousTz;
 });
 
-const at = (day: number, hour: number, minute = 0) => new Date(2026, 8, day, hour, minute).getTime();
+const at = (day: number, hour: number, minute = 0) =>
+  new Date(2026, 8, day, hour, minute).getTime();
 const event = (id: string, draft: EventDraft, extra: Partial<TrackerEvent> = {}): TrackerEvent =>
   ({ ...draft, id, createdAt: 0, updatedAt: 0, ...extra }) as TrackerEvent;
-const baby = (id: string, name: string, extra: Partial<Baby> = {}): Baby => ({ id, name, color: '#7cb7ff', archived: false, createdAt: 0, updatedAt: 0, ...extra });
+const baby = (id: string, name: string, extra: Partial<Baby> = {}): Baby => ({
+  id,
+  name,
+  color: '#7cb7ff',
+  archived: false,
+  createdAt: 0,
+  updatedAt: 0,
+  ...extra,
+});
 const TEXT: CsvText = {
-  headers: ['Tarih', 'Başlangıç', 'Bitiş tarihi', 'Bitiş saati', 'Süre (dk)', 'Tür', 'Ayrıntı', 'Not'],
-  typeLabel: (type) => ({ sleep: 'Uyku', breastfeed: 'Emzirme', diaper: 'Bez', pump: 'Sağım' })[type as string] ?? type,
+  headers: [
+    'Tarih',
+    'Başlangıç',
+    'Bitiş tarihi',
+    'Bitiş saati',
+    'Süre (dk)',
+    'Tür',
+    'Ayrıntı',
+    'Not',
+  ],
+  typeLabel: (type) =>
+    ({ sleep: 'Uyku', breastfeed: 'Emzirme', diaper: 'Bez', pump: 'Sağım' })[type as string] ??
+    type,
   describe: (e) => (e.type === 'diaper' ? 'Islak' : ''),
 };
 
@@ -51,13 +71,22 @@ describe('cells and files', () => {
   });
 
   it('keeps a spreadsheet from running a text cell as a formula', () => {
-    for (const text of ['=SUM(A1)', '+90', '-5', '@cmd', '\tx', '\rx']) expect(guardFormula(text)).toBe(`'${text}`);
+    for (const text of ['=SUM(A1)', '+90', '-5', '@cmd', '\tx', '\rx'])
+      expect(guardFormula(text)).toBe(`'${text}`);
     expect(guardFormula('Islak')).toBe('Islak');
     expect(guardFormula('')).toBe('');
   });
 
   it('writes a BOM, CRLF line ends and a final CRLF', () => {
-    expect(toCsv([['a', 'b'], ['c;d', 'e']], ';')).toBe('\uFEFFa;b\r\n"c;d";e\r\n');
+    expect(
+      toCsv(
+        [
+          ['a', 'b'],
+          ['c;d', 'e'],
+        ],
+        ';',
+      ),
+    ).toBe('\uFEFFa;b\r\n"c;d";e\r\n');
   });
 });
 
@@ -65,7 +94,14 @@ describe('eventsToCsvRows', () => {
   it('lists live entries oldest first with date, times, minutes, type, detail and note', () => {
     const rows = eventsToCsvRows(
       [
-        event('d', { type: 'diaper', babyId: 'a', startAt: at(26, 9, 5), wet: true, dirty: false, note: '=kontrol' }),
+        event('d', {
+          type: 'diaper',
+          babyId: 'a',
+          startAt: at(26, 9, 5),
+          wet: true,
+          dirty: false,
+          note: '=kontrol',
+        }),
         event('s', { type: 'sleep', babyId: 'a', startAt: at(25, 22, 10), endAt: at(26, 6, 40) }),
         event('gone', { type: 'sleep', babyId: 'a', startAt: at(25, 1) }, { deletedAt: 1 }),
       ],
@@ -101,14 +137,23 @@ describe('eventsToCsvRows', () => {
   });
 
   it('a row whose detail cannot be described still gets a line', () => {
-    const broken: CsvText = { ...TEXT, describe: () => { throw new TypeError('bad row'); } };
-    expect(eventsToCsvRows([event('x', { type: 'sleep', babyId: 'a', startAt: at(26, 8) })], broken)[1]).toEqual([
-      '2026-09-26', '08:00', '', '', '', 'Uyku', '', '',
-    ]);
+    const broken: CsvText = {
+      ...TEXT,
+      describe: () => {
+        throw new TypeError('bad row');
+      },
+    };
+    expect(
+      eventsToCsvRows([event('x', { type: 'sleep', babyId: 'a', startAt: at(26, 8) })], broken)[1],
+    ).toEqual(['2026-09-26', '08:00', '', '', '', 'Uyku', '', '']);
   });
 
   it('a malformed note (not text) is left empty instead of breaking the file', () => {
-    const odd = event('x', { type: 'diaper', babyId: 'a', startAt: at(26, 8), wet: true, dirty: false }, { note: 42 as unknown as string });
+    const odd = event(
+      'x',
+      { type: 'diaper', babyId: 'a', startAt: at(26, 8), wet: true, dirty: false },
+      { note: 42 as unknown as string },
+    );
     const rows = eventsToCsvRows([odd], TEXT);
     expect(rows[1]).toEqual(['2026-09-26', '08:00', '', '', '', 'Bez', 'Islak', '']);
     expect(() => toCsv(rows, ';')).not.toThrow();
@@ -142,29 +187,55 @@ describe('buildCsvFiles', () => {
   it('one file per live baby with entries, plus pumping; nothing for the others', () => {
     const files = buildCsvFiles(
       input({
-        babies: [baby('a', 'Ada'), baby('b', 'Ada'), baby('c', 'Can'), baby('d', 'Deleted', { deletedAt: 1 }), baby('e', 'Old', { archived: true })],
+        babies: [
+          baby('a', 'Ada'),
+          baby('b', 'Ada'),
+          baby('c', 'Can'),
+          baby('d', 'Deleted', { deletedAt: 1 }),
+          baby('e', 'Old', { archived: true }),
+        ],
         events: [
           event('1', { type: 'diaper', babyId: 'a', startAt: at(26, 9), wet: true, dirty: false }),
           event('2', { type: 'diaper', babyId: 'b', startAt: at(26, 9), wet: true, dirty: false }),
           event('3', { type: 'diaper', babyId: 'd', startAt: at(26, 9), wet: true, dirty: false }),
           event('4', { type: 'diaper', babyId: 'e', startAt: at(26, 9), wet: true, dirty: false }),
           event('5', { type: 'pump', babyId: null, startAt: at(26, 7), mlLeft: 60 }),
-          event('6', { type: 'diaper', babyId: 'c', startAt: at(26, 9), wet: true, dirty: false }, { deletedAt: 1 }),
+          event(
+            '6',
+            { type: 'diaper', babyId: 'c', startAt: at(26, 9), wet: true, dirty: false },
+            { deletedAt: 1 },
+          ),
         ],
       }),
     );
-    expect(files.map((file) => file.name)).toEqual(['qundaq-Ada-2026-09-26.csv', 'qundaq-Ada-2-2026-09-26.csv', 'qundaq-Sağım-2026-09-26.csv']);
-    expect(files[0]!.text).toBe('\uFEFFTarih;Başlangıç;Bitiş tarihi;Bitiş saati;Süre (dk);Tür;Ayrıntı;Not\r\n2026-09-26;09:00;;;;Bez;Islak;\r\n');
+    expect(files.map((file) => file.name)).toEqual([
+      'qundaq-Ada-2026-09-26.csv',
+      'qundaq-Ada-2-2026-09-26.csv',
+      'qundaq-Sağım-2026-09-26.csv',
+    ]);
+    expect(files[0]!.text).toBe(
+      '\uFEFFTarih;Başlangıç;Bitiş tarihi;Bitiş saati;Süre (dk);Tür;Ayrıntı;Not\r\n2026-09-26;09:00;;;;Bez;Islak;\r\n',
+    );
   });
 
   it('a name with nothing usable left gets the fallback label', () => {
-    const files = buildCsvFiles(input({ babies: [baby('a', '///')], events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })] }));
+    const files = buildCsvFiles(
+      input({
+        babies: [baby('a', '///')],
+        events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })],
+      }),
+    );
     expect(files.map((file) => file.name)).toEqual(['qundaq-bebek-2026-09-26.csv']);
   });
 
   it('a malformed baby whose name is not text gets the fallback label instead of breaking the export', () => {
     const odd = { ...baby('a', 'x'), name: 42 } as unknown as Baby;
-    const files = buildCsvFiles(input({ babies: [odd], events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })] }));
+    const files = buildCsvFiles(
+      input({
+        babies: [odd],
+        events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })],
+      }),
+    );
     expect(files.map((file) => file.name)).toEqual(['qundaq-bebek-2026-09-26.csv']);
   });
 });

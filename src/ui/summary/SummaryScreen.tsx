@@ -46,7 +46,12 @@ interface SummaryData {
 }
 
 /** Babies, the 7 days' entries and the chosen baby's growth, in one live query. */
-async function readSummary(chosen: Id | null, preferred: readonly Id[], from: number, to: number): Promise<SummaryData> {
+async function readSummary(
+  chosen: Id | null,
+  preferred: readonly Id[],
+  from: number,
+  to: number,
+): Promise<SummaryData> {
   const babies = await listBabies(db);
   const babyId = pickBaby(babies, chosen, preferred);
   const [events, growth] = await Promise.all([
@@ -137,7 +142,13 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
   if (!baby) return null;
   const events = visibleEvents(data.events, new Set(data.babies.map((candidate) => candidate.id)));
   const totals = dailyTotals(events, baby.id, day, to, now);
-  const pumpedToday = events.some((event) => event.type === 'pump' && event.deletedAt === undefined && event.startAt >= day && event.startAt < to);
+  const pumpedToday = events.some(
+    (event) =>
+      event.type === 'pump' &&
+      event.deletedAt === undefined &&
+      event.startAt >= day &&
+      event.startAt < to,
+  );
   return (
     <>
       <div className="card summary-day">
@@ -145,22 +156,40 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
         <dl className="status">
           <Row label={t('summary.feeds')} value={String(totals.feeds)} />
           <Row label={t('summary.breast')} value={breastText(t, totals)} />
-          <Row label={t('summary.bottle')} value={t('summary.bottleValue', { count: totals.bottles, ml: formatNumber(locale, totals.bottleMl) })} />
+          <Row
+            label={t('summary.bottle')}
+            value={t('summary.bottleValue', {
+              count: totals.bottles,
+              ml: formatNumber(locale, totals.bottleMl),
+            })}
+          />
           <Row
             label={t('summary.sleep')}
             value={
               totals.sleeps > 0
-                ? t('summary.sleepValue', { duration: formatDuration(t, totals.sleepMs), count: totals.sleeps })
+                ? t('summary.sleepValue', {
+                    duration: formatDuration(t, totals.sleepMs),
+                    count: totals.sleeps,
+                  })
                 : formatDuration(t, totals.sleepMs)
             }
           />
-          <Row label={t('summary.diapers')} value={t('summary.diaperValue', { wet: totals.wet, dirty: totals.dirty, total: totals.diapers })} />
+          <Row
+            label={t('summary.diapers')}
+            value={t('summary.diaperValue', {
+              wet: totals.wet,
+              dirty: totals.dirty,
+              total: totals.diapers,
+            })}
+          />
         </dl>
       </div>
       {pumpedToday && (
         <div className="card summary-pump">
           <h2>{t('summary.pump')}</h2>
-          <p>{t('summary.pumpTotal', { ml: formatNumber(locale, pumpTotalMl(events, day, to)) })}</p>
+          <p>
+            {t('summary.pumpTotal', { ml: formatNumber(locale, pumpTotalMl(events, day, to)) })}
+          </p>
         </div>
       )}
       <div className="card">
@@ -173,13 +202,23 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
           <legend>{t('growth.metric')}</legend>
           <div className="chips">
             {GROWTH_METRICS.map((option) => (
-              <button key={option} type="button" className="chip" aria-pressed={metric === option} onClick={() => onMetric(option)}>
+              <button
+                key={option}
+                type="button"
+                className="chip"
+                aria-pressed={metric === option}
+                onClick={() => onMetric(option)}
+              >
                 {t(`growth.metric.${option}`)}
               </button>
             ))}
           </div>
         </fieldset>
-        <GrowthChart points={growthSeries(data.growth, metric)} metric={metric} color={baby.color} />
+        <GrowthChart
+          points={growthSeries(data.growth, metric)}
+          metric={metric}
+          color={baby.color}
+        />
       </div>
     </>
   );
@@ -190,7 +229,9 @@ function breastText(t: TranslateFn, totals: DailyTotals): string {
   const total = formatDuration(t, totals.breastMs);
   const sides = (['L', 'R'] as const)
     .filter((side) => totals.breastMsBySide[side] > 0)
-    .map((side) => t(`summary.breastSide.${side}`, { duration: formatDuration(t, totals.breastMsBySide[side]) }));
+    .map((side) =>
+      t(`summary.breastSide.${side}`, { duration: formatDuration(t, totals.breastMsBySide[side]) }),
+    );
   return sides.length === 0 ? total : t('summary.breastValue', { total, sides: sides.join(' · ') });
 }
 
@@ -225,7 +266,10 @@ function WeekTable({ week }: { week: readonly { dayStart: number; totals: DailyT
               {totals.feeds}
               {(totals.breastMs > 0 || totals.bottleMl > 0) && (
                 <span className="muted small week-detail">
-                  {t('summary.weekFeedDetail', { breast: formatDuration(t, totals.breastMs), ml: formatNumber(locale, totals.bottleMl) })}
+                  {t('summary.weekFeedDetail', {
+                    breast: formatDuration(t, totals.breastMs),
+                    ml: formatNumber(locale, totals.bottleMl),
+                  })}
                 </span>
               )}
             </td>

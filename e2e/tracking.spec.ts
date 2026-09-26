@@ -48,14 +48,22 @@ test.describe('babies', () => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Can');
 
-    await page.getByRole('listitem').filter({ hasText: 'Ada' }).getByRole('button', { name: 'Düzenle' }).click();
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Ada' })
+      .getByRole('button', { name: 'Düzenle' })
+      .click();
     const dialog = page.getByRole('dialog', { name: 'Bebeği düzenle' });
     await dialog.getByLabel('İsim').fill('Ada Nur');
     await dialog.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(page.getByRole('listitem').filter({ hasText: 'Ada Nur' })).toBeVisible();
 
     page.once('dialog', (confirm) => void confirm.accept());
-    await page.getByRole('listitem').filter({ hasText: 'Can' }).getByRole('button', { name: 'Sil' }).click();
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Can' })
+      .getByRole('button', { name: 'Sil' })
+      .click();
     await expect(page.getByRole('listitem').filter({ hasText: 'Can' })).toHaveCount(0);
 
     await openTab(page, 'Ana');
@@ -75,11 +83,15 @@ test('a failure to read the data is shown, not swallowed', async ({ page }) => {
     };
   });
   await page.reload();
-  await expect(page.getByRole('alert')).toHaveText(/Veriler yüklenemedi\. Uygulamayı kapatıp yeniden açın\./);
+  await expect(page.getByRole('alert')).toHaveText(
+    /Veriler yüklenemedi\. Uygulamayı kapatıp yeniden açın\./,
+  );
 });
 
 function quick(page: import('@playwright/test').Page, name: string) {
-  return page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
+  return page
+    .getByRole('group', { name: 'Hızlı kayıt' })
+    .getByRole('button', { name, exact: true });
 }
 
 function countDiapers(page: import('@playwright/test').Page): Promise<number> {
@@ -104,7 +116,9 @@ function countDiapers(page: import('@playwright/test').Page): Promise<number> {
 }
 
 test.describe('diapers', () => {
-  test('a dirty diaper with a pale stool shows the biliary-atresia warning and lands on the card', async ({ page }) => {
+  test('a dirty diaper with a pale stool shows the biliary-atresia warning and lands on the card', async ({
+    page,
+  }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Bez').click();
@@ -132,7 +146,9 @@ test.describe('diapers', () => {
     expect(await countDiapers(page)).toBe(1);
   });
 
-  test('a sheet left open while the phone was locked still logs at the moment of saving', async ({ page }) => {
+  test('a sheet left open while the phone was locked still logs at the moment of saving', async ({
+    page,
+  }) => {
     await page.clock.install({ time: new Date('2026-09-25T03:00:00') });
     await page.reload();
     await addBabyInSettings(page, 'Ada');
@@ -181,7 +197,9 @@ test.describe('diapers', () => {
     await page.addInitScript(() => {
       const store: string[] = [];
       (window as unknown as { __cspViolations: string[] }).__cspViolations = store;
-      document.addEventListener('securitypolicyviolation', (e) => store.push(`${e.violatedDirective} ${e.blockedURI}`));
+      document.addEventListener('securitypolicyviolation', (e) =>
+        store.push(`${e.violatedDirective} ${e.blockedURI}`),
+      );
     });
     await page.reload();
     await addBabyInSettings(page, 'Ada');
@@ -192,7 +210,9 @@ test.describe('diapers', () => {
     await sheet.getByRole('radio', { name: 'Sarı', exact: true }).click();
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(babyCard(page, 'Ada')).toContainText('kirli');
-    const violations = await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations);
+    const violations = await page.evaluate(
+      () => (window as unknown as { __cspViolations: string[] }).__cspViolations,
+    );
     expect(violations).toEqual([]);
   });
 
@@ -234,13 +254,18 @@ test.describe('timers and feeds', () => {
     await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
   });
 
-  test('double-tapping "Emzirmeyi bitir" shows no error and finishes the feed', async ({ page }) => {
+  test('double-tapping "Emzirmeyi bitir" shows no error and finishes the feed', async ({
+    page,
+  }) => {
     await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
     await page.reload();
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Emzir').click();
-    await page.getByRole('dialog', { name: 'Emzirme' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Emzirme' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
     const card = babyCard(page, 'Ada');
     await expect(card).toContainText('Emziriyor · sol');
 
@@ -272,14 +297,22 @@ test.describe('timers and feeds', () => {
     await expect(page.getByRole('alert')).toHaveCount(0);
   });
 
-  test('a feed and a sleep running together get their own rows; finishing the feed keeps the sleep', async ({ page }) => {
+  test('a feed and a sleep running together get their own rows; finishing the feed keeps the sleep', async ({
+    page,
+  }) => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Can');
     await openTab(page, 'Ana');
     await quick(page, 'Uyku').click();
-    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Uyku' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
     await quick(page, 'Emzir').click();
-    await page.getByRole('dialog', { name: 'Emzirme' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Emzirme' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
     const card = babyCard(page, 'Ada');
     await expect(card).toContainText('Emziriyor · sol');
     await expect(card).toContainText('Uyuyor');
@@ -292,14 +325,22 @@ test.describe('timers and feeds', () => {
     await expect(finishFeed).toHaveText('Emzirmeyi bitir');
     await expect(wakeUp).toHaveText('Uyandı');
 
-    const feedRow = card.locator('.timer-row').filter({ has: page.getByRole('button', { name: 'Ada: Emzirmeyi bitir' }) });
-    const sleepRow = card.locator('.timer-row').filter({ has: page.getByRole('button', { name: 'Ada: Uyandı' }) });
+    const feedRow = card
+      .locator('.timer-row')
+      .filter({ has: page.getByRole('button', { name: 'Ada: Emzirmeyi bitir' }) });
+    const sleepRow = card
+      .locator('.timer-row')
+      .filter({ has: page.getByRole('button', { name: 'Ada: Uyandı' }) });
     await expect(feedRow).toBeVisible();
     await expect(sleepRow).toBeVisible();
     await expect(feedRow.getByRole('button')).toHaveCount(2);
     await expect(sleepRow.getByRole('button')).toHaveCount(1);
 
-    const [a, b, c] = await Promise.all([switchSide.boundingBox(), finishFeed.boundingBox(), wakeUp.boundingBox()]);
+    const [a, b, c] = await Promise.all([
+      switchSide.boundingBox(),
+      finishFeed.boundingBox(),
+      wakeUp.boundingBox(),
+    ]);
     expect(b!.x - (a!.x + a!.width)).toBeGreaterThanOrEqual(16);
     expect(c!.y - (b!.y + b!.height)).toBeGreaterThanOrEqual(16);
     for (const box of [a!, b!, c!]) expect(box.height).toBeGreaterThanOrEqual(48);
@@ -314,7 +355,10 @@ test.describe('timers and feeds', () => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Uyku').click();
-    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Uyku' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
     await expect(babyCard(page, 'Ada')).toContainText('Uyuyor · 0 dk');
 
     await page.reload();
@@ -328,7 +372,10 @@ test.describe('timers and feeds', () => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Uyku').click();
-    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Uyku' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
     await quick(page, 'Uyku').click();
     const sheet = page.getByRole('dialog', { name: 'Uyku' });
     await sheet.getByRole('button', { name: 'Başlat', exact: true }).click();
@@ -349,7 +396,9 @@ test.describe('timers and feeds', () => {
     await expect(babyCard(page, 'Can')).toContainText('az önce · biberon 90 ml');
   });
 
-  test('a feed with a duration is saved as finished, ending at the chosen time', async ({ page }) => {
+  test('a feed with a duration is saved as finished, ending at the chosen time', async ({
+    page,
+  }) => {
     await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
     await page.reload();
     await addBabyInSettings(page, 'Ada');
@@ -396,7 +445,9 @@ test.describe('timers and feeds', () => {
     const sheet = page.getByRole('dialog', { name: 'Emzirme' });
     await sheet.getByLabel('Süre (dk) — boş bırakırsanız sayaç başlar').fill('300');
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
-    await expect(sheet.getByRole('alert')).toHaveText('Süre çok uzun: uyku en fazla 24 saat, emzirme en fazla 4 saat olabilir.');
+    await expect(sheet.getByRole('alert')).toHaveText(
+      'Süre çok uzun: uyku en fazla 24 saat, emzirme en fazla 4 saat olabilir.',
+    );
   });
 });
 
@@ -451,7 +502,11 @@ test.describe('sheet defaults and saved fields', () => {
     // Real <input type="radio">, one group name, so the arrow keys move the choice natively.
     const colorRadios = form.locator('input[type="radio"]');
     await expect(colorRadios).toHaveCount(6);
-    expect(await colorRadios.evaluateAll((els) => new Set(els.map((el) => (el as HTMLInputElement).name)).size)).toBe(1);
+    expect(
+      await colorRadios.evaluateAll(
+        (els) => new Set(els.map((el) => (el as HTMLInputElement).name)).size,
+      ),
+    ).toBe(1);
     await form.getByRole('radio', { name: 'Pembe', exact: true }).check();
     await expect(form.getByRole('radio', { name: 'Pembe', exact: true })).toBeChecked();
     await form.getByRole('radio', { name: 'Pembe', exact: true }).focus();
@@ -467,7 +522,11 @@ test.describe('sheet defaults and saved fields', () => {
     await sheet.getByRole('button', { name: 'Kirli', exact: true }).click();
     const stoolRadios = sheet.locator('input[type="radio"]');
     await expect(stoolRadios).toHaveCount(9);
-    expect(await stoolRadios.evaluateAll((els) => new Set(els.map((el) => (el as HTMLInputElement).name)).size)).toBe(1);
+    expect(
+      await stoolRadios.evaluateAll(
+        (els) => new Set(els.map((el) => (el as HTMLInputElement).name)).size,
+      ),
+    ).toBe(1);
     await sheet.getByRole('radio', { name: 'Hardal', exact: true }).check();
     await expect(sheet.getByRole('radio', { name: 'Hardal', exact: true })).toBeChecked();
     await expect(sheet.getByRole('radio', { name: 'Sarı', exact: true })).not.toBeChecked();
@@ -485,14 +544,27 @@ test.describe('sheet defaults and saved fields', () => {
           const title = dialog.querySelector('h2')?.textContent ?? '';
           if (dialog.open && (!dialog.querySelector('form') || title === '')) empty.push(title);
         }
-      }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+      }).observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
     });
     await quick(page, 'Bez').click();
-    await page.getByRole('dialog', { name: 'Bez' }).getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Bez' })
+      .getByRole('button', { name: 'Kaydet', exact: true })
+      .click();
     await expect(page.getByRole('dialog', { name: 'Bez' })).toBeHidden();
     await quick(page, 'Biberon').click();
-    await page.getByRole('dialog', { name: 'Biberon' }).getByRole('button', { name: 'Vazgeç', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Biberon' })
+      .getByRole('button', { name: 'Vazgeç', exact: true })
+      .click();
     await expect(page.getByRole('dialog', { name: 'Biberon' })).toBeHidden();
-    expect(await page.evaluate(() => (window as unknown as { __emptySheets: string[] }).__emptySheets)).toEqual([]);
+    expect(
+      await page.evaluate(() => (window as unknown as { __emptySheets: string[] }).__emptySheets),
+    ).toEqual([]);
   });
 });

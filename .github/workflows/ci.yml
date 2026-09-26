@@ -5,7 +5,15 @@ on:
     branches: [main]
     # Pushes that touch only the repository's own docs change nothing in the app, so they neither run CI
     # nor publish a release. public/sounds/SOURCES.md ships with the app, so it is not listed here.
-    paths-ignore: ['README.md', 'MANIFESTO.md', 'LICENSE', 'docs/**', 'assets/**', '.github/pull_request_template.md']
+    paths-ignore:
+      [
+        'README.md',
+        'MANIFESTO.md',
+        'LICENSE',
+        'docs/**',
+        'assets/**',
+        '.github/pull_request_template.md',
+      ]
   pull_request:
   workflow_dispatch:
 

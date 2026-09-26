@@ -17,7 +17,15 @@ afterEach(async () => {
 });
 
 function sleep(id: string, extra: Partial<TrackerEvent> = {}): TrackerEvent {
-  return { id, type: 'sleep', babyId: 'a', startAt: NOW - 30 * MINUTE, createdAt: NOW, updatedAt: NOW, ...extra } as TrackerEvent;
+  return {
+    id,
+    type: 'sleep',
+    babyId: 'a',
+    startAt: NOW - 30 * MINUTE,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...extra,
+  } as TrackerEvent;
 }
 
 async function openIds(db: TrackerDb): Promise<string[]> {
@@ -29,8 +37,19 @@ describe('withOpenFlag', () => {
     expect(withOpenFlag(sleep('s'))).toMatchObject({ open: 1 });
     expect(withOpenFlag(sleep('s', { endAt: NOW }))).not.toHaveProperty('open');
     expect(withOpenFlag(sleep('s', { deletedAt: NOW }))).not.toHaveProperty('open');
-    expect(withOpenFlag({ ...sleep('s', { endAt: NOW }), open: 1 as const })).not.toHaveProperty('open');
-    const diaper = { id: 'd', type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false, createdAt: NOW, updatedAt: NOW } as TrackerEvent;
+    expect(withOpenFlag({ ...sleep('s', { endAt: NOW }), open: 1 as const })).not.toHaveProperty(
+      'open',
+    );
+    const diaper = {
+      id: 'd',
+      type: 'diaper',
+      babyId: 'a',
+      startAt: NOW,
+      wet: true,
+      dirty: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+    } as TrackerEvent;
     expect(shouldBeOpen(diaper)).toBe(false);
     expect(withOpenFlag(diaper)).not.toHaveProperty('open');
   });

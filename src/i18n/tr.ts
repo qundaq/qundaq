@@ -12,7 +12,8 @@ export const tr = {
   'settings.nightMode': 'Gece modu',
   'settings.nightMode.hint': 'Karanlıkta göz yormayan kırmızı tonlar.',
   'settings.cap.title': 'Ses güvenlik sınırı',
-  'settings.cap.hint': 'Sesler sekmesindeki ses seviyesi bu sınırı aşamaz. Telefonun ses tuşları bunun üstüne eklenir.',
+  'settings.cap.hint':
+    'Sesler sekmesindeki ses seviyesi bu sınırı aşamaz. Telefonun ses tuşları bunun üstüne eklenir.',
   'settings.cap.warning':
     'Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun ve sesi olabildiğince kısık tutun. Uzun süre yüksek ses bebeğin işitmesine zarar verebilir. Telefonun ses tuşları da ses düzeyini değiştirir.',
   'settings.cap.belowDefault': 'Varsayılanın altında.',
@@ -21,12 +22,15 @@ export const tr = {
   'settings.offline.notReady':
     'Henüz çevrimdışı hazır değil. Uçak moduna geçmeden önce uygulamayı internet açıkken bir kez açık tutun.',
   'settings.offline.unsupported': 'Bu tarayıcı çevrimdışı kullanımı desteklemiyor.',
-  'settings.offline.insecure': 'Çevrimdışı kullanım için uygulamanın güvenli (https) bir adresten açılması gerekir.',
+  'settings.offline.insecure':
+    'Çevrimdışı kullanım için uygulamanın güvenli (https) bir adresten açılması gerekir.',
   'settings.offline.dev': 'Geliştirme modunda çevrimdışı önbellek kapalı.',
   'settings.storage.title': 'Kalıcı depolama',
   'settings.storage.persisted': 'Açık: sistem bu verileri yer açmak için silmez.',
-  'settings.storage.denied': 'Kapalı: sistem yer açmak için verileri silebilir. Düzenli yedek alın.',
-  'settings.storage.unsupported': 'Bu tarayıcı kalıcı depolamayı desteklemiyor. Düzenli yedek alın.',
+  'settings.storage.denied':
+    'Kapalı: sistem yer açmak için verileri silebilir. Düzenli yedek alın.',
+  'settings.storage.unsupported':
+    'Bu tarayıcı kalıcı depolamayı desteklemiyor. Düzenli yedek alın.',
   'settings.update.title': 'Güncelleme',
   'settings.update.hint':
     "Uygulama güncellemeyi kendiliğinden indirmez. Yeni sürüm yalnızca bu butona bastığınızda indirilir; Yeniden başlat'a bastığınızda ya da uygulamayı bir sonraki açışınızda başlar.",
@@ -54,7 +58,7 @@ export const tr = {
   'unit.mb': '{n} MB',
   'backup.title': 'Yedekleme',
   'backup.hint':
-    "Kayıtlar yalnızca bu telefonda durur ve iOS bunları silebilir. Düzenli yedek alın ve dosyayı \"iPhone'umda\" konumuna kaydedin: iCloud'da duran bir dosya uçak modunda açılmaz.",
+    'Kayıtlar yalnızca bu telefonda durur ve iOS bunları silebilir. Düzenli yedek alın ve dosyayı "iPhone\'umda" konumuna kaydedin: iCloud\'da duran bir dosya uçak modunda açılmaz.',
   'backup.never': 'Henüz yedek alınmadı.',
   'backup.last': 'Son yedek: {ago} ({date})',
   'backup.today': 'bugün',
@@ -105,7 +109,8 @@ export const tr = {
   'rule.pump-empty': 'Sol ya da sağ için bir miktar girin.',
   'rule.pump-invalid': 'Geçerli bir miktar girin (1–500 ml).',
   'rule.growth-empty': 'En az bir ölçüm girin.',
-  'rule.growth-invalid': 'Ölçüm geçersiz. Kilo 0,3–30 kg, boy 20–130 cm, baş çevresi 20–70 cm olmalı.',
+  'rule.growth-invalid':
+    'Ölçüm geçersiz. Kilo 0,3–30 kg, boy 20–130 cm, baş çevresi 20–70 cm olmalı.',
   'rule.weight-in-kg': 'Kiloyu kg olarak girin (ör. 3,45).',
   'rule.temperature-invalid': 'Geçerli bir ateş değeri girin (30–45 °C).',
   'rule.medication-name-required': 'İlacın ya da vitaminin adını girin.',
@@ -198,7 +203,8 @@ export const tr = {
   'stool.alert.pale':
     'Soluk, beyaz ya da kil rengi kaka safra yolu sorununun (biliyer atrezi) belirtisi olabilir. Doktorunuza hemen danışın.',
   'stool.alert.blood': 'Kırmızı renk kan olabilir. Doktorunuza danışın.',
-  'stool.alert.black': 'İlk günlerde siyah kaka (mekonyum) normaldir. Sonrasında görülürse doktorunuza danışın.',
+  'stool.alert.black':
+    'İlk günlerde siyah kaka (mekonyum) normaldir. Sonrasında görülürse doktorunuza danışın.',
   'timer.switchSide': 'Taraf değiştir',
   'timer.stopFeed': 'Emzirmeyi bitir',
   'timer.wakeUp': 'Uyandı',
@@ -233,8 +239,10 @@ export const tr = {
   'growth.height': 'Boy (cm)',
   'growth.head': 'Baş çevresi (cm)',
   'temperature.value': 'Ateş (°C)',
-  'temperature.alert.fever': '38 °C ve üzeri ateş, özellikle 3 aydan küçük bebeklerde hemen doktora danışmayı gerektirir.',
-  'temperature.alert.low': "36 °C'nin altı düşük vücut ısısıdır; bebeği ısıtın ve doktorunuza danışın.",
+  'temperature.alert.fever':
+    '38 °C ve üzeri ateş, özellikle 3 aydan küçük bebeklerde hemen doktora danışmayı gerektirir.',
+  'temperature.alert.low':
+    "36 °C'nin altı düşük vücut ısısıdır; bebeği ısıtın ve doktorunuza danışın.",
   'medication.name': 'İlaç / vitamin',
   'medication.dose': 'Doz (isteğe bağlı)',
   'medication.recent': 'Son kullanılanlar',
@@ -298,15 +306,18 @@ export const tr = {
   'growth.table': 'Ölçümler',
   'growth.col.date': 'Tarih',
   'crash.title': 'Bir şeyler ters gitti.',
-  'crash.otherTabs': 'Diğer sekmeler çalışmaya devam ediyor. Verilerinizi korumak için şimdi yedek alabilirsiniz.',
+  'crash.otherTabs':
+    'Diğer sekmeler çalışmaya devam ediyor. Verilerinizi korumak için şimdi yedek alabilirsiniz.',
   'crash.reload': 'Yeniden yükle',
   'backup.import': 'Yedekten geri yükle',
   'import.title': 'Yedekten geri yükle',
   'import.loading': 'Yedek okunuyor…',
   'import.error.not-backup': 'Bu dosya bir Qundaq yedeği değil.',
-  'import.error.newer-version': 'Bu yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce uygulamayı güncelleyin.',
+  'import.error.newer-version':
+    'Bu yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce uygulamayı güncelleyin.',
   'import.error.too-large': 'Dosya çok büyük (en fazla 20 MB).',
-  'import.error.unreadable': "Dosya okunamadı. Dosya iCloud'daysa önce indirin ya da iPhone'umda konumuna kaydedin.",
+  'import.error.unreadable':
+    "Dosya okunamadı. Dosya iCloud'daysa önce indirin ya da iPhone'umda konumuna kaydedin.",
   'import.fileInfo': 'Yedek: {date} · sürüm {version}',
   'import.fileInfoNoVersion': 'Yedek: {date}',
   'import.fileBabies': 'Bebekler: {names}',
@@ -318,21 +329,25 @@ export const tr = {
   'import.skippedBaby': 'Bebek',
   'import.skippedMix': 'Karışım',
   'import.unknownRow': 'Tanımlanamayan kayıt',
-  'import.outOfRange': "{n} kaydın tarihi olağan dışı (2000'den önce ya da ileri bir tarih); yine de eklenecek.",
+  'import.outOfRange':
+    "{n} kaydın tarihi olağan dışı (2000'den önce ya da ileri bir tarih); yine de eklenecek.",
   'import.badBirthDate': '{n} bebeğin doğum tarihi okunamadı ve boş bırakılacak.',
   'import.settingsWarning': 'Yedekteki bazı ayarlar okunamadı; bu cihazdaki ayarlar kullanılacak.',
   'import.mode': 'Nasıl geri yüklensin?',
   'import.mode.merge': 'Birleştir',
   'import.mode.replace': 'Tamamen değiştir',
   'import.sameBabyTitle': 'Aynı bebek mi?',
-  'import.sameBabyHint': 'Uygulamayı silip yeniden kurduysanız bebekleri yeniden eklemiş olabilirsiniz. İşaretli bebeklerin kayıtları tek bebekte birleşir.',
+  'import.sameBabyHint':
+    'Uygulamayı silip yeniden kurduysanız bebekleri yeniden eklemiş olabilirsiniz. İşaretli bebeklerin kayıtları tek bebekte birleşir.',
   'import.sameBaby': 'Yedekteki {fileName} ile bu cihazdaki {localName} aynı bebek',
   'import.babies': 'Bebekler',
   'import.events': 'Kayıtlar',
   'import.mixes': 'Karışımlar',
-  'import.counts': 'Eklenecek: {add} · Güncellenecek: {update} · Silinecek: {remove} · Aynı: {same} · Bu cihazdaki daha yeni olduğu için korunacak: {keep}',
+  'import.counts':
+    'Eklenecek: {add} · Güncellenecek: {update} · Silinecek: {remove} · Aynı: {same} · Bu cihazdaki daha yeni olduğu için korunacak: {keep}',
   'import.deleted': 'silinmiş: {n}',
-  'import.replaceSummary': 'Bu cihazdaki {babies} bebek ve {events} kayıt silinip yedektekilerle değiştirilecek.',
+  'import.replaceSummary':
+    'Bu cihazdaki {babies} bebek ve {events} kayıt silinip yedektekilerle değiştirilecek.',
   'import.replaceMixes': 'Bu cihazdaki {n} karışım silinecek.',
   'import.loss': 'Yedekten sonra bu cihaza girilen {n} kayıt silinecek (en yenisi: {newest}).',
   'import.staleTitle': 'Süren sayaçlar',
@@ -344,17 +359,22 @@ export const tr = {
   'import.applyMerge': 'Geri yükle',
   'import.applyReplace': 'Değiştir',
   'import.applying': 'Geri yükleniyor…',
-  'import.changed': 'Bu arada cihazdaki veriler değişti. Önizleme güncellendi; lütfen yeniden kontrol edin.',
+  'import.changed':
+    'Bu arada cihazdaki veriler değişti. Önizleme güncellendi; lütfen yeniden kontrol edin.',
   'import.failed': 'Geri yüklenemedi. Hiçbir şey değişmedi.',
-  'import.failedAfter': "Yedek geri yüklendi, ancak sonuç gösterilemedi. Kayıtları Günlük'te kontrol edin.",
-  'import.done.merge': 'Geri yüklendi: {added} kayıt eklendi, {updated} güncellendi, {removed} silindi, {moved} taşındı.',
-  'import.done.mergeMixes': 'Karışımlar: {added} eklendi, {updated} güncellendi, {removed} silindi.',
+  'import.failedAfter':
+    "Yedek geri yüklendi, ancak sonuç gösterilemedi. Kayıtları Günlük'te kontrol edin.",
+  'import.done.merge':
+    'Geri yüklendi: {added} kayıt eklendi, {updated} güncellendi, {removed} silindi, {moved} taşındı.',
+  'import.done.mergeMixes':
+    'Karışımlar: {added} eklendi, {updated} güncellendi, {removed} silindi.',
   'import.done.replace': 'Geri yüklendi: {babies} bebek ve {events} kayıt.',
   'import.removedBabies': 'Bu cihazdan kaldırılacak bebek: {names}',
   'import.moved': '{n} kayıt {name} altında birleştirilecek.',
   'import.follow': '{localName} (silinen bebek): kayıtları {name} altında birleştirilsin',
   'import.hidden': '{name} silindiği için {n} kayıt gizli kalacak.',
-  'home.restoreHint': 'Daha önce yedek aldıysanız önce onu geri yükleyin; bebekleri yeniden eklemeniz gerekmez.',
+  'home.restoreHint':
+    'Daha önce yedek aldıysanız önce onu geri yükleyin; bebekleri yeniden eklemeniz gerekmez.',
   'backup.problem.not-object': 'kayıt bozuk',
   'backup.problem.bad-id': 'kimliği eksik ya da geçersiz',
   'backup.problem.duplicate-id': 'aynı kimlikle iki kez geçiyor',

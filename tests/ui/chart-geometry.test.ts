@@ -4,7 +4,14 @@ import { growthChartGeometry } from '../../src/ui/summary/chartGeometry';
 // 320 × 200 with 24 on every side: the plot spans x 24–296 and y 24–176.
 describe('growthChartGeometry', () => {
   it('has nothing to draw without points', () => {
-    expect(growthChartGeometry([], 320, 200, 24)).toEqual({ dots: [], polyline: null, yMax: 0, yMin: 0, firstAt: null, lastAt: null });
+    expect(growthChartGeometry([], 320, 200, 24)).toEqual({
+      dots: [],
+      polyline: null,
+      yMax: 0,
+      yMin: 0,
+      firstAt: null,
+      lastAt: null,
+    });
   });
 
   it('puts a single point in the middle and draws no line', () => {

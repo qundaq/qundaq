@@ -39,10 +39,18 @@ describe('mixes repository', () => {
   it('refuses a blank or too long name, and layers that are not 1–6 known unique sounds', async () => {
     const db = freshDb();
     await expect(saveMix(db, '  ', LAYERS)).rejects.toEqual(new ValidationError(['name-required']));
-    await expect(saveMix(db, 'x'.repeat(41), LAYERS)).rejects.toEqual(new ValidationError(['text-too-long']));
-    await expect(saveMix(db, 'Gece', [])).rejects.toEqual(new ValidationError(['mix-layers-invalid']));
-    await expect(saveMix(db, 'Gece', [{ soundId: 'train', gain: 0.5 }])).rejects.toEqual(new ValidationError(['mix-layers-invalid']));
-    await expect(saveMix(db, 'Gece', [{ soundId: 'white', gain: 2 }])).rejects.toEqual(new ValidationError(['mix-layers-invalid']));
+    await expect(saveMix(db, 'x'.repeat(41), LAYERS)).rejects.toEqual(
+      new ValidationError(['text-too-long']),
+    );
+    await expect(saveMix(db, 'Gece', [])).rejects.toEqual(
+      new ValidationError(['mix-layers-invalid']),
+    );
+    await expect(saveMix(db, 'Gece', [{ soundId: 'train', gain: 0.5 }])).rejects.toEqual(
+      new ValidationError(['mix-layers-invalid']),
+    );
+    await expect(saveMix(db, 'Gece', [{ soundId: 'white', gain: 2 }])).rejects.toEqual(
+      new ValidationError(['mix-layers-invalid']),
+    );
     expect(await db.mixes.count()).toBe(0);
   });
 
@@ -50,7 +58,11 @@ describe('mixes repository', () => {
     const db = freshDb();
     const mix = await saveMix(db, 'Gece', LAYERS, 1000);
     await renameMix(db, mix.id, ' Derin uyku ', 2000);
-    expect(await db.mixes.get(mix.id)).toMatchObject({ name: 'Derin uyku', updatedAt: 2000, layers: LAYERS });
+    expect(await db.mixes.get(mix.id)).toMatchObject({
+      name: 'Derin uyku',
+      updatedAt: 2000,
+      layers: LAYERS,
+    });
     await expect(renameMix(db, mix.id, '')).rejects.toBeInstanceOf(ValidationError);
     await expect(renameMix(db, 'missing', 'x')).rejects.toThrow('not found');
   });

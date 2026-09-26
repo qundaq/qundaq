@@ -44,7 +44,10 @@ describe('volume', () => {
     // Quiet layers add up to less than one full layer: no scaling.
     expect(busScale([0.5, 0.5])).toBe(1);
     for (const levels of [[1], [1, 1], [0.7, 0.7, 0.7], [1, 1, 1, 1, 1, 1]]) {
-      const power = levels.reduce((sum, level) => sum + (sliderGain(level) * busScale(levels)) ** 2, 0);
+      const power = levels.reduce(
+        (sum, level) => sum + (sliderGain(level) * busScale(levels)) ** 2,
+        0,
+      );
       expect(power).toBeLessThanOrEqual(1 + 1e-9);
     }
   });

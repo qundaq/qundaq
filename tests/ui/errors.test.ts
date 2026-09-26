@@ -10,11 +10,15 @@ describe('bannerMessage', () => {
     expect(bannerMessage(t, new Error('IndexedDB broke'), 'error.loadFailed')).toBe(
       'Veriler yüklenemedi. Uygulamayı kapatıp yeniden açın.',
     );
-    expect(translate('en', 'error.loadFailed')).toBe("Couldn't load your data. Close and reopen the app.");
+    expect(translate('en', 'error.loadFailed')).toBe(
+      "Couldn't load your data. Close and reopen the app.",
+    );
   });
 
   it('keeps the write-error messages when no message is requested', () => {
-    expect(bannerMessage(t, new ValidationError(['already-running']))).toBe(t('rule.already-running'));
+    expect(bannerMessage(t, new ValidationError(['already-running']))).toBe(
+      t('rule.already-running'),
+    );
     expect(bannerMessage(t, new Error('quota'))).toBe('Kaydedilemedi. Lütfen tekrar deneyin.');
   });
 });
@@ -29,14 +33,18 @@ describe('messageFor', () => {
     expect(messageFor(t, new ValidationError(['already-running'], ['a', 'b']), babies)).toBe(
       'Ada, Can için zaten devam eden bir kayıt var.',
     );
-    expect(translate('en', 'rule.already-running.named', { names: 'Ada' })).toBe('Ada already has a running entry.');
+    expect(translate('en', 'rule.already-running.named', { names: 'Ada' })).toBe(
+      'Ada already has a running entry.',
+    );
   });
 
   it('falls back to the plain message when no name is known', () => {
     expect(messageFor(t, new ValidationError(['already-running'], ['gone']), babies)).toBe(
       'Bu bebek için zaten devam eden bir kayıt var.',
     );
-    expect(messageFor(t, new ValidationError(['already-running']))).toBe('Bu bebek için zaten devam eden bir kayıt var.');
+    expect(messageFor(t, new ValidationError(['already-running']))).toBe(
+      'Bu bebek için zaten devam eden bir kayıt var.',
+    );
   });
 
   it('shows the first rule otherwise', () => {

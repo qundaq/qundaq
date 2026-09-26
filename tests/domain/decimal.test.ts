@@ -12,7 +12,21 @@ describe('parseDecimal', () => {
     expect(parseDecimal(raw)).toBe(value);
   });
 
-  it.each(['', ' ', '3,4,5', '3.4.5', ',5', '5,', '1e3', '0x10', '+5', '-1', 'Infinity', 'abc', '3 45'])('rejects %j', (raw) => {
+  it.each([
+    '',
+    ' ',
+    '3,4,5',
+    '3.4.5',
+    ',5',
+    '5,',
+    '1e3',
+    '0x10',
+    '+5',
+    '-1',
+    'Infinity',
+    'abc',
+    '3 45',
+  ])('rejects %j', (raw) => {
     expect(parseDecimal(raw)).toBeNull();
   });
 });

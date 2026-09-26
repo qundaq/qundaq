@@ -1,6 +1,17 @@
 import type { MessageKey } from '../i18n';
 import type { SoundId } from '../domain/sounds';
-import { airplane, brown, heartbeat, pink, rain, shush, waves, white, wind, type Generator } from './generators';
+import {
+  airplane,
+  brown,
+  heartbeat,
+  pink,
+  rain,
+  shush,
+  waves,
+  white,
+  wind,
+  type Generator,
+} from './generators';
 
 /**
  * Every sound the Sesler tab offers, in tile order. All are generated in code (see

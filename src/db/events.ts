@@ -1,8 +1,21 @@
 import { newId } from '../domain/ids';
-import { ValidationError, isOpen, isTimedType, validateEvent, type RuleViolation } from '../domain/rules';
+import {
+  ValidationError,
+  isOpen,
+  isTimedType,
+  validateEvent,
+  type RuleViolation,
+} from '../domain/rules';
 import { DAY } from '../domain/time';
 import { foldCase } from '../domain/text';
-import type { BreastSegment, EventDraft, GrowthEvent, Id, MedicationEvent, TrackerEvent } from '../domain/types';
+import type {
+  BreastSegment,
+  EventDraft,
+  GrowthEvent,
+  Id,
+  MedicationEvent,
+  TrackerEvent,
+} from '../domain/types';
 import type { TrackerDb } from './db';
 
 /** Running (open) events, found through the sparse `open` index instead of scanning the table. */
@@ -15,7 +28,8 @@ export async function listRecentEvents(db: TrackerDb, since: number): Promise<Tr
   const recent = await db.events.where('startAt').aboveOrEqual(since).toArray();
   const running = await listRunningEvents(db);
   const byId = new Map<Id, TrackerEvent>();
-  for (const event of [...running, ...recent]) if (event.deletedAt === undefined) byId.set(event.id, event);
+  for (const event of [...running, ...recent])
+    if (event.deletedAt === undefined) byId.set(event.id, event);
   return [...byId.values()].sort((a, b) => a.startAt - b.startAt);
 }
 
@@ -35,9 +49,17 @@ function overlaps(event: TrackerEvent, from: number, to: number, now: number): b
  * Non-deleted events that overlap [from, to), oldest first. Instant entries count when they happen inside
  * the window; timers when any part of them does, a running one lasting until `now`.
  */
-export async function listEventsOverlapping(db: TrackerDb, from: number, to: number, now: number): Promise<TrackerEvent[]> {
+export async function listEventsOverlapping(
+  db: TrackerDb,
+  from: number,
+  to: number,
+  now: number,
+): Promise<TrackerEvent[]> {
   const [candidates, running] = await Promise.all([
-    db.events.where('startAt').between(from - OVERLAP_LOOKBACK_MS, to, true, false).toArray(),
+    db.events
+      .where('startAt')
+      .between(from - OVERLAP_LOOKBACK_MS, to, true, false)
+      .toArray(),
     listRunningEvents(db),
   ]);
   const byId = new Map<Id, TrackerEvent>();
@@ -71,11 +93,18 @@ export const RECENT_MEDICATION_WINDOW_MS = 60 * DAY;
  * Distinct medicine names used in the last 60 days, most recent first, each with the spelling and dose of
  * its latest use. Offered as chips in the "Diğer → İlaç" sheet.
  */
-export async function recentMedicationNames(db: TrackerDb, now: number, limit = 5): Promise<RecentMedication[]> {
+export async function recentMedicationNames(
+  db: TrackerDb,
+  now: number,
+  limit = 5,
+): Promise<RecentMedication[]> {
   const since = now - RECENT_MEDICATION_WINDOW_MS;
   const rows = await db.events.where('type').equals('medication').toArray();
   const medications = rows
-    .filter((event): event is MedicationEvent => event.type === 'medication' && event.deletedAt === undefined && event.startAt >= since)
+    .filter(
+      (event): event is MedicationEvent =>
+        event.type === 'medication' && event.deletedAt === undefined && event.startAt >= since,
+    )
     .sort((a, b) => b.startAt - a.startAt);
   const seen = new Set<string>();
   const recent: RecentMedication[] = [];
@@ -91,7 +120,11 @@ export async function recentMedicationNames(db: TrackerDb, now: number, limit = 
 }
 
 /** Validates every draft (against stored running events and each other) and stores all or none. */
-export async function logEvents(db: TrackerDb, drafts: readonly EventDraft[], now = Date.now()): Promise<TrackerEvent[]> {
+export async function logEvents(
+  db: TrackerDb,
+  drafts: readonly EventDraft[],
+  now = Date.now(),
+): Promise<TrackerEvent[]> {
   if (drafts.length === 0) return [];
   return db.transaction('rw', db.events, async () => {
     const running = await listRunningEvents(db);
@@ -103,7 +136,13 @@ export async function logEvents(db: TrackerDb, drafts: readonly EventDraft[], no
       const found = validateEvent(draft, [...running, ...created], now);
       for (const violation of found) violations.add(violation);
       if (found.includes('already-running') && draft.babyId !== null) clashing.push(draft.babyId);
-      created.push({ ...draft, id: newId(), ...(groupId ? { groupId } : {}), createdAt: now, updatedAt: now } as TrackerEvent);
+      created.push({
+        ...draft,
+        id: newId(),
+        ...(groupId ? { groupId } : {}),
+        createdAt: now,
+        updatedAt: now,
+      } as TrackerEvent);
     }
     if (violations.size > 0) throw new ValidationError([...violations], clashing);
     await db.events.bulkAdd(created);
@@ -116,7 +155,9 @@ export const SWITCH_DEBOUNCE_MS = 2000;
 
 function closeLast(segments: readonly BreastSegment[], at: number): BreastSegment[] {
   return segments.map((segment, i) =>
-    i === segments.length - 1 && segment.end === undefined ? { ...segment, end: Math.max(at, segment.start) } : segment,
+    i === segments.length - 1 && segment.end === undefined
+      ? { ...segment, end: Math.max(at, segment.start) }
+      : segment,
   );
 }
 
@@ -159,7 +200,10 @@ export async function switchBreastSide(db: TrackerDb, id: Id, now = Date.now()):
     if (!isOpen(event)) return false;
     const current = event.segments.at(-1)!;
     if (now - current.start < SWITCH_DEBOUNCE_MS) return false;
-    const segments: BreastSegment[] = [...closeLast(event.segments, now), { side: current.side === 'L' ? 'R' : 'L', start: now }];
+    const segments: BreastSegment[] = [
+      ...closeLast(event.segments, now),
+      { side: current.side === 'L' ? 'R' : 'L', start: now },
+    ];
     await db.events.put({ ...event, segments, updatedAt: now } as TrackerEvent);
     return true;
   });
@@ -171,14 +215,22 @@ export async function switchBreastSide(db: TrackerDb, id: Id, now = Date.now()):
  * "dirty" was turned off or an emptied note, is really gone. The type cannot change. A finished timer can
  * never run again, but a running one may be finished by an edit (a stop at a chosen time, fully validated).
  */
-export async function updateEvent(db: TrackerDb, id: Id, draft: EventDraft, now = Date.now()): Promise<TrackerEvent> {
+export async function updateEvent(
+  db: TrackerDb,
+  id: Id,
+  draft: EventDraft,
+  now = Date.now(),
+): Promise<TrackerEvent> {
   return db.transaction('rw', db.events, async () => {
     const stored = await getLive(db, id);
-    if (draft.type !== stored.type) throw new Error(`Event ${id} is a ${stored.type}, not a ${draft.type}`);
-    if (!isOpen(stored) && isOpen(draft)) throw new Error(`Event ${id} has finished and cannot be restarted`);
+    if (draft.type !== stored.type)
+      throw new Error(`Event ${id} is a ${stored.type}, not a ${draft.type}`);
+    if (!isOpen(stored) && isOpen(draft))
+      throw new Error(`Event ${id} has finished and cannot be restarted`);
     const violations = validateEvent(draft, await listRunningEvents(db), now, id);
     if (violations.length > 0) {
-      const clashing = violations.includes('already-running') && draft.babyId !== null ? [draft.babyId] : [];
+      const clashing =
+        violations.includes('already-running') && draft.babyId !== null ? [draft.babyId] : [];
       throw new ValidationError(violations, clashing);
     }
     const updated = {

@@ -23,7 +23,8 @@ afterEach(() => {
   else process.env.TZ = previousTz;
 });
 
-const at = (month: number, day: number, hour = 0, minute = 0) => new Date(2026, month - 1, day, hour, minute).getTime();
+const at = (month: number, day: number, hour = 0, minute = 0) =>
+  new Date(2026, month - 1, day, hour, minute).getTime();
 
 describe('calendar days', () => {
   it('startOfDay is local midnight', () => {

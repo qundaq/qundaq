@@ -10,7 +10,13 @@ export interface BackupActions {
   onCsv: () => void;
 }
 
-export function BackupCard({ lastBackupAt, actions }: { lastBackupAt: number | undefined; actions: BackupActions }) {
+export function BackupCard({
+  lastBackupAt,
+  actions,
+}: {
+  lastBackupAt: number | undefined;
+  actions: BackupActions;
+}) {
   const t = useT();
   const locale = useLocale();
   const now = useNow();

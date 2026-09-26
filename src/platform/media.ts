@@ -42,7 +42,10 @@ export function setPlaybackSession(nav: MediaNavigator): boolean {
 }
 
 /** Reports the audio session's state on every change ('interrupted' while a call or an alarm plays). Returns the unsubscribe function. */
-export function watchAudioSession(nav: MediaNavigator, onState: (state: string) => void): () => void {
+export function watchAudioSession(
+  nav: MediaNavigator,
+  onState: (state: string) => void,
+): () => void {
   const session = nav.audioSession;
   if (!session || typeof session !== 'object' || !('onstatechange' in session)) return () => {};
   session.onstatechange = () => {
@@ -72,11 +75,16 @@ export type CreateMetadata = (init: { title: string; artist: string }) => unknow
  * `playbackState` in step. Whether the lock screen shows controls for a page that only uses Web Audio
  * is a device-checklist item.
  */
-export function updateMediaSession(nav: MediaNavigator, info: MediaInfo, createMetadata: CreateMetadata): void {
+export function updateMediaSession(
+  nav: MediaNavigator,
+  info: MediaInfo,
+  createMetadata: CreateMetadata,
+): void {
   const session = nav.mediaSession;
   if (!session || typeof session !== 'object') return;
   try {
-    session.metadata = info.playing === null ? null : createMetadata({ title: info.title, artist: MEDIA_ARTIST });
+    session.metadata =
+      info.playing === null ? null : createMetadata({ title: info.title, artist: MEDIA_ARTIST });
     session.playbackState = info.playing === null ? 'none' : info.playing ? 'playing' : 'paused';
     // While stopped (the sleep timer ran out, say) no handler stays: a lock-screen, Watch or Bluetooth
     // "play" must not start the sound again with a fresh timer while the baby sleeps.
