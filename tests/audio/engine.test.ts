@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   CAP_LOWER_SECONDS,
   EVICT_AFTER_MS,
+  GENERATE_GAP_MS,
   LIMITER,
   PAUSE_FADE_SECONDS,
   REMOVE_FADE_SECONDS,
@@ -125,6 +126,55 @@ describe('the first tap (R6)', () => {
     expect(context.graph.transport.gain.valueAt(t + REMOVE_FADE_SECONDS)).toBe(0);
     deps.advance(1000);
     expect(context.calls).toEqual(['resume', 'suspend']);
+  });
+});
+
+describe('cancelling "Hazırlanıyor…"', () => {
+  it('toggling a preparing sound off takes it out of the queue: no stale label, no generation for it', () => {
+    const { engine, deps } = setup();
+    engine.toggleLayer('white');
+    engine.toggleLayer('rain');
+    expect(engine.getSnapshot().preparing).toEqual(['white', 'rain']);
+    engine.toggleLayer('rain'); // cancel before its loop was generated
+    expect(engine.getSnapshot().preparing).toEqual(['white']);
+    deps.advance(100);
+    expect(deps.generate).toHaveBeenCalledTimes(1);
+    expect(deps.generate).toHaveBeenCalledWith('white', 48_000);
+    expect(engine.getSnapshot().preparing).toEqual([]);
+  });
+
+  it('stop while sounds are still preparing forgets the queue: nothing is generated for a stopped engine', () => {
+    const { engine, deps } = setup();
+    engine.toggleLayer('white');
+    engine.toggleLayer('rain');
+    engine.stop();
+    expect(engine.getSnapshot().preparing).toEqual([]);
+    deps.advance(1000);
+    expect(deps.generate).not.toHaveBeenCalled();
+  });
+
+  it('loadMix drops the replaced selection from the queue and prepares only its own sounds', () => {
+    const { engine, deps } = setup();
+    engine.toggleLayer('white'); // still preparing when the mix replaces it
+    engine.loadMix([{ soundId: 'rain', gain: 0.5 }]);
+    expect(engine.getSnapshot().preparing).toEqual(['rain']);
+    deps.advance(100);
+    expect(deps.generate).toHaveBeenCalledTimes(1);
+    expect(deps.generate).toHaveBeenCalledWith('rain', 48_000);
+  });
+
+  it('queued generations leave a real gap between loops, so a six-layer mix cannot freeze the page in one block', () => {
+    const { engine, deps } = setup();
+    engine.loadMix([
+      { soundId: 'white', gain: 0.5 },
+      { soundId: 'rain', gain: 0.5 },
+    ]);
+    deps.advance(GENERATE_GAP_MS); // the first loop
+    expect(deps.generate).toHaveBeenCalledTimes(1);
+    deps.advance(GENERATE_GAP_MS - 1); // inside the gap: the page gets to paint
+    expect(deps.generate).toHaveBeenCalledTimes(1);
+    deps.advance(1);
+    expect(deps.generate).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -628,6 +678,35 @@ describe('pause, resume and interruptions (R14)', () => {
     engine.onSessionState('active');
     expect(context.calls.at(-1)).toBe('suspend');
   });
+
+  it('pausing during an interruption suspends the context once it wakes on its own (no silent awake context)', async () => {
+    const { engine, deps, context } = playing();
+    context.interrupt();
+    await flush();
+    expect(engine.getSnapshot().status).toBe('interrupted');
+    engine.pause();
+    deps.advance(1000); // the pause's own suspend fires and no-ops: the context is not 'running'
+    expect(engine.getSnapshot().status).toBe('paused');
+    expect(context.calls).not.toContain('suspend');
+    context.endInterruption(); // the call ends; Safari resumes the context by itself, unasked
+    await flush();
+    expect(engine.getSnapshot().status).toBe('paused');
+    expect(context.calls.at(-1)).toBe('suspend');
+    expect(context.state).toBe('suspended');
+  });
+
+  it("onSessionState('active') while paused suspends a context that reads running with no statechange fired", async () => {
+    const { engine, deps, context } = playing();
+    context.interrupt();
+    await flush();
+    engine.pause();
+    deps.advance(1000);
+    expect(context.calls).not.toContain('suspend');
+    context.state = 'running'; // the audioSession and the AudioContext can disagree: no onstatechange fires from this
+    engine.onSessionState('active');
+    expect(engine.getSnapshot().status).toBe('paused');
+    expect(context.calls.at(-1)).toBe('suspend');
+  });
 });
 
 describe('mixes and the last selection (R7)', () => {
@@ -813,7 +892,7 @@ describe('mixes and the last selection (R7)', () => {
     const t = context.currentTime;
     const six = ['white', 'pink', 'brown', 'rain', 'wind', 'waves'].map((soundId) => ({ soundId, gain: 1 }));
     expect(engine.loadMix(six)).toBe('started');
-    deps.advance(100);
+    deps.advance(6 * GENERATE_GAP_MS); // five loops to generate, one gap before each
     const { bus } = context.graph;
     expect(bus.gain.valueAt(t + 1)).toBeCloseTo(busScale([1, 1, 1, 1, 1, 1]), 3);
     expect(peakBetween(bus.gain, t, t + 5)).toBeLessThanOrEqual(1 + 1e-9);

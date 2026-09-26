@@ -127,6 +127,12 @@ export const SLIDER_TIME_CONSTANT = 0.05;
 /** A loop that has not played for this long is dropped from memory (iOS kills memory-hungry pages in the background). */
 export const EVICT_AFTER_MS = 5 * MINUTE;
 /**
+ * The pause before each loop's generation. Generating runs on the main thread and can block an old phone
+ * for a few hundred ms per sound; the gap lets the page paint between loops, so a six-layer mix freezes
+ * it six short times, never for seconds in one block.
+ */
+export const GENERATE_GAP_MS = 30;
+/**
  * The limiter before the speaker: catches peaks of several layers that happen to line up. WebKit's and
  * Blink's DynamicsCompressorNode also apply a fixed makeup gain of (1 / gain at full scale)^0.6, about
  * +1.7 dB with these settings, to everything, below the threshold too. It is constant, so nothing gets
@@ -370,11 +376,11 @@ class Engine {
     if (layers.some((layer) => layer.soundId === soundId)) {
       const rest = layers.filter((layer) => layer.soundId !== soundId);
       if (rest.length === 0 && this.state.status !== 'stopped') {
-        this.update({ layers: rest });
+        this.update({ layers: rest, preparing: this.stillSelected(rest) });
         this.stop(REMOVE_FADE_SECONDS);
         return 'removed';
       }
-      this.update({ layers: rest });
+      this.update({ layers: rest, preparing: this.stillSelected(rest) });
       this.fadeOutVoice(soundId, REMOVE_FADE_SECONDS);
       this.applyBus(REMOVE_FADE_SECONDS);
       return 'removed';
@@ -501,7 +507,8 @@ class Engine {
     this.cancelSuspend();
     for (const soundId of [...this.voices.keys()]) this.fadeOutVoice(soundId, fade);
     const wasStopped = this.state.status === 'stopped';
-    this.update({ status: 'stopped', endsAt: null });
+    // The selection stays, but nothing is generated for a stopped engine: play() queues what it misses again.
+    this.update({ status: 'stopped', endsAt: null, preparing: [] });
     const graph = this.graph;
     if (!graph || wasStopped) return;
     const t = graph.context.currentTime;
@@ -531,7 +538,7 @@ class Engine {
     const status = this.state.status;
     if (status === 'stopped' || status === 'paused') {
       for (const soundId of [...this.voices.keys()]) this.fadeOutVoice(soundId, 0);
-      this.update({ layers: next });
+      this.update({ layers: next, preparing: this.stillSelected(next) });
       this.play(); // unlocks the context first, synchronously (R6); a no-op when the timer had run out
       return this.state.status === 'playing' ? 'started' : 'stopped';
     }
@@ -548,7 +555,7 @@ class Engine {
     for (const soundId of [...this.voices.keys()]) {
       if (!next.some((layer) => layer.soundId === soundId)) this.fadeOutVoice(soundId, START_FADE_SECONDS);
     }
-    this.update({ layers: next });
+    this.update({ layers: next, preparing: this.stillSelected(next) });
     for (const layer of next) {
       const voice = this.voices.get(layer.soundId);
       if (!voice) this.startVoice(layer, START_FADE_SECONDS);
@@ -586,9 +593,9 @@ class Engine {
       if (this.state.status === 'interrupted') {
         if (this.timerExpired()) this.finishTimer();
         else this.resumeContext(graph.context);
-      } else if (this.state.status === 'stopped' && graph.context.state === 'running') {
-        // The interruption ended on its own while a timer's own expiry had already stopped the sound
-        // (its own suspend() was a no-op then, the context not being 'running' yet): no silent awake context.
+      } else if ((this.state.status === 'stopped' || this.state.status === 'paused') && graph.context.state === 'running') {
+        // The interruption ended on its own after a timer expiry or a pause had already silenced the sound
+        // (their own suspend() was a no-op then, the context not being 'running' yet): no silent awake context.
         this.suspendContext();
       }
     }
@@ -599,7 +606,7 @@ class Engine {
     if (!graph) return;
     const state = graph.context.state;
     if (state === 'running') {
-      if (this.state.status === 'stopped') {
+      if (this.state.status === 'stopped' || this.state.status === 'paused') {
         // Same reasoning as onSessionState's 'active' branch, for the statechange path.
         this.suspendContext();
         return;
@@ -707,11 +714,16 @@ class Engine {
     graph.transport.ramp(1, t + START_FADE_SECONDS);
   }
 
+  /** The queued generations `layers` still needs: deselecting a tile also cancels its "Hazırlanıyor…". */
+  private stillSelected(layers: readonly EngineLayer[]): SoundId[] {
+    return this.state.preparing.filter((id) => layers.some((layer) => layer.soundId === id));
+  }
+
   /** Generates missing loops one per task, so the tile can show "Hazırlanıyor…" and the page stays responsive. */
   private prepare(soundId: SoundId): void {
     if (this.state.preparing.includes(soundId)) return;
     this.update({ preparing: [...this.state.preparing, soundId] });
-    if (this.generating === null) this.generating = this.deps.setTimeout(() => this.generateNext(), 30);
+    if (this.generating === null) this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
   }
 
   private generateNext(): void {
@@ -738,7 +750,7 @@ class Engine {
       if (layers.length === 0 && this.state.status !== 'stopped') this.stop();
       else this.applyBus(0);
     }
-    if (rest.length > 0) this.generating = this.deps.setTimeout(() => this.generateNext(), 0);
+    if (rest.length > 0) this.generating = this.deps.setTimeout(() => this.generateNext(), GENERATE_GAP_MS);
     this.markIdle();
   }
 
