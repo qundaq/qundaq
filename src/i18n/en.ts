@@ -354,4 +354,13 @@ export const en: Record<MessageKey, string> = {
   'backup.problem.bad-field': 'one of its fields is invalid',
   'backup.problem.missing-baby': 'its baby is not in the backup',
   'backup.problem.unsupported': 'this version does not support it',
+  'sound.white': 'White noise',
+  'sound.pink': 'Pink noise',
+  'sound.brown': 'Brown noise',
+  'sound.rain': 'Rain',
+  'sound.waves': 'Waves',
+  'sound.wind': 'Wind',
+  'sound.heartbeat': 'Heartbeat',
+  'sound.shush': 'Shush',
+  'sound.airplane': 'Airplane cabin',
 };

@@ -352,6 +352,15 @@ export const tr = {
   'backup.problem.bad-field': 'bir alanı geçersiz',
   'backup.problem.missing-baby': 'bebeği yedekte yok',
   'backup.problem.unsupported': 'bu sürüm bu kaydı desteklemiyor',
+  'sound.white': 'Beyaz gürültü',
+  'sound.pink': 'Pembe gürültü',
+  'sound.brown': 'Kahverengi gürültü',
+  'sound.rain': 'Yağmur',
+  'sound.waves': 'Dalgalar',
+  'sound.wind': 'Rüzgâr',
+  'sound.heartbeat': 'Kalp atışı',
+  'sound.shush': 'Şşş',
+  'sound.airplane': 'Uçak kabini',
 } satisfies Record<string, string>;
 
 export type MessageKey = keyof typeof tr;
