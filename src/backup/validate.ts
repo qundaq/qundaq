@@ -424,16 +424,23 @@ export function parseBackup(text: string, now: number): ParseResult {
   const appVersion = own(raw, 'appVersion');
 
   const skipped: SkippedRow[] = [];
-  let badBirthDate = 0;
+  // Babies read without their birth date; counted only once the baby is kept (not skipped for another
+  // problem, nor as a later duplicate).
+  const withoutBirthDate = new Set<Baby>();
   const goodBabies = readRows(
     'babies',
     babies,
-    (row) =>
-      readBaby(row, () => {
-        badBirthDate++;
-      }),
+    (row) => {
+      let dropped = false;
+      const baby = readBaby(row, () => {
+        dropped = true;
+      });
+      if (dropped) withoutBirthDate.add(baby);
+      return baby;
+    },
     skipped,
   );
+  const badBirthDate = goodBabies.filter((baby) => withoutBirthDate.has(baby)).length;
   const babyIds = new Set(goodBabies.map((baby) => baby.id));
   const goodEvents = readRows('events', events, (row) => readEvent(row, babyIds), skipped);
   mixes.forEach((_mix, index) => skipped.push({ list: 'mixes', index, code: 'unsupported' }));

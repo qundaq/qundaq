@@ -65,6 +65,10 @@ test('merging into a phone with other data: the preview counts match, and the sa
   const sheet = await pickBackupFile(page, backup);
   await expect(sheet.getByRole('button', { name: 'Birleştir', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(sheet.getByRole('checkbox', { name: 'Yedekteki Ada ile bu cihazdaki ada aynı bebek' })).toBeChecked();
+  // The backup's Ada survives in place of this phone's: the same baby, not an added one.
+  await expect(sheet).toContainText(
+    'BebeklerEklenecek: 0 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 1 · Bu cihazdaki daha yeni olduğu için korunacak: 0',
+  );
   await expect(sheet).toContainText(
     'KayıtlarEklenecek: 2 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0 · Bu cihazdaki daha yeni olduğu için korunacak: 0',
   );
@@ -79,6 +83,37 @@ test('merging into a phone with other data: the preview counts match, and the sa
   await expect(babyCard(page, 'Bora')).toBeVisible();
   await openTab(page, 'Günlük');
   await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(3);
+});
+
+test("entries logged on a baby that the other phone combined follow it to the baby kept there", async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, 'Ana');
+  await logDiaper(page, { at: '2026-09-26T09:00' });
+  // The other phone paired this Ada with its own, older Ada and deleted this one; its backup says so.
+  const file = JSON.parse(await takeBackup(page));
+  const mine = file.babies[0];
+  const older = { ...mine, id: 'older-ada', createdAt: mine.createdAt - 86_400_000, updatedAt: mine.createdAt - 86_400_000 };
+  file.babies = [{ ...mine, deletedAt: file.exportedAt, updatedAt: file.exportedAt }, older];
+  file.events = [];
+
+  const sheet = await pickBackupFile(page, JSON.stringify(file));
+  const follow = sheet.getByRole('checkbox', { name: 'Bu cihazdan kaldırılacak Ada: kayıtları Ada altında birleştirilsin' });
+  await expect(follow).toBeChecked();
+  await expect(sheet).toContainText('Bu cihazdan kaldırılacak bebek: Ada');
+  await expect(sheet).toContainText('1 kayıt Ada altında birleştirilecek.');
+  // Kept apart, the entry would hide with the deleted baby: the preview says so.
+  await follow.uncheck();
+  await expect(sheet).toContainText('Ada: bu cihazdaki 1 kayıt bebekle birlikte gizlenecek.');
+  await expect(sheet).not.toContainText('birleştirilecek');
+  await follow.check();
+  await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
+  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 1 taşındı.');
+  await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+
+  await openTab(page, 'Ana');
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await openTab(page, 'Günlük');
+  await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(1);
 });
 
 test('replace shows what it would lose, can back up first without losing the choice, and needs the checkbox', async ({ page }) => {

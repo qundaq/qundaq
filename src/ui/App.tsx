@@ -68,6 +68,8 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   // The backup sheets live here, outside the screens, so they open from any screen and still work when a
   // screen has crashed.
   const [backupUi, setBackupUi] = useState<BackupUi>(NO_BACKUP_UI);
+  // Counts the imports written: a screen that crashed on bad data starts over once a restore replaced it.
+  const [imports, setImports] = useState(0);
 
   const updateSettings = async (patch: Partial<Settings>) => {
     try {
@@ -96,8 +98,9 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   return (
     <>
       <main className="screen">
-        {/* Keyed by tab: a crash on one screen never blocks the others, and switching tabs starts over. */}
-        <ErrorBoundary key={tab} fallback={(error) => <CrashScreen error={error} onBackup={openExport} onRestore={onImportFile} />}>
+        {/* Keyed by tab and import: a crash on one screen never blocks the others, and switching tabs or
+            restoring a backup starts over. */}
+        <ErrorBoundary key={`${tab}:${imports}`} fallback={(error) => <CrashScreen error={error} onBackup={openExport} onRestore={onImportFile} />}>
           {tab === 'home' ? (
             <HomeScreen settings={settings} onSettingsChange={updateSettings} onImportFile={onImportFile} onBackup={openExport} />
           ) : tab === 'log' ? (
@@ -123,6 +126,7 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
         onChoicesChange={(choices) => setBackupUi((ui) => (ui.pending ? { ...ui, pending: { ...ui.pending, choices } } : ui))}
         onBackupFirst={openExport}
         onSettingsReplaced={onSettingsReplaced}
+        onImported={() => setImports((n) => n + 1)}
         onClose={closeImport}
       />
     </>

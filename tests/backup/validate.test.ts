@@ -307,6 +307,14 @@ describe('warnings', () => {
     expect(result.backup.events).toHaveLength(1);
     expect(result.warnings.badBirthDate).toBe(1);
   });
+
+  it('counts a bad birth date only for a baby that is kept', () => {
+    const broken = { ...baby('b2'), birthDate: '20266-01-01', archived: 'yes' }; // skipped: bad-baby
+    const duplicate = { ...baby(), birthDate: '20266-01-01' }; // skipped: duplicate-id
+    const result = ok(parseBackup(file({ babies: [baby(), broken, duplicate] }), NOW));
+    expect(result.skipped.map((row) => row.code)).toEqual(['bad-baby', 'duplicate-id']);
+    expect(result.warnings.badBirthDate).toBe(0);
+  });
 });
 
 describe('checkFileSize', () => {

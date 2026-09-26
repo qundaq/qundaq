@@ -141,8 +141,10 @@ export async function takeBackup(page: Page): Promise<string> {
 }
 
 /**
- * "Clear data": leaves the app for a same-origin page that does not load it, deletes the database, and
- * opens the app again, empty.
+ * "Clear data": deletes the database and opens the app again, empty. The navigation to favicon.ico does
+ * not leave the app: once the service worker controls the page it answers every navigation with
+ * index.html, so the app loads there too. The delete still goes through because Dexie closes its connection on the delete's versionchange
+ * event (a still-open connection would block it, and onblocked fails the test).
  */
 export async function clearAppData(page: Page) {
   await page.goto('./favicon.ico');

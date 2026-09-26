@@ -1,14 +1,14 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildBackup, serializeBackup } from '../../src/backup/export';
-import { planImport, planSignature, type ImportOptions } from '../../src/backup/merge';
+import { findSameBabies, planImport, planSignature, type ImportOptions } from '../../src/backup/merge';
 import { parseBackup, type ParsedBackup } from '../../src/backup/validate';
 import { addBaby, deleteBaby } from '../../src/db/babies';
 import { applyImport, readSnapshot } from '../../src/db/backup';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { listRunningEvents, logEvents } from '../../src/db/events';
 import { loadSettings, saveSettings } from '../../src/db/settings';
-import { DAY, MINUTE } from '../../src/domain/time';
+import { DAY, HOUR, MINUTE } from '../../src/domain/time';
 import type { Baby, TrackerEvent } from '../../src/domain/types';
 
 const opened: TrackerDb[] = [];
@@ -190,6 +190,55 @@ describe('applyImport', () => {
     expect(running).toHaveLength(1);
     expect(running[0]!.id).not.toBe('file-running');
     expect(await db.events.get('file-running')).toMatchObject({ endAt: T + 1 });
+  });
+
+  it('a same-baby pair: tombstones the dropped baby, moves its entries, and keeps the running index right', async () => {
+    const db = freshDb();
+    // Ada was added again on this phone after a wipe, later than the backup's Ada, which therefore survives.
+    const again = await addBaby(db, { name: 'ada', color: '#ff9ecb' }, T + HOUR);
+    await logEvents(db, [{ type: 'sleep', babyId: again.id, startAt: T + 2 * HOUR }], T + 2 * HOUR);
+    await logEvents(db, [{ type: 'diaper', babyId: again.id, startAt: T + 2 * HOUR, wet: true, dirty: false }], T + 2 * HOUR);
+    await saveSettings(db, { lastBabyIds: [again.id] }, 'tr');
+    const backup = file({
+      babies: [baby('old-ada', 'Ada')],
+      events: [sleep('file-running', 'old-ada', T), sleep('file-done', 'old-ada', T - DAY, { endAt: T - DAY + 1 })],
+      settings: { lastBabyIds: [] },
+    });
+    const now = T + 3 * HOUR;
+    const local = await readSnapshot(db, 'tr');
+    const options: ImportOptions = { ...MERGE, sameBabies: findSameBabies(local.babies, backup.babies) };
+    expect(options.sameBabies).toHaveLength(1);
+    const expected = planSignature(planImport(local, backup, options, now));
+
+    const result = await applyImport(db, { backup, options, expected, fallbackLocale: 'tr', now });
+    expect(result.applied).toBe(true);
+    expect(result.plan.moves).toEqual([{ name: 'Ada', events: 2 }]);
+    expect(await db.babies.get(again.id)).toMatchObject({ deletedAt: now, updatedAt: now });
+    expect(await db.babies.get('old-ada')).toEqual(baby('old-ada', 'Ada'));
+    const events = await db.events.toArray();
+    expect(events.filter((row) => row.babyId === again.id)).toEqual([]);
+    const moved = events.filter((row) => !row.id.startsWith('file-'));
+    expect(moved.map((row) => [row.type, row.babyId, row.updatedAt]).sort()).toEqual([
+      ['diaper', 'old-ada', now],
+      ['sleep', 'old-ada', now],
+    ]);
+    // The device's sleep started later: it keeps running on the kept baby; the file's stops where it began.
+    const running = await listRunningEvents(db);
+    expect(running.map((row) => [row.type, row.babyId, row.startAt])).toEqual([['sleep', 'old-ada', T + 2 * HOUR]]);
+    expect(await db.events.get('file-running')).toMatchObject({ endAt: T + 2 * HOUR });
+    expect(await loadSettings(db, 'tr')).toMatchObject({ lastBabyIds: ['old-ada'] });
+  });
+
+  it('keeps lastBackupAt and the reminder snooze in either mode', async () => {
+    for (const options of [MERGE, REPLACE]) {
+      const db = freshDb();
+      await seedDevice(db);
+      await saveSettings(db, { lastBackupAt: T - DAY, backupReminderSnoozedUntil: T + DAY }, 'tr');
+      const backup = file();
+      const result = await applyImport(db, { backup, options, expected: await preview(db, backup, options), fallbackLocale: 'tr', now: T + 2 });
+      expect(result.applied).toBe(true);
+      expect(await loadSettings(db, 'tr')).toMatchObject({ lastBackupAt: T - DAY, backupReminderSnoozedUntil: T + DAY });
+    }
   });
 
   it('writes nothing and returns the new preview when the data changed since the preview', async () => {

@@ -83,3 +83,26 @@ test("the crash screen's backup restores its good entries; the bad one is named 
   await openTab(page, 'Günlük');
   await expect(logRows(page)).toHaveCount(1);
 });
+
+test('a restore from the crash screen that replaces the bad entry brings the screen back at once', async ({ page }) => {
+  await crashHome(page);
+  const backup = await emergencyBackup(page);
+
+  // Straight from the crash screen, without leaving the tab.
+  await page.getByRole('main').getByLabel('Yedekten geri yükle', { exact: true }).setInputFiles({
+    name: 'qundaq-backup.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(backup),
+  });
+  const sheet = page.getByRole('dialog', { name: 'Yedekten geri yükle' });
+  await expect(sheet).toContainText('1 kayıt okunamadı ve atlanacak.');
+  await sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true }).click();
+  await sheet.getByRole('checkbox', { name: 'Yedeğin bu cihazdaki tüm verilerin yerini alacağını anlıyorum' }).check();
+  await sheet.getByRole('button', { name: 'Değiştir', exact: true }).click();
+  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 1 bebek ve 1 kayıt.');
+  await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await expect(sheet).toBeHidden();
+
+  await expect(page.getByText('Bir şeyler ters gitti.')).toHaveCount(0);
+  await expect(babyCard(page, 'Ada')).toContainText('ıslak');
+});

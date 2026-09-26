@@ -184,6 +184,20 @@ describe('the same baby added again', () => {
     expect(oneLocalTwoFile).toEqual([]);
   });
 
+  it('skips a device baby whose name is not a string, and still plans the import', () => {
+    // Device rows are never validated: a broken row must not block the restore that would repair it.
+    const broken = { ...baby('broken', 'x'), name: undefined } as unknown as Baby;
+    const numbered = { ...baby('numbered', 'x'), name: 42 } as unknown as Baby;
+    const state = local({ babies: [broken, numbered, baby('new-ada', 'Ada', { createdAt: T + HOUR })] });
+    const file = backup({ babies: [baby('old-ada', 'Ada')] });
+    const pairs = findSameBabies(state.babies, file.babies);
+    expect(pairs).toEqual([{ localId: 'new-ada', incomingId: 'old-ada', name: 'Ada', localName: 'Ada' }]);
+    expect(() => planImport(state, file, { ...MERGE, sameBabies: pairs }, NOW)).not.toThrow();
+    // The file deleting such a baby does not throw either.
+    const deleting = backup({ babies: [{ ...broken, deletedAt: T + 1, updatedAt: T + 1 }, baby('old-ada', 'Ada')] });
+    expect(() => planImport(state, deleting, MERGE, NOW)).not.toThrow();
+  });
+
   it("moves a confirmed pair's entries to the backup's baby and deletes the device's copy", () => {
     // 'new-ada' was created on this device after a wipe, later than 'old-ada': the earlier baby survives.
     const state = local({
@@ -204,6 +218,8 @@ describe('the same baby added again', () => {
     expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]);
     // The file's own entry is an add; only the device's entry is a move, so nothing is counted twice.
     expect(plan.stats.events).toEqual({ add: 1, update: 0, remove: 0, same: 0, keep: 0, deleted: 0 });
+    // The backup's baby survives in place of the device's: the device ends with as many babies as before.
+    expect(plan.stats.babies).toEqual({ add: 0, update: 0, remove: 0, same: 1, keep: 0, deleted: 0 });
     expect(plan.removedBabies).toEqual([]);
 
     // Not confirmed: both babies stay.
@@ -215,18 +231,23 @@ describe('the same baby added again', () => {
   it("skips a pair whose device baby the file's own row for that id already deletes", () => {
     // The file both deletes 'old' outright (same id, an ordinary edit) and offers 'old'~'new' as the same
     // child under a different id. By the time the pairing is considered, 'old' is no longer live: the pair
-    // does not apply, and 'old''s entries stay put rather than being moved onto a live baby.
+    // does not apply, and nothing is tombstoned by it.
     const state = local({ babies: [baby('old', 'Ada')], events: [event('e1', { babyId: 'old' })] });
     const file = backup({
       babies: [baby('old', 'Ada', { deletedAt: T + 1, updatedAt: T + 1 }), baby('new', 'Ada')],
       events: [],
     });
     const pair: SameBabyPair = { localId: 'old', incomingId: 'new', name: 'Ada', localName: 'Ada' };
-    const plan = planImport(state, file, { ...MERGE, sameBabies: [pair] }, NOW);
+    const plan = planImport(state, file, { ...MERGE, sameBabies: [pair], keepApart: ['old'] }, NOW);
     expect(plan.moves).toEqual([]);
-    expect(plan.events).toEqual([]); // e1 was never moved off 'old'
+    expect(plan.events).toEqual([]); // kept apart: e1 was never moved off 'old'
+    expect(plan.hidden).toEqual([{ name: 'Ada', events: 1 }]);
     expect(plan.babies).toEqual(expect.arrayContaining([baby('old', 'Ada', { deletedAt: T + 1, updatedAt: T + 1 }), baby('new', 'Ada')]));
     expect(plan.removedBabies).toEqual(['Ada']); // an ordinary by-id deletion, not a pairing move
+    // By default e1 follows to the one other "Ada" instead of hiding with the deleted baby.
+    const following = planImport(state, file, { ...MERGE, sameBabies: [pair] }, NOW);
+    expect(following.events).toEqual([event('e1', { babyId: 'new' }, { updatedAt: NOW })]);
+    expect(following.moves).toEqual([{ name: 'Ada', events: 1 }]);
   });
 
   it("also remaps a dropped baby's deleted entries, so none point at a tombstoned baby, but they are not counted in moves", () => {
@@ -308,6 +329,138 @@ describe('the same baby added again: cross-merge converges', () => {
       expect(liveEvents.map((event) => event.babyId)).toEqual(['ada-1', 'ada-1']);
       expect(liveEvents.map((event) => event.id).sort()).toEqual(['a-only', 'b-only']);
     }
+  });
+});
+
+describe('the same baby: a later exchange after one phone paired them', () => {
+  // Phone A holds the older Ada ('a'), phone B the newer one ('b'). A imports B's backup and pairs them:
+  // 'a' survives, 'b' is deleted and its entries move onto 'a'. B keeps logging on 'b' until it imports
+  // A's backup back, which deletes 'b' there too.
+  const T1 = T + 2 * HOUR; // A imports B
+  const T2 = T + 3 * HOUR; // B logs one more
+  const T3 = T + 4 * HOUR; // B imports A
+  const T4 = T + 5 * HOUR; // A imports B again
+  const phoneA = local({
+    babies: [baby('a', 'Ada')],
+    events: [event('a1', { babyId: 'a' })],
+    settings: { locale: 'tr', nightMode: false, lastBabyIds: ['a'] },
+  });
+  const phoneB = local({
+    babies: [baby('b', 'Ada', { createdAt: T + HOUR, updatedAt: T + HOUR })],
+    events: [event('b1', { babyId: 'b', startAt: T + HOUR }, { createdAt: T + HOUR, updatedAt: T + HOUR })],
+    settings: { locale: 'tr', nightMode: false, lastBabyIds: ['b'] },
+  });
+  const exportOf = (state: LocalState, exportedAt: number) =>
+    backup({ babies: [...state.babies], events: [...state.events], settings: { lastBabyIds: state.settings.lastBabyIds }, exportedAt });
+  const merge = (state: LocalState, file: ParsedBackup, now: number, options: Partial<ImportOptions> = {}) => {
+    const plan = planImport(state, file, { ...MERGE, sameBabies: findSameBabies(state.babies, file.babies), ...options }, now);
+    return { plan, after: applyPlan(state, plan) };
+  };
+  const liveBabyIds = (state: LocalState) => new Set(state.babies.filter((row) => row.deletedAt === undefined).map((row) => row.id));
+  const visible = (state: LocalState) =>
+    state.events
+      .filter((row) => row.deletedAt === undefined && row.babyId !== null && liveBabyIds(state).has(row.babyId))
+      .map((row) => `${row.id}@${row.babyId}`)
+      .sort();
+
+  const first = merge(phoneA, exportOf(phoneB, T1), T1).after;
+  const b2 = event('b2', { babyId: 'b', startAt: T2 }, { createdAt: T2, updatedAt: T2 });
+  const phoneBLater: LocalState = { ...phoneB, events: [...phoneB.events, b2] };
+
+  it("moves the entries logged on the deleted baby onto the one other baby of that name, and both phones converge", () => {
+    expect(visible(first)).toEqual(['a1@a', 'b1@a']);
+
+    const { plan, after: second } = merge(phoneBLater, exportOf(first, T1), T3);
+    expect(plan.removedBabies).toEqual(['Ada']);
+    expect(plan.follows).toEqual([{ localId: 'b', name: 'Ada', survivorName: 'Ada' }]);
+    expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]);
+    expect(plan.hidden).toEqual([]);
+    expect(plan.events).toEqual(expect.arrayContaining([{ ...b2, babyId: 'a', updatedAt: T3 }]));
+    expect(plan.settings.lastBabyIds).toEqual(['a']);
+    // Nothing live is left on a deleted baby.
+    expect(second.events.filter((row) => row.deletedAt === undefined && !liveBabyIds(second).has(row.babyId!))).toEqual([]);
+    expect(visible(second)).toEqual(['a1@a', 'b1@a', 'b2@a']);
+
+    const third = merge(first, exportOf(second, T3), T4).after;
+    expect(visible(third)).toEqual(visible(second));
+    expect([...liveBabyIds(third)]).toEqual(['a']);
+  });
+
+  it('left apart on request, the entries stay with the deleted baby and the preview says how many will be hidden', () => {
+    const { plan, after } = merge(phoneBLater, exportOf(first, T1), T3, { keepApart: ['b'] });
+    expect(plan.follows).toEqual([{ localId: 'b', name: 'Ada', survivorName: 'Ada' }]);
+    expect(plan.moves).toEqual([]);
+    expect(plan.hidden).toEqual([{ name: 'Ada', events: 1 }]);
+    expect(after.events.find((row) => row.id === 'b2')).toEqual(b2);
+  });
+
+  it("a deleted baby's own deleted entries stay where they are; only the live ones move", () => {
+    const gone = event('gone', { babyId: 'b' }, { deletedAt: T2, updatedAt: T2 });
+    const { plan } = merge({ ...phoneBLater, events: [...phoneBLater.events, gone] }, exportOf(first, T1), T3);
+    expect(plan.events.find((row) => row.id === 'gone')).toBeUndefined();
+    expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]);
+  });
+
+  it('with no single other baby of that name, nothing moves and the preview counts the entries to be hidden', () => {
+    const deleting = backup({ babies: [baby('c', 'Cem', { deletedAt: T + 1, updatedAt: T + 1 })] });
+    const alone = local({ babies: [baby('c', 'Cem')], events: [event('c1', { babyId: 'c' }), event('c2', { babyId: 'c' })] });
+    const plan = planImport(alone, deleting, MERGE, NOW);
+    expect(plan.follows).toEqual([]);
+    expect(plan.moves).toEqual([]);
+    expect(plan.hidden).toEqual([{ name: 'Cem', events: 2 }]);
+
+    // Two other live babies named "Cem": which one would it mean? Nothing is guessed.
+    const twins = local({ babies: [...alone.babies, baby('c2', 'CEM'), baby('c3', 'cem')], events: alone.events });
+    const ambiguous = planImport(twins, deleting, MERGE, NOW);
+    expect(ambiguous.follows).toEqual([]);
+    expect(ambiguous.hidden).toEqual([{ name: 'Cem', events: 2 }]);
+    // A deleted baby with no live entries is not mentioned at all.
+    expect(planImport(local({ babies: [baby('c', 'Cem')] }), deleting, MERGE, NOW).hidden).toEqual([]);
+  });
+
+  it("the paired phone importing again: entries the other phone logged on the deleted baby since come in under the kept one", () => {
+    // A paired first ('b' is deleted on A); B logs b2 on 'b' and A imports B again, before B ever imports A.
+    const fileOfB = exportOf(phoneBLater, T3);
+    const { plan, after: second } = merge(first, fileOfB, T3);
+    expect(plan.follows).toEqual([{ localId: 'b', name: 'Ada', survivorName: 'Ada' }]);
+    expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]);
+    expect(plan.hidden).toEqual([]);
+    expect(plan.stats.events.add).toBe(0); // counted as moved, not as a plain add
+    expect(plan.events).toEqual([{ ...b2, babyId: 'a', updatedAt: T3 }]);
+    expect(visible(second)).toEqual(['a1@a', 'b1@a', 'b2@a']);
+
+    // The same file again changes nothing: no ping-pong.
+    const again = merge(second, fileOfB, T4);
+    expect(again.plan.events).toEqual([]);
+    expect(again.plan.moves).toEqual([]);
+    expect(again.plan.follows).toEqual([]);
+    // B then imports A: both phones end up the same.
+    const onB = merge(phoneBLater, exportOf(second, T4), T4).after;
+    expect(visible(onB)).toEqual(visible(second));
+    expect([...liveBabyIds(onB)]).toEqual(['a']);
+  });
+
+  it("kept apart, or with no single baby of that name, the file's entries on a deleted baby are counted as hidden", () => {
+    const fileOfB = exportOf(phoneBLater, T3);
+    const apart = planImport(first, fileOfB, { ...MERGE, keepApart: ['b'] }, T3);
+    expect(apart.follows).toEqual([{ localId: 'b', name: 'Ada', survivorName: 'Ada' }]);
+    expect(apart.moves).toEqual([]);
+    expect(apart.hidden).toEqual([{ name: 'Ada', events: 1 }]);
+    expect(apart.events).toEqual([b2]);
+
+    // Two live "Ada"s on this phone: which one would it mean? Nothing is guessed.
+    const twins: LocalState = { ...first, babies: [...first.babies, baby('a2', 'ADA')] };
+    const ambiguous = planImport(twins, fileOfB, MERGE, T3);
+    expect(ambiguous.follows).toEqual([]);
+    expect(ambiguous.hidden).toEqual([{ name: 'Ada', events: 1 }]);
+    expect(planSignature(ambiguous)).not.toBe(planSignature(planImport(first, fileOfB, MERGE, T3)));
+  });
+
+  it('the signature covers what follows and what is hidden', () => {
+    const file = exportOf(first, T1);
+    const following = planImport(phoneBLater, file, MERGE, T3);
+    const apart = planImport(phoneBLater, file, { ...MERGE, keepApart: ['b'] }, T3);
+    expect(planSignature(apart)).not.toBe(planSignature(following));
   });
 });
 
