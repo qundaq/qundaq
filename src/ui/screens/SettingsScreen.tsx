@@ -1,8 +1,12 @@
-import { LOCALES } from '../../i18n';
+import { useState } from 'react';
 import type { Settings } from '../../db/settings';
+import { DEFAULT_CAP } from '../../domain/sounds';
+import { LOCALES } from '../../i18n';
 import { BabiesCard } from '../babies/BabiesCard';
 import { BackupCard, type BackupActions } from '../backup/BackupCard';
 import { useT } from '../I18nProvider';
+import { CapCard } from '../settings/CapCard';
+import { SourcesSheet } from '../settings/SourcesSheet';
 import { OfflineCard, StorageCard, UpdateCard } from './PlatformCards';
 
 interface Props {
@@ -13,6 +17,7 @@ interface Props {
 
 export function SettingsScreen({ settings, onChange, backup }: Props) {
   const t = useT();
+  const [sources, setSources] = useState(false);
   return (
     <section>
       <h1>{t('tab.settings')}</h1>
@@ -52,6 +57,8 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
         </label>
       </div>
 
+      <CapCard cap={settings.volumeCap ?? DEFAULT_CAP} onChange={(volumeCap) => void onChange({ volumeCap })} />
+
       <OfflineCard />
       <StorageCard />
       <UpdateCard />
@@ -61,7 +68,14 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
         <p>{t('settings.privacy.body')}</p>
       </div>
 
-      <p className="muted small">{t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}</p>
+      <div className="card">
+        <h2>{t('settings.about.title')}</h2>
+        <p className="muted small">{t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}</p>
+        <button type="button" className="btn" onClick={() => setSources(true)}>
+          {t('settings.sources')}
+        </button>
+      </div>
+      <SourcesSheet open={sources} onClose={() => setSources(false)} />
     </section>
   );
 }

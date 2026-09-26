@@ -39,6 +39,7 @@ Every push that changes code runs these checks, and the app is deployed only if 
 | Strict Content-Security-Policy in every production build (own origin only, no inline scripts) | `build/csp.ts`, `e2e/privacy.spec.ts` |
 | Zero network requests after the first load, while using the app (Chromium; iOS verified with docs/device-checklist.md) | `e2e/offline.spec.ts` |
 | Cold start with the network disabled (Chromium; iOS verified with docs/device-checklist.md) | `e2e/offline.spec.ts` |
+| Playing sounds, saving a mix and opening the sound sources make no network request (Chromium) and cause no CSP violations | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts` |
 | Backing up, exporting CSV and restoring make no network request (Chromium) and cause no CSP violations | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts` |
 | Update gate: a new version on the server is neither downloaded nor installed until you tap "Check for updates" — only `sw.js` is fetched (Chromium) | `e2e/update.spec.ts`, `tests/sw/service-worker.test.ts` |
 | Integrity check: every file of a new version must match the SHA-256 recorded at build time, or nothing is installed | `tests/scripts/sw-manifest.test.ts`, `tests/sw/service-worker.test.ts` (install behaviour) |
@@ -65,8 +66,13 @@ Being honest about limits is part of the promise.
 
 ## Sounds
 
-Every bundled sound will be listed with its origin and license in `public/sounds/SOURCES.md`.
-Sounds generated in code need no license; recordings are CC0 or clearly labeled as AI-generated with the tool and date.
+Every sound the app plays is generated on the device from a few lines of arithmetic; no audio is fetched,
+now or later. Every sound is listed with its origin and licence in `public/sounds/SOURCES.md` (in the app:
+Settings → About → Sound sources). Sounds generated in code need no licence; a recording, when one is added,
+is CC0 or clearly labelled as AI-generated with the tool and date, and is bundled with the app, never fetched
+on its own. Loudness is capped by default (Settings → Volume safety cap); raising the cap shows the safety
+advice and never makes a playing sound louder by itself. The cap stays on the phone it was set on: a backup
+does not carry it, so a restore can never raise another phone's limit.
 
 ---
 
@@ -94,6 +100,13 @@ Kod bu sözlerden birini bozarsa bu bir hatadır; lütfen güvenlik sorunu olara
 6. **Asgari bağımlılık.** Çalışma anında yalnızca üç kütüphane: React, React DOM ve Dexie. Yenisi için
    PR'da yazılı gerekçe gerekir. Sürümler sabit, kurulum betikleri kapalı; CI `npm audit` ve lisans kontrolü çalıştırır.
 7. **Doğrulanabilir.** Kaynak kod MIT lisanslı. Yayındaki uygulama bu depodan GitHub Actions ile derlenir.
+
+**Sesler:** Uygulamanın çaldığı her ses cihazda üretilir; hiçbir ses dosyası indirilmez. Her sesin kaynağı ve
+lisansı `public/sounds/SOURCES.md` dosyasında listelenir (uygulamada Ayarlar → Hakkında → Ses kaynakları). Bir
+kayıt eklendiğinde CC0 lisanslı olacak ya da hangi araçla ve ne zaman üretildiği belirtilerek yapay zekâyla
+üretildiği açıkça yazılacak; uygulamayla birlikte gelir, ayrıca indirilmez. Ses seviyesi varsayılan olarak
+sınırlıdır (Ayarlar → Ses güvenlik sınırı); sınırı yükseltmek güvenlik uyarısını gösterir ve çalan sesi
+kendiliğinden yükseltmez. Sınır yedeğe girmez: geri yükleme başka bir telefonun sınırını asla yükseltemez.
 
 **Kontrol edemediklerimiz:** GitHub Pages dosyaları sunarken standart sunucu kayıtları (IP, tarayıcı)
 tutabilir. Telefon çevrimiçiyken Safari, `sw.js` dosyasının değişip değişmediğine kendiliğinden bakabilir;

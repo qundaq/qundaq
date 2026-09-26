@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '../db/instance';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from '../db/settings';
+import { DEFAULT_CAP } from '../domain/sounds';
 import { detectLocale } from '../i18n';
 import { ExportSheet } from './backup/ExportSheet';
 import { DEFAULT_CHOICES, readImportFile, type ImportChoices, type ImportSource } from './backup/importFile';
@@ -8,12 +9,15 @@ import { ImportSheet } from './backup/ImportSheet';
 import { ErrorProvider, useReportError } from './ErrorBanner';
 import { ErrorBoundary } from './ErrorBoundary';
 import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from './history/LogScreen';
-import { I18nProvider } from './I18nProvider';
+import { I18nProvider, useT } from './I18nProvider';
 import { TabBar, type Tab } from './TabBar';
-import { ComingSoon } from './screens/ComingSoon';
 import { CrashScreen } from './screens/CrashScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { NowPlayingBar } from './sounds/NowPlayingBar';
+import { SoundsScreen } from './sounds/SoundsScreen';
+import { lastSoundOf, layerNames, sameLastSound, toSavedSound, withCapRescale } from './sounds/text';
+import { useMediaSession, useSoundEngine } from './sounds/useSoundEngine';
 import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from './summary/SummaryScreen';
 
 const fallbackLocale = detectLocale(navigator.language);
@@ -60,6 +64,7 @@ const NO_BACKUP_UI: BackupUi = { sheet: null, pending: null };
 
 /** `onSettingsReplaced` takes settings read back after a save, an export or an import, so Home and Ayarlar follow at once. */
 function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSettingsReplaced: (next: Settings) => void }) {
+  const t = useT();
   const report = useReportError();
   const [tab, setTab] = useState<Tab>('home');
   // Screen state lives here so it survives tab switches (and resets when the app restarts).
@@ -71,13 +76,39 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   // Counts the imports written: a screen that crashed on bad data starts over once a restore replaced it.
   const [imports, setImports] = useState(0);
 
+  // The sound engine outlives the tabs. The last selection and the cap reach it once at start (nothing
+  // plays until a tap, R6), then the cap again whenever Ayarlar saves it (R19).
+  const { engine, state: sound } = useSoundEngine();
+
+  // A new cap is written together with the selection the engine will then hold (the master lowered when
+  // the cap rises), so the two never come apart in storage.
   const updateSettings = async (patch: Partial<Settings>) => {
     try {
-      onSettingsReplaced(await saveSettings(db, patch, fallbackLocale));
+      onSettingsReplaced(await saveSettings(db, withCapRescale(patch, sound, settings.volumeCap ?? DEFAULT_CAP), fallbackLocale));
     } catch (error) {
       report(error);
     }
   };
+
+  useEffect(() => {
+    engine.restore(settings.lastSound ? toSavedSound(settings.lastSound) : undefined, settings.volumeCap ?? DEFAULT_CAP);
+  }, [engine]);
+  useEffect(() => {
+    engine.setCap(settings.volumeCap ?? DEFAULT_CAP);
+  }, [engine, settings.volumeCap]);
+  // The selection is remembered a second after it last changed; the playing state never is.
+  useEffect(() => {
+    const next = lastSoundOf(sound);
+    if (sameLastSound(next, settings.lastSound)) return;
+    const handle = window.setTimeout(() => void updateSettings({ lastSound: next }), 1000);
+    return () => window.clearTimeout(handle);
+  }, [sound.layers, sound.master, sound.timer, settings.lastSound]);
+  useMediaSession(engine, sound, layerNames(t, sound.layers));
+  // On the other tabs the now-playing bar sits above the tab bar; the screens make room through --nowplaying-h (R16).
+  const nowPlaying = tab !== 'sounds' && sound.status !== 'stopped';
+  useEffect(() => {
+    document.documentElement.classList.toggle('has-nowplaying', nowPlaying);
+  }, [nowPlaying]);
 
   const openExport = () => setBackupUi((ui) => ({ ...ui, sheet: 'export' }));
   const openCsv = () => setBackupUi((ui) => ({ ...ui, sheet: 'csv' }));
@@ -110,10 +141,12 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
           ) : tab === 'settings' ? (
             <SettingsScreen settings={settings} onChange={updateSettings} backup={backupActions} />
           ) : (
-            <ComingSoon tab={tab} />
+            <SoundsScreen />
           )}
         </ErrorBoundary>
       </main>
+      {/* Outside the boundary: a crashed Sesler screen can still be paused from any tab. */}
+      {nowPlaying && <NowPlayingBar state={sound} onOpen={() => setTab('sounds')} onPlay={() => engine.play()} onPause={() => engine.pause()} />}
       <TabBar current={tab} onSelect={setTab} />
       <ExportSheet
         kind={backupUi.sheet === 'export' ? 'json' : backupUi.sheet === 'csv' ? 'csv' : null}

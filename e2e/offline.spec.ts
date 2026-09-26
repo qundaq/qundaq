@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { fakeAudio, soundStatus, tile } from './support/audio';
 import { downloadedText, failNextShare, openExport, pickBackupFile, stubShare, takeBackup } from './support/backup';
 import { addBabyInSettings, babyCard, logRows, openRow, openTab } from './support/tracking';
 
@@ -46,6 +47,7 @@ test('makes no network requests after the first load', async ({ page, context, b
   });
 
   await stubShare(page); // installed by the reload below
+  await fakeAudio(page);
   await page.reload();
   const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
   for (const name of ['Günlük', 'Özet', 'Sesler', 'Ana', 'Ayarlar']) {
@@ -94,6 +96,29 @@ test('makes no network requests after the first load', async ({ page, context, b
 
   await openTab(page, 'Özet');
   await expect(page.getByRole('table', { name: 'Son 7 gün' })).toBeVisible();
+
+  // Sounds are generated on the device, and the source list comes from the cache.
+  await openTab(page, 'Sesler');
+  await tile(page, 'Beyaz gürültü').click();
+  await tile(page, 'Kalp atışı').click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Kalp atışı · 60 dk kaldı');
+
+  // Saving and playing a mix from the list also stay on the device.
+  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
+  const mixSheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
+  await mixSheet.getByLabel('Karışımın adı').fill('Gece');
+  await mixSheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(mixSheet).toBeHidden();
+  const mixRow = page.getByRole('listitem').filter({ hasText: 'Gece' });
+  await mixRow.getByRole('button', { name: 'Gece karışımını çal', exact: true }).click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Kalp atışı · 60 dk kaldı');
+
+  await openTab(page, 'Ayarlar');
+  await page.getByRole('button', { name: 'Ses kaynakları', exact: true }).click();
+  const sources = page.getByRole('dialog', { name: 'Ses kaynakları' });
+  await expect(sources).toContainText('| white | Beyaz gürültü / White noise |');
+  await sources.getByRole('button', { name: 'Kapat', exact: true }).click();
+  await expect(sources).toBeHidden();
 
   // Backup, CSV, the download fallback and restoring stay on the device too: a file goes only where the
   // user's share sheet sends it.

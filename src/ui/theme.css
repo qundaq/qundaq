@@ -36,7 +36,7 @@ button { font: inherit; color: inherit; }
 .screen {
   max-width: 640px;
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px);
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(var(--tabbar-h) + var(--nowplaying-h) + env(safe-area-inset-bottom) + 16px);
 }
 h1 { font-size: 28px; margin: 8px 0 16px; }
 h2 { font-size: 17px; margin: 0 0 8px; }
@@ -115,7 +115,7 @@ legend { margin-bottom: 6px; }
 .status dt { color: var(--muted); }
 .status dd { margin: 0; text-align: right; }
 .quick-actions {
-  position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  position: sticky; bottom: calc(var(--tabbar-h) + var(--nowplaying-h) + env(safe-area-inset-bottom));
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 16px;
   background: var(--bg); padding: 8px 0;
 }
@@ -196,3 +196,46 @@ legend { margin-bottom: 6px; }
 .import-timers ul { margin: 0 0 8px; padding-left: 20px; }
 .home-restore { margin-top: 12px; }
 .backup-banner { border-color: var(--danger); }
+/* Sesler: the play button is the brightest element; tiles are toggle buttons with a level slider each. */
+.play-button { width: 100%; min-height: 64px; font-size: 20px; }
+.sound-status { margin: 8px 0 12px; }
+.sound-notice { min-height: 1.45em; margin: 8px 0; color: var(--danger); }
+.sound-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+@media (min-width: 390px) {
+  .sound-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.sound-tile { display: grid; gap: 4px; }
+.tile {
+  width: 100%; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); overflow-wrap: anywhere; text-align: center;
+}
+.tile[aria-pressed='true'] { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+/* Range inputs: a 44px thumb on a 48px-tall control, so a sleepy thumb finds them one-handed. */
+.level { width: 100%; height: 48px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; accent-color: var(--accent); }
+.level::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
+.level::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 44px; height: 44px; margin-top: -19px; border-radius: 50%; background: var(--accent); border: 0; }
+.level::-moz-range-track { height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
+.level::-moz-range-thumb { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); border: 0; }
+.level:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.master { margin-top: 16px; }
+/* The now-playing bar sits above the tab bar on the other tabs; .screen and .quick-actions make room through --nowplaying-h. */
+:root { --nowplaying-h: 0px; }
+html.has-nowplaying { --nowplaying-h: 64px; }
+.nowplaying {
+  position: fixed; z-index: 5; left: 0; right: 0; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); height: var(--nowplaying-h);
+  display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--surface-2); border-top: 1px solid var(--border);
+}
+.nowplaying-text { flex: 1; min-width: 0; min-height: var(--tap); padding: 0; background: none; border: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The timer chips are radios: the chosen one looks like a pressed chip. */
+.chip[aria-checked='true'] { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+/* Saved mixes: the name is the play button; rename and a two-step delete beside it. */
+.mix-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mix-list li { display: flex; align-items: center; gap: 8px; }
+.mix-play {
+  flex: 1; min-width: 0; min-height: var(--tap); display: grid; gap: 2px; padding: 8px 12px; text-align: left;
+  font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+}
+.mix-play span { overflow-wrap: anywhere; }
+.mix-name { font-weight: 600; }
+/* Ayarlar → Hakkında → Ses kaynakları: the Markdown file as it is, wrapped so nothing scrolls sideways. */
+.sources { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.4; margin: 0; }
