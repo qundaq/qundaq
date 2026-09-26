@@ -437,6 +437,44 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(context.calls).toEqual(['resume', 'resume', 'suspend']);
   });
 
+  it('a pause then play inside the pause fade (a double tap) turns back from where the transport is: no cut to 0, no faster rise', () => {
+    const { engine, deps, context } = playing(['white', 'rain']);
+    deps.advance(3000); // the start fade is over
+    const { transport } = context.graph;
+    engine.pause();
+    deps.advance(100); // 0.1 s into the 0.3 s pause fade
+    const t = context.currentTime;
+    const held = transport.gain.valueAt(t);
+    expect(held).toBeGreaterThan(0.5);
+    const sources = context.sources.length;
+    engine.play();
+    expect(context.sources).toHaveLength(sources); // both voices were still there: none starts in this call
+    expect(transport.gain.valueAt(t)).toBeCloseTo(held, 9); // no step down: no click, no 2 s dropout
+    for (let at = t; at <= t + START_FADE_SECONDS + 0.5; at += 0.02) {
+      const value = transport.gain.valueAt(at);
+      expect(value).toBeGreaterThanOrEqual(held - 1e-9);
+      expect(value).toBeLessThanOrEqual(Math.min(1, held + (at - t) / START_FADE_SECONDS) + 1e-9); // never faster than the start fade
+    }
+    expect(transport.gain.valueAt(t + START_FADE_SECONDS)).toBeCloseTo(1, 9);
+  });
+
+  it('a play inside the pause fade that starts a cached voice at full gain still cuts the transport to 0 first', () => {
+    const { engine, deps, context } = playing(['white', 'rain']);
+    engine.toggleLayer('rain'); // the loop stays cached
+    deps.advance(3000);
+    engine.pause();
+    deps.advance(100); // the transport is still well above 0
+    engine.toggleLayer('rain'); // while paused: the selection only, no voice yet
+    const t = context.currentTime;
+    const sources = context.sources.length;
+    engine.play();
+    expect(context.sources).toHaveLength(sources + 1); // rain starts in this call, at its full level
+    const { transport } = context.graph;
+    expect(transport.gain.valueAt(t)).toBe(0);
+    for (let at = t; at <= t + START_FADE_SECONDS + 0.5; at += 0.02) expect(transport.gain.valueAt(at)).toBeLessThanOrEqual(Math.min(1, (at - t) / START_FADE_SECONDS) + 1e-9);
+    expect(transport.gain.valueAt(t + START_FADE_SECONDS)).toBe(1);
+  });
+
   it('a suspension by the system marks the sound interrupted and silent; becoming visible resumes it with a fade', async () => {
     const { engine, deps, context } = playing();
     deps.advance(3000);
@@ -499,6 +537,30 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(deps.prepareSession).toHaveBeenCalledTimes(2);
     expect(context.calls).toEqual(['resume', 'resume']);
     expect(engine.getSnapshot().status).toBe('playing');
+  });
+
+  it('a tile tap while interrupted resumes in the tap itself, like "Devam et" (R6)', async () => {
+    const { engine, deps, context } = playing();
+    context.interrupt();
+    await flush();
+    expect(engine.getSnapshot().status).toBe('interrupted');
+    expect(engine.toggleLayer('rain')).toBe('added');
+    expect(deps.prepareSession).toHaveBeenCalledTimes(2);
+    expect(context.calls).toEqual(['resume', 'resume']);
+    await flush();
+    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', layers: [{ soundId: 'white' }, { soundId: 'rain' }] });
+  });
+
+  it('a tile tap while interrupted with an expired timer stops without resuming the context (R2)', async () => {
+    const { engine, deps, context } = playing();
+    engine.setTimer(15);
+    context.interrupt();
+    await flush();
+    const resumes = context.calls.filter((call) => call === 'resume').length;
+    deps.wall += 20 * MINUTE; // iOS freezes JS timers during an interruption: the wall clock moves, no timeout fires
+    expect(engine.toggleLayer('rain')).toBe('added');
+    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', endsAt: null, layers: [{ soundId: 'white' }, { soundId: 'rain' }] });
+    expect(context.calls.filter((call) => call === 'resume')).toHaveLength(resumes);
   });
 
   it('stop forgets the countdown, stops and disconnects the sources, and suspends', () => {

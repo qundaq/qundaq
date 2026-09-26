@@ -228,11 +228,14 @@ html.has-nowplaying { --nowplaying-h: 64px; }
 .nowplaying-text { flex: 1; min-width: 0; min-height: var(--tap); padding: 0; background: none; border: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The timer chips are radios: the chosen one looks like a pressed chip. */
 .chip[aria-checked='true'] { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
-/* Saved mixes: the name is the play button; rename and a two-step delete beside it. */
-.mix-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.mix-list li { display: flex; align-items: center; gap: 8px; }
+/* Saved mixes: the name is the play button across the full row; rename and a two-step delete share the row
+   under it, 16px apart like .timer-row, so a sleepy thumb cannot hit the wrong one and the armed "Silmek için
+   tekrar dokunun" never squeezes the name, even at 320px. */
+.mix-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.mix-list li { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.mix-list li .btn { flex: 1 1 0; }
 .mix-play {
-  flex: 1; min-width: 0; min-height: var(--tap); display: grid; gap: 2px; padding: 8px 12px; text-align: left;
+  flex: 1 1 100%; min-width: 0; min-height: var(--tap); display: grid; gap: 2px; padding: 8px 12px; text-align: left;
   font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
 }
 .mix-play span { overflow-wrap: anywhere; }

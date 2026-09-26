@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { db } from '../db/instance';
 import { defaultSettings, loadSettings, saveSettings, type Settings } from '../db/settings';
 import { DEFAULT_CAP } from '../domain/sounds';
@@ -16,7 +16,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { NowPlayingBar } from './sounds/NowPlayingBar';
 import { SoundsScreen } from './sounds/SoundsScreen';
-import { lastSoundOf, layerNames, sameLastSound, toSavedSound, withCapRescale } from './sounds/text';
+import { lastSoundOf, lastSoundToPersist, layerNames, sameLastSound, toSavedSound } from './sounds/text';
 import { useMediaSession, useSoundEngine } from './sounds/useSoundEngine';
 import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from './summary/SummaryScreen';
 
@@ -80,11 +80,25 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   // plays until a tap, R6), then the cap again whenever Ayarlar saves it (R19).
   const { engine, state: sound } = useSoundEngine();
 
-  // A new cap is written together with the selection the engine will then hold (the master lowered when
-  // the cap rises), so the two never come apart in storage.
+  // The stored selection as the latest commit has it, for a persist timer set in an earlier render.
+  const storedSound = useRef(settings.lastSound);
+  useEffect(() => {
+    storedSound.current = settings.lastSound;
+  });
+  // Nothing is remembered before the launch's restore ran: until then the engine holds the default selection.
+  const restored = useRef(false);
+
+  // A new cap reaches the engine first, in this call: it lowers the master when the cap rises (R1), and the
+  // cap is then written together with that lowered master. Storage never holds more than what plays, even
+  // when the write fails or lands late.
   const updateSettings = async (patch: Partial<Settings>) => {
+    let full = patch;
+    if (patch.volumeCap !== undefined) {
+      engine.setCap(patch.volumeCap);
+      full = { ...patch, lastSound: lastSoundOf(engine.getSnapshot()) };
+    }
     try {
-      onSettingsReplaced(await saveSettings(db, withCapRescale(patch, sound, settings.volumeCap ?? DEFAULT_CAP), fallbackLocale));
+      onSettingsReplaced(await saveSettings(db, full, fallbackLocale));
     } catch (error) {
       report(error);
     }
@@ -92,17 +106,23 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
 
   useEffect(() => {
     engine.restore(settings.lastSound ? toSavedSound(settings.lastSound) : undefined, settings.volumeCap ?? DEFAULT_CAP);
+    restored.current = true;
   }, [engine]);
+  // A no-op after updateSettings: the engine already holds the cap.
   useEffect(() => {
     engine.setCap(settings.volumeCap ?? DEFAULT_CAP);
   }, [engine, settings.volumeCap]);
-  // The selection is remembered a second after it last changed; the playing state never is.
+  // The selection is remembered a second after it last changed, as the engine holds it then (never a
+  // render's copy, which can predate a cap's rescale or the restore); the playing state never is.
   useEffect(() => {
-    const next = lastSoundOf(sound);
-    if (sameLastSound(next, settings.lastSound)) return;
-    const handle = window.setTimeout(() => void updateSettings({ lastSound: next }), 1000);
+    if (sameLastSound(lastSoundOf(sound), settings.lastSound)) return;
+    const handle = window.setTimeout(() => {
+      if (!restored.current) return;
+      const next = lastSoundToPersist(engine.getSnapshot(), storedSound.current);
+      if (next) void updateSettings({ lastSound: next });
+    }, 1000);
     return () => window.clearTimeout(handle);
-  }, [sound.layers, sound.master, sound.timer, settings.lastSound]);
+  }, [engine, sound.layers, sound.master, sound.timer, settings.lastSound]);
   useMediaSession(engine, sound, layerNames(t, sound.layers));
   // On the other tabs the now-playing bar sits above the tab bar; the screens make room through --nowplaying-h (R16).
   const nowPlaying = tab !== 'sounds' && sound.status !== 'stopped';

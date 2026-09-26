@@ -35,8 +35,9 @@ export function SoundsScreen() {
       >
         {t(state.status === 'playing' ? 'sounds.pause' : state.status === 'interrupted' ? 'sounds.resume' : 'sounds.play')}
       </button>
-      <p className="sound-status" aria-live="polite">
-        {statusText(t, state)}
+      {/* Only the state is announced: inside the live region the countdown would be read out every minute. */}
+      <p className="sound-status">
+        <span aria-live="polite">{statusText(t, state)}</span>
         {remaining ? ` · ${remaining}` : ''}
       </p>
       <TimerChips value={state.timer} onChange={(choice) => engine.setTimer(choice)} />

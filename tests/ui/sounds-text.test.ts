@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { translate, type MessageKey } from '../../src/i18n';
-import { lastSoundOf, layerNames, mixLayerNames, remainingText, sameLastSound, statusText, toSavedSound, withCapRescale } from '../../src/ui/sounds/text';
+import { lastSoundOf, lastSoundToPersist, layerNames, mixLayerNames, remainingText, sameLastSound, statusText, toSavedSound } from '../../src/ui/sounds/text';
 
 const t = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
 const NOW = 1_790_000_000_000;
@@ -36,10 +36,26 @@ describe('the last selection', () => {
     expect(toSavedSound(last)).toEqual({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.5, timer: 30 });
   });
 
-  it('writes a raised cap together with the lowered master, and leaves other patches alone', () => {
-    expect(withCapRescale({ volumeCap: 1 }, state, 0.5)).toEqual({ volumeCap: 1, lastSound: { layers: [{ soundId: 'white', level: 0.7 }], master: 0.25, timerMin: 30 } });
-    expect(withCapRescale({ volumeCap: 0.3 }, state, 0.5)).toEqual({ volumeCap: 0.3, lastSound: lastSoundOf(state) }); // lowering keeps the master
-    expect(withCapRescale({ nightMode: true }, state, 0.5)).toEqual({ nightMode: true });
+  describe('what the persist timer writes, read from the engine when it fires', () => {
+    it('after a cap raise: the lowered master, never the master a render captured before the rescale', () => {
+      // The cap write stored the pair (cap 1, master 0.25); the engine holds 0.25: nothing to write.
+      const rescaled = { ...state, master: 0.25 };
+      expect(lastSoundToPersist(rescaled, lastSoundOf(rescaled))).toBeNull();
+      // A write that fires before the cap write lands stores the engine's 0.25, not the old 0.5.
+      expect(lastSoundToPersist(rescaled, lastSoundOf(state))).toEqual({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.25, timerMin: 30 });
+    });
+
+    it('at a cold start: the restored selection matches storage, and a fresh app writes nothing', () => {
+      // The timer reads the engine after restore() ran, not the default snapshot of the first render.
+      expect(lastSoundToPersist(state, lastSoundOf(state))).toBeNull();
+      expect(lastSoundToPersist({ layers: [], master: 0.6, timer: 60 }, undefined)).toBeNull();
+    });
+
+    it('nothing when unchanged; the new selection when it changed', () => {
+      expect(lastSoundToPersist(state, lastSoundOf(state))).toBeNull();
+      const louder = { ...state, layers: [{ soundId: 'white' as const, level: 0.9 }] };
+      expect(lastSoundToPersist(louder, lastSoundOf(state))).toEqual(lastSoundOf(louder));
+    });
   });
 
   it('compares selections, and treats nothing stored as the default selection', () => {

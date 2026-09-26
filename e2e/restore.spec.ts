@@ -180,7 +180,7 @@ test('broken files are refused with the right message, and nothing is written', 
 });
 
 test('the preview shows a mixes count row, replace-mode mix loss, and names a skipped bad mix', async ({ page }) => {
-  // The Sesler UI to create a mix does not exist yet: mixes are seeded through a crafted backup file.
+  // Mixes are seeded through a crafted backup file: only such a file can carry a bad mix, which the app never writes.
   await addBabyInSettings(page, 'Ada');
   const T = new Date('2026-09-26T08:00:00+03:00').getTime();
   const base = { app: 'qundaq', schemaVersion: 2, appVersion: '0.1.0', babies: [], events: [], settings: {} };

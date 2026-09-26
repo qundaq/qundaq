@@ -93,6 +93,20 @@ describe('updateMediaSession', () => {
     expect(mediaSession.metadata).toBeNull();
   });
 
+  it('clears the handlers while stopped, so a lock-screen or Bluetooth "play" cannot restart the sound, and sets them again once it plays', () => {
+    const mediaSession = fakeMediaSession();
+    const handlers = { onPlay: vi.fn(), onPause: vi.fn(), onStop: vi.fn() };
+    updateMediaSession({ mediaSession }, { title: 'Gece', playing: true, ...handlers }, createMetadata);
+    updateMediaSession({ mediaSession }, { title: 'Gece', playing: null, ...handlers }, createMetadata); // the sleep timer ran out
+    for (const action of ['play', 'pause', 'stop']) {
+      expect(mediaSession.handlers.has(action)).toBe(true);
+      expect(mediaSession.handlers.get(action)).toBeNull();
+    }
+    updateMediaSession({ mediaSession }, { title: 'Gece', playing: false, ...handlers }, createMetadata);
+    mediaSession.handlers.get('play')?.();
+    expect(handlers.onPlay).toHaveBeenCalledTimes(1);
+  });
+
   it('is a no-op without the API, and swallows a browser that refuses a handler', () => {
     const handlers = { onPlay: vi.fn(), onPause: vi.fn(), onStop: vi.fn() };
     expect(() => updateMediaSession({}, { title: 'x', playing: true, ...handlers }, createMetadata)).not.toThrow();
