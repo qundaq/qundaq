@@ -1,6 +1,6 @@
 import { foldCase } from '../domain/text';
-import type { Baby, Id, TrackerEvent } from '../domain/types';
-import { BABY_KEYS, EVENT_KEYS, type BackupSettings } from './format';
+import type { Baby, Id, Mix, TrackerEvent } from '../domain/types';
+import { BABY_KEYS, EVENT_KEYS, MIX_KEYS, type BackupSettings } from './format';
 import { findStale, repairRunning, type StaleTimer, type StoppedTimer } from './running';
 import type { ParsedBackup } from './validate';
 
@@ -10,6 +10,7 @@ export type ImportMode = 'merge' | 'replace';
 export interface LocalState {
   babies: readonly Baby[];
   events: readonly TrackerEvent[];
+  mixes: readonly Mix[];
   settings: BackupSettings;
 }
 
@@ -79,15 +80,18 @@ export interface TableStats {
 export interface ImportStats {
   babies: TableStats;
   events: TableStats;
+  mixes: TableStats;
   /** Live rows on the device now; replace mode removes them. */
   localBabies: number;
   localEvents: number;
+  localMixes: number;
 }
 
-/** Replace mode: live device entries that the file lacks or that changed after the backup was taken. */
+/** Replace mode: live device rows that the file lacks or that changed after the backup was taken. */
 export interface Loss {
   events: number;
-  newestAt: number | null; // the latest start among them
+  newestAt: number | null; // the latest start among the lost events
+  mixes: number;
 }
 
 export interface ImportPlan {
@@ -99,6 +103,8 @@ export interface ImportPlan {
    */
   babies: Baby[];
   events: TrackerEvent[];
+  /** Saved mixes merge like babies (last writer wins, tombstones), with no pairing. */
+  mixes: Mix[];
   settings: BackupSettings;
   stats: ImportStats;
   loss: Loss;
@@ -138,12 +144,13 @@ function sortKeys(value: unknown): unknown {
 }
 
 /**
- * Every field a baby or an event row can legitimately have (the storage-only `open` marker is not one of
- * them, so it drops out on its own). A device row may also carry a legacy or otherwise unknown field from
- * an older version of the app; canonicalRow ignores those too, on both sides, so two rows that agree on
- * every field the current app understands compare equal regardless of what else either one is carrying.
+ * Every field a baby, an event or a mix row can legitimately have (the storage-only `open` marker is not
+ * one of them, so it drops out on its own). A device row may also carry a legacy or otherwise unknown
+ * field from an older version of the app; canonicalRow ignores those too, on both sides, so two rows that
+ * agree on every field the current app understands compare equal regardless of what else either one is
+ * carrying. A mix's `layers` are compared with their keys sorted, like every nested value.
  */
-const CANONICAL_KEYS = new Set<string>([...BABY_KEYS, ...EVENT_KEYS]);
+const CANONICAL_KEYS = new Set<string>([...BABY_KEYS, ...EVENT_KEYS, ...MIX_KEYS]);
 
 /** A row as JSON with sorted keys and only the known fields: equal rows give equal strings, whatever their key order. */
 export function canonicalRow(row: object): string {
@@ -303,11 +310,14 @@ function replacePlan(local: LocalState, backup: ParsedBackup, options: ImportOpt
   // A loop, not Math.max(...): a spread of 100,000 entries exceeds JavaScriptCore's argument limit.
   let newestAt: number | null = null;
   for (const event of lost) if (newestAt === null || event.startAt > newestAt) newestAt = event.startAt;
+  const mixFileIds = new Set(backup.mixes.map((mix) => mix.id));
+  const lostMixes = local.mixes.filter((mix) => isLive(mix) && (!mixFileIds.has(mix.id) || mix.updatedAt > backup.exportedAt)).length;
   const count = (rows: readonly Row[]): TableStats => ({ ...emptyStats(), add: rows.filter(isLive).length, deleted: rows.filter((row) => !isLive(row)).length });
   return {
     mode: 'replace',
     babies: [...backup.babies],
     events: [...events.values()],
+    mixes: [...backup.mixes],
     settings: {
       locale: backup.settings.locale ?? local.settings.locale,
       nightMode: backup.settings.nightMode ?? local.settings.nightMode,
@@ -316,10 +326,12 @@ function replacePlan(local: LocalState, backup: ParsedBackup, options: ImportOpt
     stats: {
       babies: count(backup.babies),
       events: count(backup.events),
+      mixes: count(backup.mixes),
       localBabies: local.babies.filter(isLive).length,
       localEvents: local.events.filter(isLive).length,
+      localMixes: local.mixes.filter(isLive).length,
     },
-    loss: { events: lost.length, newestAt },
+    loss: { events: lost.length, newestAt, mixes: lostMixes },
     removedBabies: [],
     moves: [],
     follows: [],
@@ -332,6 +344,7 @@ function replacePlan(local: LocalState, backup: ParsedBackup, options: ImportOpt
 function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptions, now: number): ImportPlan {
   const babies = mergeTable(local.babies, backup.babies);
   const events = mergeTable(local.events, backup.events);
+  const mixes = mergeTable(local.mixes, backup.mixes);
   // The device's live babies that the file deletes.
   const removed = local.babies.filter((baby) => isLive(baby) && babies.writes.has(baby.id) && !isLive(babies.writes.get(baby.id)!));
 
@@ -453,6 +466,7 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
     mode: 'merge',
     babies: [...babies.writes.values()],
     events: [...events.writes.values()],
+    mixes: [...mixes.writes.values()],
     settings: {
       locale: local.settings.locale,
       nightMode: local.settings.nightMode,
@@ -461,10 +475,12 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
     stats: {
       babies: babies.stats,
       events: events.stats,
+      mixes: mixes.stats,
       localBabies: local.babies.filter(isLive).length,
       localEvents: local.events.filter(isLive).length,
+      localMixes: local.mixes.filter(isLive).length,
     },
-    loss: { events: 0, newestAt: null },
+    loss: { events: 0, newestAt: null, mixes: 0 },
     removedBabies: removed.map(displayName),
     moves: [...moved].map(([id, count]) => ({ name: babies.result.get(id)!.name, events: count })),
     follows,

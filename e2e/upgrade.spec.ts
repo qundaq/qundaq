@@ -30,7 +30,7 @@ function readStored(page: import('@playwright/test').Page) {
 }
 
 // Phones updating to this version hold a Dexie v2 database (IndexedDB version 20), perhaps with a timer
-// running. The v3 build must open it, mark the running row for the new `open` index, and carry on.
+// running. This build must open it, mark the running row for the `open` index (v3), add the mixes table (v4), and carry on.
 test('a v2 database with a running sleep opens in this version and the sleep can be stopped', async ({ page }) => {
   await page.clock.install({ time: NOW });
 
@@ -79,7 +79,7 @@ test('a v2 database with a running sleep opens in this version and the sleep can
   await expect(card).toContainText('Uyuyor · 1 sa');
 
   const upgraded = await readStored(page);
-  expect(upgraded.version).toBe(30);
+  expect(upgraded.version).toBe(40);
   expect(upgraded.sleep.open).toBe(1);
 
   await card.getByRole('button', { name: 'Ada: Uyandı', exact: true }).click();

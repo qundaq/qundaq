@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { countLive } from '../../backup/export';
 import { findSameBabies, planImport, planSignature, type ImportOptions, type ImportPlan, type TableStats } from '../../backup/merge';
 import type { StaleTimer, StoppedTimer } from '../../backup/running';
 import type { ParsedBackup, SkippedRow } from '../../backup/validate';
@@ -201,11 +202,21 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
             moved: n(applied.moves.reduce((sum, move) => sum + move.events, 0)),
           })
         : t('import.done.replace', { babies: n(applied.stats.babies.add), events: n(applied.stats.events.add) });
+    const mixesChanged = applied.mode === 'merge' && applied.stats.mixes.add + applied.stats.mixes.update + applied.stats.mixes.remove > 0;
     return (
       <div ref={root}>
         <p role="status" className="status-ok">
           {message}
         </p>
+        {mixesChanged && (
+          <p className="status-ok">
+            {t('import.done.mergeMixes', {
+              added: n(applied.stats.mixes.add),
+              updated: n(applied.stats.mixes.update),
+              removed: n(applied.stats.mixes.remove),
+            })}
+          </p>
+        )}
         <div className="sheet-actions">
           <button type="button" className="btn btn-primary" onClick={onClose}>
             {t('common.ok')}
@@ -234,7 +245,7 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
       same: formatNumber(locale, stats.same),
       keep: formatNumber(locale, stats.keep),
     });
-  const backupFirstPrimary = mode === 'replace' && plan.loss.events > 0;
+  const backupFirstPrimary = mode === 'replace' && (plan.loss.events > 0 || plan.loss.mixes > 0);
 
   return (
     <div ref={root}>
@@ -312,6 +323,12 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
                 {plan.stats.events.deleted > 0 && <span className="muted"> · {t('import.deleted', { n: formatNumber(locale, plan.stats.events.deleted) })}</span>}
               </dd>
             </div>
+            {(countLive(backup.mixes) > 0 || countLive(local.mixes) > 0) && (
+              <div>
+                <dt>{t('import.mixes')}</dt>
+                <dd>{counts(plan.stats.mixes)}</dd>
+              </div>
+            )}
           </dl>
           {plan.removedBabies.length > 0 && <p className="status-warn">{t('import.removedBabies', { names: plan.removedBabies.join(', ') })}</p>}
           {plan.hidden.map((baby, i) => (
@@ -326,6 +343,7 @@ function ImportForm({ source, choices, onChoicesChange, onBackupFirst, onSetting
       ) : (
         <>
           <p>{t('import.replaceSummary', { babies: formatNumber(locale, plan.stats.localBabies), events: formatNumber(locale, plan.stats.localEvents) })}</p>
+          {plan.stats.localMixes > 0 && <p className="status-warn">{t('import.replaceMixes', { n: formatNumber(locale, plan.stats.localMixes) })}</p>}
           {plan.loss.events > 0 && plan.loss.newestAt !== null && (
             <p className="status-warn">{t('import.loss', { n: formatNumber(locale, plan.loss.events), newest: when(plan.loss.newestAt) })}</p>
           )}
@@ -399,6 +417,7 @@ function SkippedList({ skipped }: { skipped: readonly SkippedRow[] }) {
   if (skipped.length === 0) return null;
   const label = (row: SkippedRow) => {
     if (row.list === 'babies') return `${t('import.skippedBaby')}${row.name ? ` ${row.name}` : ''}`;
+    if (row.list === 'mixes') return `${t('import.skippedMix')}${row.name ? ` ${row.name}` : ''}`;
     if (row.type === undefined) return t('import.unknownRow');
     const type = typeLabel(t, row.type);
     return row.startAt === undefined ? type : `${shortDate(locale, row.startAt)} ${clockTime(locale, row.startAt)} · ${type}`;

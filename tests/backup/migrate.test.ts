@@ -21,6 +21,12 @@ describe('migrateBackup', () => {
     expect(migrateBackup({ schemaVersion: 2, trail: [] }, 2, steps, 3)).toEqual({ schemaVersion: 3, trail: ['two'] });
   });
 
+  it('1 → 2 changes nothing but the version: a version-1 file has mixes: [] and a crafted one reads as version 2', () => {
+    const raw: RawBackup = { app: 'qundaq', schemaVersion: 1, babies: [], events: [], mixes: [{ id: 'm1' }] };
+    expect(migrateBackup(raw, 1)).toEqual({ ...raw, schemaVersion: 2 });
+    expect(BACKUP_VERSION).toBe(2);
+  });
+
   it('throws when a step is missing', () => {
     expect(() => migrateBackup({ schemaVersion: 1 }, 1, {}, 2)).toThrow('No migration from backup version 1');
   });

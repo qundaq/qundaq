@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildBackup, countLive, serializeBackup, type Snapshot } from '../../src/backup/export';
-import { BACKUP_VERSION, backupFileName } from '../../src/backup/format';
+import { BACKUP_VERSION, DEVICE_ONLY_SETTINGS, backupFileName } from '../../src/backup/format';
+import type { Settings } from '../../src/db/settings';
 
 let previousTz: string | undefined;
 beforeEach(() => {
@@ -26,6 +27,10 @@ function snapshot(): Snapshot {
       // A malformed row, as a bad write could leave it: copied as it is.
       { id: 'e3', type: 'breastfeed', babyId: 'b2', startAt: T, endAt: T, segments: 'broken', createdAt: T, updatedAt: T, extra: 7 },
     ],
+    mixes: [
+      { updatedAt: T, layers: [{ gain: 0.7, soundId: 'white' }], name: 'Gece', id: 'm1', createdAt: T },
+      { id: 'm2', name: 'Eski', layers: [{ soundId: 'pink', gain: 0.5 }], createdAt: T, updatedAt: T + 1, deletedAt: T + 1 },
+    ],
     settings: { locale: 'tr', nightMode: true, lastBabyIds: ['b1'] },
   };
 }
@@ -40,7 +45,8 @@ describe('buildBackup', () => {
     expect(backup.babies.map((baby) => baby.id)).toEqual(['b1', 'b2']);
     expect(backup.babies[1]).toMatchObject({ deletedAt: T + 5 });
     expect(backup.events).toHaveLength(3);
-    expect(backup.mixes).toEqual([]);
+    expect(backup.mixes).toHaveLength(2);
+    expect(backup.mixes[1]).toMatchObject({ deletedAt: T + 1 });
     expect(backup.settings).toEqual({ locale: 'tr', nightMode: true, lastBabyIds: ['b1'] });
   });
 
@@ -67,12 +73,22 @@ describe('buildBackup', () => {
     expect(Object.keys(backup.babies[0]!)).toEqual(['id', 'name', 'color', 'archived', 'createdAt', 'updatedAt']);
     expect(Object.keys(backup.events[1]!)).toEqual(['id', 'type', 'babyId', 'startAt', 'wet', 'dirty', 'note', 'createdAt', 'updatedAt']);
     expect(Object.keys(backup.events[2]!).at(-1)).toBe('extra');
+    expect(Object.keys(backup.mixes[0]!)).toEqual(['id', 'name', 'layers', 'createdAt', 'updatedAt']);
+    expect(backup.mixes[0]!.layers).toEqual([{ gain: 0.7, soundId: 'white' }]);
   });
 
   it('never exports what describes this device only', () => {
-    const settings = { locale: 'en' as const, nightMode: false, lastBabyIds: [], lastBackupAt: T, backupReminderSnoozedUntil: T };
+    const deviceOnly: Pick<Required<Settings>, (typeof DEVICE_ONLY_SETTINGS)[number]> = {
+      lastBackupAt: T,
+      backupReminderSnoozedUntil: T,
+      volumeCap: 1,
+      lastSound: { layers: [{ soundId: 'white', level: 1 }], master: 1, timerMin: null },
+    };
+    expect(Object.keys(deviceOnly).sort()).toEqual([...DEVICE_ONLY_SETTINGS].sort());
+    const settings = { locale: 'en' as const, nightMode: false, lastBabyIds: [], ...deviceOnly };
     const backup = buildBackup({ ...snapshot(), settings }, { exportedAt: T, appVersion: '0.1.0' });
     expect(backup.settings).toEqual({ locale: 'en', nightMode: false, lastBabyIds: [] });
+    for (const key of DEVICE_ONLY_SETTINGS) expect(serializeBackup(backup)).not.toContain(key);
   });
 
   it('keeps a key named __proto__ as data', () => {
@@ -94,7 +110,7 @@ describe('serializeBackup', () => {
     const backup = buildBackup(snapshot(), { exportedAt: T, appVersion: '0.1.0' });
     const text = serializeBackup(backup);
     expect(text).not.toContain('\n');
-    expect(text.startsWith('{"app":"qundaq","schemaVersion":1,')).toBe(true);
+    expect(text.startsWith('{"app":"qundaq","schemaVersion":2,')).toBe(true);
     expect(JSON.parse(text)).toEqual(backup);
   });
 });

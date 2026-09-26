@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { loadSettings, saveSettings } from '../../src/db/settings';
+import type { LastSound } from '../../src/domain/sounds';
 
 const opened: TrackerDb[] = [];
 function freshDb(name = `test-${crypto.randomUUID()}`): TrackerDb {
@@ -75,5 +76,37 @@ describe('backup times in the settings row', () => {
     expect(await loadSettings(db, 'tr')).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [], lastBackupAt: 1000, backupReminderSnoozedUntil: 2000 });
     await db.settings.put({ id: 'app', locale: 'tr', nightMode: false, lastBabyIds: [], lastBackupAt: 'yesterday', backupReminderSnoozedUntil: Number.NaN } as never);
     expect(await loadSettings(db, 'tr')).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [] });
+  });
+});
+
+describe('sound settings in the settings row', () => {
+  it('keeps a cap within 0.2–1 and drops one outside it, so the default applies', async () => {
+    const db = freshDb();
+    await saveSettings(db, { volumeCap: 0.8 }, 'tr');
+    expect(await loadSettings(db, 'tr')).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [], volumeCap: 0.8 });
+    for (const bad of [5, 0.1, Number.NaN, '0.5', null]) {
+      await db.settings.put({ id: 'app', locale: 'tr', nightMode: false, lastBabyIds: [], volumeCap: bad } as never);
+      expect(await loadSettings(db, 'tr'), String(bad)).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [] });
+    }
+  });
+
+  it('keeps a well-formed last selection and drops a malformed one whole', async () => {
+    const db = freshDb();
+    const lastSound: LastSound = { layers: [{ soundId: 'white', level: 0.7 }, { soundId: 'rain', level: 0.3 }], master: 0.6, timerMin: null };
+    await saveSettings(db, { lastSound }, 'tr');
+    expect((await loadSettings(db, 'tr')).lastSound).toEqual(lastSound);
+    const malformed = [
+      { ...lastSound, layers: [{ soundId: 'train', level: 0.7 }] }, // an unknown sound
+      { ...lastSound, layers: [{ soundId: 'white', level: 2 }] }, // a level above 1
+      { ...lastSound, layers: [{ soundId: 'white', level: 0.5 }, { soundId: 'white', level: 0.5 }] }, // twice
+      { ...lastSound, master: Number.NaN },
+      { ...lastSound, timerMin: 45 },
+      { ...lastSound, layers: Array.from({ length: 7 }, (_, i) => ({ soundId: ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat'][i], level: 0.5 })) },
+      'white',
+    ];
+    for (const bad of malformed) {
+      await db.settings.put({ id: 'app', locale: 'tr', nightMode: false, lastBabyIds: [], lastSound: bad } as never);
+      expect(await loadSettings(db, 'tr'), JSON.stringify(bad)).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [] });
+    }
   });
 });
