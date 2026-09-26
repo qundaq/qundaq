@@ -13,7 +13,7 @@ Runs entirely on your phone as an installable web app. No accounts, no servers, 
 
 ## Status
 
-🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. Sounds come next.
+🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. The Sounds tab mixes nine sounds generated on the phone, with a sleep timer, saved mixes and a volume safety cap. That completes the planned v1 feature set; bundled recordings (for sounds that cannot be synthesized well) are still to come.
 
 ## Why
 
@@ -77,7 +77,12 @@ Before a release, run the [device checklist](docs/device-checklist.md) on a real
 
 ## Sounds
 
-Most sounds are synthesized in code. Any bundled audio files will be listed with their source and license in `public/sounds/SOURCES.md`.
+The Sounds tab plays white, pink and brown noise, rain, waves, wind, a heartbeat, shushing and an airplane cabin. Every one of them is **generated on your phone** by a few lines of arithmetic; no audio is downloaded, ever. Tap a sound to start it, tap others to layer them (up to six), set each level, and save the mix under a name. Saved mixes are part of the backup.
+
+- **Sleep timer:** 15, 30 or 60 minutes (the default) or none. The sound fades out over the last 30 seconds and stops, also while the phone is locked. Pausing does not stop the countdown.
+- **Locked screen:** the sound keeps playing with the screen locked and in airplane mode. It plays through the ring/silent switch, and it pauses other audio (a podcast) when it starts. After a call or an alarm while the phone is locked, iOS may keep the sound off until you open the app again; the app then shows "Resume".
+- **Safety:** keep the phone out of the crib, at least 2 metres (about 7 feet) away, keep the volume as low as works, and prefer the timer to playing all night (Hugh et al., *Pediatrics* 2014). Settings → **Volume safety cap** limits how loud the Sounds tab can go (default 50 %); raising it shows this advice, and raising it never makes a playing sound louder by itself. The phone's own volume buttons apply on top, and the app cannot read them.
+- **Sources:** every sound is listed with its origin and licence in [`public/sounds/SOURCES.md`](public/sounds/SOURCES.md), also shown in the app under Settings → About → Sound sources. Recordings, when they come, will be CC0 or clearly labelled as AI-generated with the tool and date.
 
 ## Medical disclaimer
 
@@ -96,13 +101,19 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 
 "Qundaq", Türkçedeki *kundak* kelimesinin Azerbaycan Türkçesindeki yazılışıdır.
 
-**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sırada sesler var.
+**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sesler sekmesi telefonda üretilen dokuz sesi karıştırır; uyku zamanlayıcısı, kayıtlı karışımlar ve ses güvenlik sınırı var. Planlanan v1 özellikleri böylece tamamlandı; iyi sentezlenemeyen sesler için kayıt dosyaları daha sonra gelecek.
 
 **Yedekler:** Kayıtlar yalnızca telefonda durur ve iOS ana ekrana eklenen uygulamaların verisini silebilir. Düzenli yedek alın; son yedek 7 günden eskiyse Ana ekran hatırlatır.
 - **Yedek al:** Ayarlar → Yedekleme → **Yedek al** → **Dosyalar'a kaydet / paylaş** → **Dosyalar'a Kaydet** → **iPhone'umda**. Uçak modunda çalışır. Yalnızca iCloud Drive'da duran bir dosya uçak modunda açılamaz.
 - **Geri yükle:** Ayarlar → Yedekleme → **Yedekten geri yükle** (bebek eklenmemiş bir telefonda Ana ekranda da), dosyayı seçin, önizlemeye bakın, **Geri yükle**'ye dokunun. Bu birleştirir: yalnızca bu telefonda olan kayıtlar korunur; iki tarafta da olan bir kayıtta, silme dahil, daha yeni değişiklik geçerli olur. Telefon silindikten sonra (yeni telefon ya da uygulama silinip yeniden eklendiğinde) her şeyi geri getirir. **Tamamen değiştir** seçeneği de var; neyi sileceğini gösterir ve onay ister.
 - **CSV:** Ayarlar → Yedekleme → **CSV olarak dışa aktar**, doktor için her bebeğe bir tablo verir.
 - Yedek dosyası düz JSON'dur ve **şifrelenmez**. Uygulama dosyayı hiçbir yere göndermez; dosya yalnızca paylaş menüsünde sizin seçtiğiniz yere gider. iCloud Drive, Mail ya da WhatsApp'ı seçerseniz dosya o hizmete gider.
+
+**Sesler:** Sesler sekmesi beyaz, pembe ve kahverengi gürültü, yağmur, dalga, rüzgâr, kalp atışı, "şşş" ve uçak kabini seslerini çalar. Hepsi **telefonunuzda üretilir**; hiçbir ses dosyası indirilmez. Bir sese dokunarak başlatın, başkalarına dokunarak katman ekleyin (en fazla altı), her birinin seviyesini ayarlayın ve karışımı isimle kaydedin. Kayıtlı karışımlar yedeğe dahildir.
+- **Uyku zamanlayıcısı:** 15, 30 ya da 60 dakika (varsayılan) veya sınırsız. Ses son 30 saniyede kısılıp durur; ekran kilitliyken de. Duraklatmak geri sayımı durdurmaz.
+- **Kilitli ekran:** Ses, ekran kilitliyken ve uçak modunda çalmaya devam eder. Sessiz anahtarı açıkken de çalar ve başladığında diğer sesleri (ör. bir podcast'i) duraklatır. Telefon kilitliyken gelen bir arama ya da alarmdan sonra iOS sesi uygulamayı yeniden açana kadar kapalı tutabilir; uygulama o zaman "Devam et" gösterir.
+- **Güvenlik:** Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun, sesi olabildiğince kısık tutun ve bütün gece çalmak yerine zamanlayıcıyı kullanın (Hugh ve ark., *Pediatrics* 2014). Ayarlar → **Ses güvenlik sınırı**, Sesler sekmesinin en fazla ne kadar yükselebileceğini belirler (varsayılan %50); sınırı yükseltmek bu uyarıyı gösterir ve çalan sesi kendiliğinden yükseltmez. Telefonun kendi ses tuşları bunun üstüne eklenir; uygulama onları okuyamaz.
+- **Kaynaklar:** Her sesin kaynağı ve lisansı [`public/sounds/SOURCES.md`](public/sounds/SOURCES.md) dosyasında listelenir; uygulamada Ayarlar → Hakkında → Ses kaynakları altında da görünür. Kayıt dosyaları eklendiğinde CC0 lisanslı olacak ya da hangi araçla ve ne zaman üretildiği belirtilerek yapay zekâyla üretildiği açıkça yazılacak.
 
 **İlkeler:**
 - Veri yalnızca telefonda tutulur.

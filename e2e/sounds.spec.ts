@@ -1,0 +1,230 @@
+import { expect, test } from '@playwright/test';
+import { fakeAudio, fakeAudioRecord, soundStatus, tile } from './support/audio';
+import { clearAppData, pickBackupFile, stubShare, takeBackup } from './support/backup';
+import { addBabyInSettings, openTab } from './support/tracking';
+
+test.use({ timezoneId: 'Europe/Istanbul' });
+
+const NIGHT = new Date('2026-09-26T22:00:00+03:00');
+
+test('two sounds play, the status names them, and the now-playing bar on Home pauses them above the quick actions', async ({ page }) => {
+  await fakeAudio(page);
+  await page.goto('./');
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, 'Sesler');
+  await expect(soundStatus(page)).toHaveText('Durdu');
+  await expect(page.getByRole('button', { name: 'Çal', exact: true })).toBeDisabled();
+
+  await tile(page, 'Beyaz gürültü').click();
+  await expect(tile(page, 'Beyaz gürültü')).toHaveAttribute('aria-pressed', 'true');
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 60 dk kaldı');
+  await expect(page.getByLabel('Beyaz gürültü seviyesi')).toHaveValue('0.7');
+  await tile(page, 'Yağmur').click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Yağmur · 60 dk kaldı');
+  // Both loops generated (the status does not wait for them): one context, resumed in the tap, two sources.
+  await expect(tile(page, 'Beyaz gürültü')).not.toContainText('Hazırlanıyor…');
+  await expect(tile(page, 'Yağmur')).not.toContainText('Hazırlanıyor…');
+  expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 1, resumes: 1, sources: 2 });
+
+  // A seventh sound is refused with a message.
+  for (const name of ['Pembe gürültü', 'Kahverengi gürültü', 'Dalgalar', 'Rüzgâr']) await tile(page, name).click();
+  await tile(page, 'Şşş').click();
+  await expect(page.getByRole('status')).toHaveText('En fazla 6 ses birlikte çalabilir.');
+  await expect(tile(page, 'Şşş')).toHaveAttribute('aria-pressed', 'false');
+
+  await openTab(page, 'Ana');
+  const bar = page.getByRole('region', { name: 'Çalan ses' });
+  await expect(bar).toContainText('Çalıyor · Beyaz gürültü + Yağmur');
+  const quick = await page.getByRole('group', { name: 'Hızlı kayıt' }).boundingBox();
+  const barBox = await bar.boundingBox();
+  expect(quick!.y + quick!.height).toBeLessThanOrEqual(barBox!.y + 1);
+  await bar.getByRole('button', { name: 'Duraklat', exact: true }).click();
+  await expect(bar).toContainText('Duraklatıldı');
+  await bar.getByRole('button', { name: 'Çal', exact: true }).click();
+  await expect(bar).toContainText('Çalıyor');
+  await bar.getByRole('button', { name: /Çalıyor/ }).click(); // the text opens the Sesler tab
+  await expect(page.getByRole('heading', { level: 1, name: 'Sesler' })).toBeVisible();
+  await expect(bar).toHaveCount(0);
+});
+
+test('the 15-minute timer counts down and stops the sound; play restarts it with the same chip; the selection survives a reload', async ({ page }) => {
+  await page.clock.install({ time: NIGHT });
+  await fakeAudio(page);
+  await page.goto('./');
+  await openTab(page, 'Sesler');
+  await expect(page.getByRole('radio', { name: '60 dk', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('radio', { name: '15 dk', exact: true }).click();
+  await tile(page, 'Beyaz gürültü').click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 15 dk kaldı');
+  await page.getByLabel('Ses seviyesi', { exact: true }).fill('0.3');
+
+  await page.clock.fastForward(14 * 60_000);
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 1 dk kaldı');
+  // Pausing does not stop the countdown.
+  await page.getByRole('button', { name: 'Duraklat', exact: true }).click();
+  await expect(soundStatus(page)).toHaveText('Duraklatıldı · 1 dk kaldı');
+  await page.clock.fastForward(70_000);
+  await expect(soundStatus(page)).toHaveText('Durdu');
+  await expect(tile(page, 'Beyaz gürültü')).toHaveAttribute('aria-pressed', 'true');
+  expect(await fakeAudioRecord(page)).toMatchObject({ suspends: 1 });
+
+  await page.getByRole('button', { name: 'Çal', exact: true }).click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 15 dk kaldı');
+  await page.getByRole('radio', { name: 'Zamanlayıcı yok', exact: true }).click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü');
+  await page.clock.fastForward(60 * 60_000);
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü');
+
+  // The selection, the master and the chip come back after a reload; nothing plays by itself.
+  await page.reload();
+  await openTab(page, 'Sesler');
+  await expect(soundStatus(page)).toHaveText('Durdu');
+  await expect(tile(page, 'Beyaz gürültü')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.3');
+  await expect(page.getByRole('radio', { name: 'Zamanlayıcı yok', exact: true })).toHaveAttribute('aria-checked', 'true');
+  expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 0 });
+});
+
+test('a mix is saved, plays after a reload from the list, and can be renamed and deleted with two taps', async ({ page }) => {
+  await page.clock.install({ time: NIGHT });
+  await fakeAudio(page);
+  await page.goto('./');
+  await openTab(page, 'Sesler');
+  await expect(page.getByRole('button', { name: 'Karışımı kaydet', exact: true })).toBeDisabled();
+  await tile(page, 'Beyaz gürültü').click();
+  await tile(page, 'Yağmur').click();
+  await page.getByLabel('Yağmur seviyesi').fill('0.4');
+  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
+  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(sheet.getByRole('alert')).toHaveText('Bir isim girin.');
+  await sheet.getByLabel('Karışımın adı').fill('Gece');
+  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  const row = page.getByRole('listitem').filter({ hasText: 'Gece' });
+  await expect(row).toContainText('Beyaz gürültü + Yağmur');
+
+  await page.getByRole('button', { name: 'Duraklat', exact: true }).click();
+  await tile(page, 'Beyaz gürültü').click(); // off while paused: the selection changes, nothing starts
+  await expect(soundStatus(page)).toHaveText('Duraklatıldı · 60 dk kaldı');
+  await page.reload();
+  await openTab(page, 'Sesler');
+  await expect(soundStatus(page)).toHaveText('Durdu');
+  await page.getByRole('button', { name: 'Gece karışımını çal', exact: true }).click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Yağmur · 60 dk kaldı');
+  await expect(page.getByLabel('Yağmur seviyesi')).toHaveValue('0.4');
+
+  await row.getByRole('button', { name: 'Gece: Yeniden adlandır', exact: true }).click();
+  const rename = page.getByRole('dialog', { name: 'Karışımı yeniden adlandır' });
+  await rename.getByLabel('Karışımın adı').fill('Derin uyku');
+  await rename.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(rename).toBeHidden();
+  const renamed = page.getByRole('listitem').filter({ hasText: 'Derin uyku' });
+  await expect(renamed).toBeVisible();
+  await renamed.getByRole('button', { name: 'Derin uyku: Sil', exact: true }).click();
+  await page.clock.fastForward(1000);
+  await renamed.getByRole('button', { name: 'Derin uyku: Silmek için tekrar dokunun', exact: true }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Derin uyku' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Kayıtlı karışımlar' })).toHaveCount(0);
+  await expect(soundStatus(page)).toContainText('Çalıyor'); // deleting the mix leaves the sound alone
+});
+
+test('a saved mix travels in the backup and comes back in a restore', async ({ page }) => {
+  await fakeAudio(page);
+  await stubShare(page);
+  await page.goto('./');
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, 'Sesler');
+  await tile(page, 'Şşş').click();
+  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
+  await sheet.getByLabel('Karışımın adı').fill('Gece');
+  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  const backup = await takeBackup(page);
+  const parsed = JSON.parse(backup) as { schemaVersion: number; mixes: { name: string; layers: unknown[] }[] };
+  expect(parsed.schemaVersion).toBe(2);
+  expect(parsed.mixes).toEqual([{ id: expect.any(String), name: 'Gece', layers: [{ soundId: 'shush', gain: 0.7 }], createdAt: expect.any(Number), updatedAt: expect.any(Number) }]);
+  expect(backup).not.toContain('volumeCap');
+  expect(backup).not.toContain('lastSound');
+
+  await clearAppData(page);
+  const restore = await pickBackupFile(page, backup);
+  const mixesRow = restore.locator('.import-counts > div').filter({ hasText: 'Karışımlar' });
+  await expect(mixesRow).toContainText('Eklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0');
+  await restore.getByRole('button', { name: 'Geri yükle', exact: true }).click();
+  await expect(restore.getByRole('status')).toHaveText('Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await restore.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await openTab(page, 'Sesler');
+  await expect(page.getByRole('listitem').filter({ hasText: 'Gece' })).toContainText('Şşş');
+  await page.getByRole('button', { name: 'Gece karışımını çal', exact: true }).click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Şşş · 60 dk kaldı');
+});
+
+test('raising the cap warns and never makes the sound louder; the sound sources open in-app', async ({ page }) => {
+  await fakeAudio(page);
+  await page.goto('./');
+  await openTab(page, 'Sesler');
+  await tile(page, 'Beyaz gürültü').click();
+  await expect(soundStatus(page)).toContainText('Çalıyor');
+  await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.6');
+  await expect(page.getByText('Telefonu yataktan uzak tutun, sesi kısık tutun.')).toBeVisible();
+
+  await openTab(page, 'Ayarlar');
+  const cap = page.getByLabel('Ses güvenlik sınırı');
+  await expect(cap).toHaveValue('0.5');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await cap.fill('1');
+  await expect(page.getByRole('alert')).toContainText('Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun');
+  // The master slider drops so that the sound stays as loud as it was (R1); the headroom is there to be used.
+  await openTab(page, 'Sesler');
+  await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.3');
+  await expect(soundStatus(page)).toContainText('Çalıyor');
+  // The cap and the lowered master were written together: a launch right after restores them as a pair.
+  await page.reload();
+  await openTab(page, 'Sesler');
+  await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.3');
+  await openTab(page, 'Ayarlar');
+  await expect(page.getByLabel('Ses güvenlik sınırı')).toHaveValue('1');
+
+  await openTab(page, 'Ayarlar');
+  await expect(page.getByRole('alert')).toBeVisible();
+  await cap.fill('0.5');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await openTab(page, 'Ana'); // leaving the card saves a move that is still pending
+  await openTab(page, 'Ayarlar');
+  await expect(page.getByLabel('Ses güvenlik sınırı')).toHaveValue('0.5');
+  await page.reload();
+  await openTab(page, 'Ayarlar');
+  await expect(page.getByLabel('Ses güvenlik sınırı')).toHaveValue('0.5');
+
+  await page.getByRole('button', { name: 'Ses kaynakları', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Ses kaynakları' });
+  await expect(sheet).toContainText('| pink | Pembe gürültü / Pink noise |');
+  await expect(sheet).toContainText('Paul Kellet');
+  await sheet.getByRole('button', { name: 'Kapat', exact: true }).click();
+  await expect(sheet).toBeHidden();
+});
+
+test('the real AudioContext builds the graph and plays without errors', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'One real-context check is enough; headless WebKit on the CI runner may not run Web Audio (R11)');
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('./');
+  await openTab(page, 'Sesler');
+  await tile(page, 'Kalp atışı').click();
+  await tile(page, 'Yağmur').click();
+  await expect(soundStatus(page)).toHaveText('Çalıyor · Kalp atışı + Yağmur · 60 dk kaldı');
+  await expect(tile(page, 'Yağmur')).not.toContainText('Hazırlanıyor…');
+  await page.getByLabel('Yağmur seviyesi').fill('0.2');
+  await page.getByRole('radio', { name: '15 dk', exact: true }).click();
+  await page.getByRole('button', { name: 'Duraklat', exact: true }).click();
+  await expect(soundStatus(page)).toContainText('Duraklatıldı');
+  await page.getByRole('button', { name: 'Çal', exact: true }).click();
+  await expect(soundStatus(page)).toContainText('Çalıyor');
+  expect(await page.evaluate(() => 'AudioContext' in window && !('__fakeAudio' in window))).toBe(true);
+  expect(errors).toEqual([]);
+});

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { fakeAudio, soundStatus, tile } from './support/audio';
 import { downloadedText, pickBackupFile, removeShare, stubShare, takeBackup } from './support/backup';
 import { addBabyInSettings, logDiaper, openTab } from './support/tracking';
 
@@ -16,11 +17,30 @@ test('using the app triggers no CSP violations', async ({ page }) => {
     (window as unknown as { __cspViolations: string[] }).__cspViolations = store;
     document.addEventListener('securitypolicyviolation', (e) => store.push(`${e.violatedDirective} ${e.blockedURI}`));
   });
+  await fakeAudio(page);
   await page.goto('./');
   const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
   for (const name of ['Günlük', 'Özet', 'Sesler', 'Ayarlar']) {
     await nav.getByRole('button', { name, exact: true }).click();
   }
+  // Playing a sound, saving a mix, playing it from the list and opening the source list stay inside the
+  // policy (no inline styles, same-origin fetch).
+  await nav.getByRole('button', { name: 'Sesler', exact: true }).click();
+  await tile(page, 'Yağmur').click();
+  await expect(soundStatus(page)).toContainText('Çalıyor');
+  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
+  const mixSheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
+  await mixSheet.getByLabel('Karışımın adı').fill('Gece');
+  await mixSheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(mixSheet).toBeHidden();
+  const mixRow = page.getByRole('listitem').filter({ hasText: 'Gece' });
+  await mixRow.getByRole('button', { name: 'Gece karışımını çal', exact: true }).click();
+  await expect(soundStatus(page)).toContainText('Çalıyor · Yağmur');
+  await nav.getByRole('button', { name: 'Ayarlar', exact: true }).click();
+  await page.getByRole('button', { name: 'Ses kaynakları', exact: true }).click();
+  const sources = page.getByRole('dialog', { name: 'Ses kaynakları' });
+  await expect(sources).toContainText('Paul Kellet');
+  await sources.getByRole('button', { name: 'Kapat', exact: true }).click();
   const nightSwitch = page.getByRole('switch');
   await nightSwitch.click();
   await expect(nightSwitch).toBeChecked();

@@ -32,6 +32,20 @@ Run on a real iPhone before telling anyone a release is ready. Automated tests c
 | 24 | Ayarlar → CSV olarak dışa aktar (two babies with entries) → share → Dosyalar'a Kaydet; open a file in Numbers | One share sheet offers all the files at once; Numbers shows ş, ğ, ı correctly and ";" splits the columns | |
 | 25 | After a wipe (as in step 22), before adding any baby: Ana → "Yedekten geri yükle" → pick the backup → Geri yükle | The button is on Home under "Bebek ekle"; every baby and entry is back without adding them again | |
 | 26 | With at least one entry and no backup for more than 7 days, open Home; tap "Yarın hatırlat" | The backup banner shows above the cards; after the tap it stays away until 09:00 the next morning (at least 12 hours) | |
+| 27 | Airplane mode ON, ring/silent switch on silent. Sesler → tap "Beyaz gürültü" | Sound starts on the first tap (no second tap needed); the tile shows "Hazırlanıyor…" at most briefly; it plays through the silent switch | |
+| 28 | Enable six sounds one after another (any six), then tap a seventh | "En fazla 6 ses birlikte çalabilir."; time from the first tap on a 6-layer saved mix to sound (R13 budget: ≤ 1 s): ______ | |
+| 29 | Lock the phone and wait 30 minutes with a 60 dk timer | Sound keeps playing the whole time; unlock: "Çalıyor · … · 30 dk kaldı" (about) | |
+| 30 | Set 15 dk, lock the phone, wait 16 minutes | The sound fades over the last 30 s and stops while locked; on unlock "Durdu", the tiles still selected; one tap on "Çal" starts the same sounds with 15 dk again | |
+| 31 | While a 60 dk timer runs, tap 15 dk, then ∞, then 30 dk | The remaining time follows each chip at once; no click, no jump in loudness; ∞ removes the countdown | |
+| 32 | Lock screen while playing: does the lock screen show "Qundaq" with play/pause? Pause from there (if shown), lock, then play from the lock screen | Record what appears (R10: controls present or not); record whether "play" from the lock screen works after a pause while locked | |
+| 33 | While playing and locked, receive a call (or let an alarm ring), end it | Record whether the sound resumes by itself, or only after opening the app ("Ses kesildi" + "Devam et") | |
+| 34 | Listen to each of the nine sounds alone for 2 minutes at the default levels | Each sounds believable for what it is; no audible loop seam or click; no sound is clearly louder than the others at equal sliders; the heartbeat is audible on the XR speaker at the default cap | |
+| 35 | Sound-meter app on a second phone at 30 cm and at 2 m; XR at full system volume; Sesler at the defaults (master 60 %, cap 50 %), then with the cap at 100 % and the master at 100 % | dB(A) at 30 cm / 2 m, defaults: ______ / ______; maximum: ______ / ______. If the defaults exceed a moderate level at 2 m, lower DEFAULT_CAP in src/domain/sounds.ts (numbers stay here, never in the UI) | |
+| 36 | Ayarlar → Ses güvenlik sınırı: slide above 50 % while a sound plays | The warning appears under the slider and stays; the master slider on Sesler drops so the sound does not get louder; sliding the cap back down makes it quieter at once | |
+| 37 | Pair a Bluetooth speaker while playing, then turn the speaker off; plug in headphones while playing, then unplug them | The sound moves with the route without stopping (or resumes on "Devam et"); after unplugging it plays from the speaker at the speaker's volume | |
+| 38 | Sesler: save a mix, then Ayarlar → Yedek al; on the other phone (or after a wipe) restore it | The preview's "Karışımlar" row shows "Eklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0"; the mix appears on Sesler and plays; the cap on the restoring phone is unchanged | |
+| 39 | Ayarlar → Hakkında → Ses kaynakları in airplane mode | The sheet opens with the table of nine sounds; "Kapat" returns to Ayarlar (no page navigation) | |
+| 40 | Play any mix for 1 hour with the screen locked | Battery used: ______ %; the phone is not hot | |
 
 Notes:
 - First launch: the home-screen app has its own storage, separate from Safari tabs. Records, settings and the
@@ -41,4 +55,6 @@ Notes:
   and of a cold start from a closed browser also run in Chromium only.
 - The e2e tests replace the share sheet with a stub and cannot open the Files picker, so steps 19–25 are the
   only check of the real iOS share sheet, Files and Numbers. Run them in airplane mode.
-- From plan 5 onward add: sound keeps playing with the screen locked for 30 minutes.
+- Steps 27–40 need a real speaker and a lock screen, which the e2e fakes (every sound e2e installs a fake
+  AudioContext; one Chromium test uses the real one). The measurements of steps 28, 35 and 40 are recorded
+  here and nowhere else.
