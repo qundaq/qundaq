@@ -124,6 +124,11 @@ legend { margin-bottom: 6px; }
   .quick-actions { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 .quick-actions .btn { min-height: 64px; padding: 0 2px; background: var(--surface); font-size: 15px; overflow-wrap: anywhere; text-align: center; }
+/* Five columns on a 360–389px screen leave about 55px per label; wide system fonts (Linux, some Androids) need a little more. */
+@media (min-width: 360px) and (max-width: 389.98px) {
+  .quick-actions { gap: 4px; }
+  .quick-actions .btn { padding: 0 1px; font-size: 14px; }
+}
 .timer-actions { display: grid; gap: 16px; margin-top: 12px; }
 /* One row per timer; 16px between neighbours so a sleepy thumb cannot hit the wrong one. */
 .timer-row { display: flex; gap: 16px; }
