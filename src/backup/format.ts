@@ -23,7 +23,12 @@ export interface BackupSettings {
  * the sound safety cap (a restore must never raise another phone's safety limit) and the last selection
  * on the Sesler tab. Every key of Settings is either here or in BackupSettings, checked below.
  */
-export const DEVICE_ONLY_SETTINGS = ['lastBackupAt', 'backupReminderSnoozedUntil', 'volumeCap', 'lastSound'] as const;
+export const DEVICE_ONLY_SETTINGS = [
+  'lastBackupAt',
+  'backupReminderSnoozedUntil',
+  'volumeCap',
+  'lastSound',
+] as const;
 
 export interface BackupFile {
   app: typeof BACKUP_APP;
@@ -37,7 +42,16 @@ export interface BackupFile {
 }
 
 /** Key order of a written baby row. Keys a row has beyond these follow in their stored order. */
-export const BABY_KEYS = ['id', 'name', 'color', 'birthDate', 'archived', 'createdAt', 'updatedAt', 'deletedAt'] as const;
+export const BABY_KEYS = [
+  'id',
+  'name',
+  'color',
+  'birthDate',
+  'archived',
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+] as const;
 
 /** Key order of a written event row: identity, timing, every type's payload, then bookkeeping. */
 export const EVENT_KEYS = [
@@ -79,11 +93,19 @@ type UnorderedEventKeys = Exclude<KeysOf<TrackerEvent>, (typeof EVENT_KEYS)[numb
 type UnorderedBabyKeys = Exclude<keyof Baby, (typeof BABY_KEYS)[number]>;
 type UnorderedMixKeys = Exclude<keyof Mix, (typeof MIX_KEYS)[number]>;
 type ClassifiedSettingsKeys = keyof BackupSettings | (typeof DEVICE_ONLY_SETTINGS)[number];
-type UnclassifiedSettingsKeys = Exclude<keyof Settings, ClassifiedSettingsKeys> | Exclude<ClassifiedSettingsKeys, keyof Settings>;
-export const EVERY_EVENT_KEY_ORDERED: [UnorderedEventKeys] extends [never] ? true : UnorderedEventKeys = true;
-export const EVERY_BABY_KEY_ORDERED: [UnorderedBabyKeys] extends [never] ? true : UnorderedBabyKeys = true;
-export const EVERY_MIX_KEY_ORDERED: [UnorderedMixKeys] extends [never] ? true : UnorderedMixKeys = true;
-export const EVERY_SETTINGS_KEY_CLASSIFIED: [UnclassifiedSettingsKeys] extends [never] ? true : UnclassifiedSettingsKeys = true;
+type UnclassifiedSettingsKeys =
+  Exclude<keyof Settings, ClassifiedSettingsKeys> | Exclude<ClassifiedSettingsKeys, keyof Settings>;
+export const EVERY_EVENT_KEY_ORDERED: [UnorderedEventKeys] extends [never]
+  ? true
+  : UnorderedEventKeys = true;
+export const EVERY_BABY_KEY_ORDERED: [UnorderedBabyKeys] extends [never]
+  ? true
+  : UnorderedBabyKeys = true;
+export const EVERY_MIX_KEY_ORDERED: [UnorderedMixKeys] extends [never] ? true : UnorderedMixKeys =
+  true;
+export const EVERY_SETTINGS_KEY_CLASSIFIED: [UnclassifiedSettingsKeys] extends [never]
+  ? true
+  : UnclassifiedSettingsKeys = true;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 

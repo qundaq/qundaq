@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { clearAppData, pickBackupFile, sharedFiles, stubShare, takeBackup } from './support/backup';
-import { addBabyInSettings, babyCard, logDiaper, logRows, openTab, quick } from './support/tracking';
+import {
+  addBabyInSettings,
+  babyCard,
+  logDiaper,
+  logRows,
+  openTab,
+  quick,
+} from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
@@ -22,18 +29,23 @@ test('a backup restores into an emptied app', async ({ page }) => {
   await expect(page.getByText('Başlamak için bir bebek ekleyin.')).toBeVisible();
 
   // An empty Home offers the restore right away, before any baby is added again.
-  await page.getByRole('main').getByLabel('Yedekten geri yükle', { exact: true }).setInputFiles({
-    name: 'qundaq-backup.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(backup),
-  });
+  await page
+    .getByRole('main')
+    .getByLabel('Yedekten geri yükle', { exact: true })
+    .setInputFiles({
+      name: 'qundaq-backup.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(backup),
+    });
   const sheet = page.getByRole('dialog', { name: 'Yedekten geri yükle' });
   await expect(sheet).toContainText('Bebekler: Ada, Can');
   await expect(sheet).toContainText('2 kayıt');
   // Nothing on this phone: merging is all there is, so the mode choice is not offered.
   await expect(sheet.getByRole('button', { name: 'Tamamen değiştir' })).toHaveCount(0);
   await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
-  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 2 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await expect(sheet.getByRole('status')).toHaveText(
+    'Geri yüklendi: 2 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.',
+  );
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
 
   await openTab(page, 'Ana');
@@ -43,7 +55,9 @@ test('a backup restores into an emptied app', async ({ page }) => {
   await expect(logRows(page)).toHaveCount(2);
 });
 
-test('merging into a phone with other data: the preview counts match, and the same baby is recognised', async ({ page }) => {
+test('merging into a phone with other data: the preview counts match, and the same baby is recognised', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   await logDiaper(page, { at: '2026-09-26T08:00' });
@@ -63,8 +77,13 @@ test('merging into a phone with other data: the preview counts match, and the sa
   await expect(diaper).toBeHidden();
 
   const sheet = await pickBackupFile(page, backup);
-  await expect(sheet.getByRole('button', { name: 'Birleştir', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(sheet.getByRole('checkbox', { name: 'Yedekteki Ada ile bu cihazdaki ada aynı bebek' })).toBeChecked();
+  await expect(sheet.getByRole('button', { name: 'Birleştir', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(
+    sheet.getByRole('checkbox', { name: 'Yedekteki Ada ile bu cihazdaki ada aynı bebek' }),
+  ).toBeChecked();
   // The backup's Ada survives in place of this phone's: the same baby, not an added one.
   await expect(sheet).toContainText(
     'BebeklerEklenecek: 0 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 1 · Bu cihazdaki daha yeni olduğu için korunacak: 0',
@@ -74,7 +93,9 @@ test('merging into a phone with other data: the preview counts match, and the sa
   );
   await expect(sheet).toContainText('1 kayıt Ada altında birleştirilecek.');
   await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
-  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 2 kayıt eklendi, 0 güncellendi, 0 silindi, 1 taşındı.');
+  await expect(sheet.getByRole('status')).toHaveText(
+    'Geri yüklendi: 2 kayıt eklendi, 0 güncellendi, 0 silindi, 1 taşındı.',
+  );
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
 
   await openTab(page, 'Ana');
@@ -85,19 +106,28 @@ test('merging into a phone with other data: the preview counts match, and the sa
   await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(3);
 });
 
-test("entries logged on a baby that the other phone combined follow it to the baby kept there", async ({ page }) => {
+test('entries logged on a baby that the other phone combined follow it to the baby kept there', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   await logDiaper(page, { at: '2026-09-26T09:00' });
   // The other phone paired this Ada with its own, older Ada and deleted this one; its backup says so.
   const file = JSON.parse(await takeBackup(page));
   const mine = file.babies[0];
-  const older = { ...mine, id: 'older-ada', createdAt: mine.createdAt - 86_400_000, updatedAt: mine.createdAt - 86_400_000 };
+  const older = {
+    ...mine,
+    id: 'older-ada',
+    createdAt: mine.createdAt - 86_400_000,
+    updatedAt: mine.createdAt - 86_400_000,
+  };
   file.babies = [{ ...mine, deletedAt: file.exportedAt, updatedAt: file.exportedAt }, older];
   file.events = [];
 
   const sheet = await pickBackupFile(page, JSON.stringify(file));
-  const follow = sheet.getByRole('checkbox', { name: 'Ada (silinen bebek): kayıtları Ada altında birleştirilsin' });
+  const follow = sheet.getByRole('checkbox', {
+    name: 'Ada (silinen bebek): kayıtları Ada altında birleştirilsin',
+  });
   await expect(follow).toBeChecked();
   await expect(sheet).toContainText('Bu cihazdan kaldırılacak bebek: Ada');
   await expect(sheet).toContainText('1 kayıt Ada altında birleştirilecek.');
@@ -107,7 +137,9 @@ test("entries logged on a baby that the other phone combined follow it to the ba
   await expect(sheet).not.toContainText('birleştirilecek');
   await follow.check();
   await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
-  await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 1 taşındı.');
+  await expect(sheet.getByRole('status')).toHaveText(
+    'Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 1 taşındı.',
+  );
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
 
   await openTab(page, 'Ana');
@@ -116,7 +148,9 @@ test("entries logged on a baby that the other phone combined follow it to the ba
   await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(1);
 });
 
-test('replace shows what it would lose, can back up first without losing the choice, and needs the checkbox', async ({ page }) => {
+test('replace shows what it would lose, can back up first without losing the choice, and needs the checkbox', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   await logDiaper(page, { at: '2026-09-26T08:00' });
@@ -126,21 +160,33 @@ test('replace shows what it would lose, can back up first without losing the cho
 
   const sheet = await pickBackupFile(page, backup);
   await sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true }).click();
-  await expect(sheet).toContainText('Bu cihazdaki 1 bebek ve 2 kayıt silinip yedektekilerle değiştirilecek.');
-  await expect(sheet).toContainText('Yedekten sonra bu cihaza girilen 1 kayıt silinecek (en yenisi: 26 Eyl 09:40).');
+  await expect(sheet).toContainText(
+    'Bu cihazdaki 1 bebek ve 2 kayıt silinip yedektekilerle değiştirilecek.',
+  );
+  await expect(sheet).toContainText(
+    'Yedekten sonra bu cihaza girilen 1 kayıt silinecek (en yenisi: 26 Eyl 09:40).',
+  );
   const replace = sheet.getByRole('button', { name: 'Değiştir', exact: true });
   await expect(replace).toBeDisabled();
 
   // Back up first: the export sheet takes over, and the preview comes back with "Tamamen değiştir" still chosen.
   await sheet.getByRole('button', { name: 'Önce bu cihazın yedeğini al', exact: true }).click();
   const exportSheet = page.getByRole('dialog', { name: 'Yedek al' });
-  await exportSheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
+  await exportSheet
+    .getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true })
+    .click();
   await exportSheet.getByRole('button', { name: 'Tamam', exact: true }).click();
   await expect(sheet).toBeVisible();
   expect(await sharedFiles(page)).toHaveLength(2);
-  await expect(sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
 
-  await sheet.getByRole('checkbox', { name: 'Yedeğin bu cihazdaki tüm verilerin yerini alacağını anlıyorum' }).check();
+  await sheet
+    .getByRole('checkbox', {
+      name: 'Yedeğin bu cihazdaki tüm verilerin yerini alacağını anlıyorum',
+    })
+    .check();
   await replace.click();
   await expect(sheet.getByRole('status')).toHaveText('Geri yüklendi: 1 bebek ve 1 kayıt.');
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
@@ -149,12 +195,26 @@ test('replace shows what it would lose, can back up first without losing the cho
   await expect(logRows(page)).toContainText(['08:00']);
 });
 
-test('broken files are refused with the right message, and nothing is written', async ({ page }) => {
-  const valid = { app: 'qundaq', schemaVersion: 1, exportedAt: Date.now(), appVersion: '0.1.0', babies: [], events: [], mixes: [], settings: {} };
+test('broken files are refused with the right message, and nothing is written', async ({
+  page,
+}) => {
+  const valid = {
+    app: 'qundaq',
+    schemaVersion: 1,
+    exportedAt: Date.now(),
+    appVersion: '0.1.0',
+    babies: [],
+    events: [],
+    mixes: [],
+    settings: {},
+  };
   const cases: [string, string][] = [
     ['not JSON', 'Bu dosya bir Qundaq yedeği değil.'],
     [JSON.stringify({ ...valid, app: 'another-app' }), 'Bu dosya bir Qundaq yedeği değil.'],
-    [JSON.stringify({ ...valid, schemaVersion: 99 }), 'Bu yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce uygulamayı güncelleyin.'],
+    [
+      JSON.stringify({ ...valid, schemaVersion: 99 }),
+      'Bu yedek, uygulamanın daha yeni bir sürümüyle alınmış. Önce uygulamayı güncelleyin.',
+    ],
   ];
   for (const [text, message] of cases) {
     const sheet = await pickBackupFile(page, text);
@@ -165,13 +225,43 @@ test('broken files are refused with the right message, and nothing is written', 
 
   // One good baby, one good entry and one bad entry: the bad one is named and skipped.
   const T = new Date('2026-09-26T08:00:00+03:00').getTime();
-  const baby = { id: 'b1', name: 'Ada', color: '#7cb7ff', archived: false, createdAt: T, updatedAt: T };
-  const good = { id: 'e1', type: 'diaper', babyId: 'b1', startAt: T, wet: true, dirty: false, createdAt: T, updatedAt: T };
-  const bad = { id: 'e2', type: 'bottle', babyId: 'b1', startAt: T + 60_000, ml: 5000, contents: 'formula', createdAt: T, updatedAt: T };
-  const sheet = await pickBackupFile(page, JSON.stringify({ ...valid, babies: [baby], events: [good, bad] }));
+  const baby = {
+    id: 'b1',
+    name: 'Ada',
+    color: '#7cb7ff',
+    archived: false,
+    createdAt: T,
+    updatedAt: T,
+  };
+  const good = {
+    id: 'e1',
+    type: 'diaper',
+    babyId: 'b1',
+    startAt: T,
+    wet: true,
+    dirty: false,
+    createdAt: T,
+    updatedAt: T,
+  };
+  const bad = {
+    id: 'e2',
+    type: 'bottle',
+    babyId: 'b1',
+    startAt: T + 60_000,
+    ml: 5000,
+    contents: 'formula',
+    createdAt: T,
+    updatedAt: T,
+  };
+  const sheet = await pickBackupFile(
+    page,
+    JSON.stringify({ ...valid, babies: [baby], events: [good, bad] }),
+  );
   await expect(sheet).toContainText('1 kayıt okunamadı ve atlanacak.');
   await sheet.getByText('Ayrıntılar', { exact: true }).click();
-  await expect(sheet.getByRole('listitem')).toHaveText(['26 Eyl 08:01 · Biberon: ayrıntıları geçersiz']);
+  await expect(sheet.getByRole('listitem')).toHaveText([
+    '26 Eyl 08:01 · Biberon: ayrıntıları geçersiz',
+  ]);
   await sheet.getByRole('button', { name: 'Vazgeç', exact: true }).click();
   await expect(sheet).toBeHidden();
 
@@ -179,12 +269,27 @@ test('broken files are refused with the right message, and nothing is written', 
   await expect(page.getByText('Başlamak için bir bebek ekleyin.')).toBeVisible();
 });
 
-test('the preview shows a mixes count row, replace-mode mix loss, and names a skipped bad mix', async ({ page }) => {
+test('the preview shows a mixes count row, replace-mode mix loss, and names a skipped bad mix', async ({
+  page,
+}) => {
   // Mixes are seeded through a crafted backup file: only such a file can carry a bad mix, which the app never writes.
   await addBabyInSettings(page, 'Ada');
   const T = new Date('2026-09-26T08:00:00+03:00').getTime();
-  const base = { app: 'qundaq', schemaVersion: 2, appVersion: '0.1.0', babies: [], events: [], settings: {} };
-  const gece = { id: 'm-gece', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: T, updatedAt: T };
+  const base = {
+    app: 'qundaq',
+    schemaVersion: 2,
+    appVersion: '0.1.0',
+    babies: [],
+    events: [],
+    settings: {},
+  };
+  const gece = {
+    id: 'm-gece',
+    name: 'Gece',
+    layers: [{ soundId: 'white', gain: 0.7 }],
+    createdAt: T,
+    updatedAt: T,
+  };
 
   // Merge a backup carrying one valid mix: the preview shows the "Karışımlar" counts row.
   let sheet = await pickBackupFile(page, JSON.stringify({ ...base, exportedAt: T, mixes: [gece] }));
@@ -196,15 +301,26 @@ test('the preview shows a mixes count row, replace-mode mix loss, and names a sk
 
   // Replacing with a file carrying a new valid mix and a bad one: the bad mix is skipped and named, and
   // the device's one live mix (just saved above) shows as a loss.
-  const yeni = { id: 'm-yeni', name: 'Yeni', layers: [{ soundId: 'rain', gain: 0.4 }], createdAt: T + 1, updatedAt: T + 1 };
+  const yeni = {
+    id: 'm-yeni',
+    name: 'Yeni',
+    layers: [{ soundId: 'rain', gain: 0.4 }],
+    createdAt: T + 1,
+    updatedAt: T + 1,
+  };
   const bozuk = { id: 'm-bozuk', name: 'Bozuk', layers: [], createdAt: T + 1, updatedAt: T + 1 };
-  sheet = await pickBackupFile(page, JSON.stringify({ ...base, exportedAt: T + 1, mixes: [yeni, bozuk] }));
+  sheet = await pickBackupFile(
+    page,
+    JSON.stringify({ ...base, exportedAt: T + 1, mixes: [yeni, bozuk] }),
+  );
   // Still in merge mode (the default): the counts row shows the one addable mix, the bad one skipped.
   await expect(sheet).toContainText(
     'KarışımlarEklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0 · Bu cihazdaki daha yeni olduğu için korunacak: 0',
   );
   await sheet.getByText('Ayrıntılar', { exact: true }).click();
-  await expect(sheet.getByRole('listitem')).toHaveText(['Karışım Bozuk: karışım bilgileri geçersiz']);
+  await expect(sheet.getByRole('listitem')).toHaveText([
+    'Karışım Bozuk: karışım bilgileri geçersiz',
+  ]);
   // Switching to replace: the counts row is not shown there, but the loss line is.
   await sheet.getByRole('button', { name: 'Tamamen değiştir', exact: true }).click();
   await expect(sheet).toContainText('Bu cihazdaki 1 karışım silinecek.');
@@ -216,7 +332,10 @@ test('a running timer in an old backup is stopped at the time of the backup', as
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   await quick(page, 'Uyku').click();
-  await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Uyku' })
+    .getByRole('button', { name: 'Başlat', exact: true })
+    .click();
   await expect(babyCard(page, 'Ada')).toContainText('Uyuyor');
   const backup = await takeBackup(page);
 
@@ -225,7 +344,9 @@ test('a running timer in an old backup is stopped at the time of the backup', as
   await page.clock.setSystemTime(new Date('2026-09-28T10:00:00+03:00'));
   const sheet = await pickBackupFile(page, backup);
   await expect(sheet).toContainText('Ada · Uyku: sayaç hâlâ sürüyor (başlangıç: 26 Eyl 10:00)');
-  await expect(sheet.getByRole('checkbox', { name: 'Yedeğin alındığı anda durdurulsun' })).toBeChecked();
+  await expect(
+    sheet.getByRole('checkbox', { name: 'Yedeğin alındığı anda durdurulsun' }),
+  ).toBeChecked();
   await sheet.getByRole('button', { name: 'Geri yükle', exact: true }).click();
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
 

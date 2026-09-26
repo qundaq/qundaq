@@ -36,7 +36,8 @@ function segmentsOf(event: TrackerEvent): unknown[] | null {
   return event.type === 'breastfeed' && Array.isArray(event.segments) ? event.segments : null;
 }
 
-const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const finite = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 /** The latest time the last breastfeeding side reached: its end when it is closed (a pause), else its start. */
 function lastSideTime(event: TrackerEvent): number {
@@ -56,7 +57,10 @@ export function stopTimerAt(event: TrackerEvent, at: number, now: number): Track
   if (segments === null) return { ...event, endAt, updatedAt: now };
   const last = segments.length - 1;
   const closed = segments.map((segment, i) =>
-    i === last && typeof segment === 'object' && segment !== null && (segment as { end?: unknown }).end === undefined
+    i === last &&
+    typeof segment === 'object' &&
+    segment !== null &&
+    (segment as { end?: unknown }).end === undefined
       ? { ...segment, end: endAt }
       : segment,
   );
@@ -121,15 +125,30 @@ export function repairRunning(
   for (const row of rows) current.set(row.id, row);
   const changed = new Map<Id, TrackerEvent>();
   const stopped: StoppedTimer[] = [];
-  const stop = (event: Extract<TrackerEvent, { type: TimerType }>, at: number, reason: StopReason) => {
+  const stop = (
+    event: Extract<TrackerEvent, { type: TimerType }>,
+    at: number,
+    reason: StopReason,
+  ) => {
     // Never in the future, even when the backup came from a phone whose clock ran ahead.
     let next = stopTimerAt(event, Math.min(at, context.now), context.now);
     // A stale stop records only what the backup knew. Stamped with the backup's time, not now, so a real
     // stop made after the backup on the other phone still wins a later merge.
-    if (reason === 'stale') next = { ...next, updatedAt: Math.min(context.now, Math.max(event.updatedAt + 1, context.exportedAt)) };
+    if (reason === 'stale')
+      next = {
+        ...next,
+        updatedAt: Math.min(context.now, Math.max(event.updatedAt + 1, context.exportedAt)),
+      };
     current.set(event.id, next);
     changed.set(event.id, next);
-    stopped.push({ id: event.id, babyId: event.babyId, type: event.type, startAt: event.startAt, stopAt: next.endAt!, reason });
+    stopped.push({
+      id: event.id,
+      babyId: event.babyId,
+      type: event.type,
+      startAt: event.startAt,
+      stopAt: next.endAt!,
+      reason,
+    });
   };
 
   for (const id of context.stopStale) {
@@ -137,7 +156,11 @@ export function repairRunning(
     if (!event || !isRunning(event)) continue;
     // A deleted baby's timer that is also stale ends at whichever came first.
     const deletedAt = event.babyId === null ? undefined : babies.get(event.babyId)?.deletedAt;
-    stop(event, finite(deletedAt) ? Math.min(context.exportedAt, deletedAt) : context.exportedAt, 'stale');
+    stop(
+      event,
+      finite(deletedAt) ? Math.min(context.exportedAt, deletedAt) : context.exportedAt,
+      'stale',
+    );
   }
 
   for (const event of [...current.values()]) {
@@ -156,7 +179,9 @@ export function repairRunning(
   for (const group of groups.values()) {
     if (group.length < 2) continue;
     const newest = group.reduce((best, event) =>
-      event.startAt > best.startAt || (event.startAt === best.startAt && event.id > best.id) ? event : best,
+      event.startAt > best.startAt || (event.startAt === best.startAt && event.id > best.id)
+        ? event
+        : best,
     );
     for (const event of group) if (event !== newest) stop(event, newest.startAt, 'collision');
   }

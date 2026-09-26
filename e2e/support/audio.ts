@@ -80,7 +80,9 @@ export async function fakeAudio(page: Page) {
       }
 
       get currentTime(): number {
-        return this.elapsed + (this.runningSince === null ? 0 : (Date.now() - this.runningSince) / 1000);
+        return (
+          this.elapsed + (this.runningSince === null ? 0 : (Date.now() - this.runningSince) / 1000)
+        );
       }
 
       private setState(state: string): void {
@@ -128,19 +130,36 @@ export async function fakeAudio(page: Page) {
         source.start = () => {}; // the sentinel is not a sound: `sources` counts buffer sources only
         source.stop = (when?: number) => {
           if (when === undefined) return;
-          setTimeout(() => source.onended?.(new Event('ended')), Math.max(0, (when - context.currentTime) * 1000));
+          setTimeout(
+            () => source.onended?.(new Event('ended')),
+            Math.max(0, (when - context.currentTime) * 1000),
+          );
         };
         return source;
       }
 
       createBuffer(channels: number, length: number, sampleRate: number) {
         const data = new Float32Array(length);
-        return { numberOfChannels: channels, length, sampleRate, duration: length / sampleRate, getChannelData: () => data };
+        return {
+          numberOfChannels: channels,
+          length,
+          sampleRate,
+          duration: length / sampleRate,
+          getChannelData: () => data,
+        };
       }
     }
 
-    Object.defineProperty(window, 'AudioContext', { configurable: true, writable: true, value: FakeAudioContext });
-    Object.defineProperty(window, 'webkitAudioContext', { configurable: true, writable: true, value: FakeAudioContext });
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      writable: true,
+      value: FakeAudioContext,
+    });
+    Object.defineProperty(window, 'webkitAudioContext', {
+      configurable: true,
+      writable: true,
+      value: FakeAudioContext,
+    });
   });
 }
 
@@ -151,7 +170,9 @@ export function fakeAudioRecord(page: Page): Promise<FakeAudioRecord> {
 
 /** The Sesler tab's tile for a sound, by its name. */
 export function tile(page: Page, name: string) {
-  return page.getByRole('group', { name: 'Sesler', exact: true }).getByRole('button', { name, exact: true });
+  return page
+    .getByRole('group', { name: 'Sesler', exact: true })
+    .getByRole('button', { name, exact: true });
 }
 
 /** The status line under the play button ("Çalıyor · …", "Durdu", …). */

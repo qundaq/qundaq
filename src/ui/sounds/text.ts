@@ -13,13 +13,16 @@ export function layerNames(t: TranslateFn, layers: readonly { soundId: SoundId }
 
 /** A saved mix's sounds as this version knows them; "(bilinmeyen ses)" when it knows none of them (R7). */
 export function mixLayerNames(t: TranslateFn, layers: readonly MixLayer[]): string {
-  const known = layers.filter((layer): layer is MixLayer & { soundId: SoundId } => isSoundId(layer.soundId));
+  const known = layers.filter((layer): layer is MixLayer & { soundId: SoundId } =>
+    isSoundId(layer.soundId),
+  );
   return known.length === 0 ? t('sounds.mix.unknown') : layerNames(t, known);
 }
 
 /** "Çalıyor · Beyaz gürültü + Yağmur", "Duraklatıldı", "Durdu" or "Ses kesildi" (R14). */
 export function statusText(t: TranslateFn, state: Pick<EngineState, 'status' | 'layers'>): string {
-  if (state.status === 'playing') return t('sounds.status.playing', { names: layerNames(t, state.layers) });
+  if (state.status === 'playing')
+    return t('sounds.status.playing', { names: layerNames(t, state.layers) });
   return t(`sounds.status.${state.status}`);
 }
 
@@ -30,7 +33,11 @@ export function remainingText(t: TranslateFn, endsAt: number | null, now: number
 
 /** What the app remembers of the Sesler tab: the selection, the master slider and the chip; never the playing state. */
 export function lastSoundOf(state: Pick<EngineState, 'layers' | 'master' | 'timer'>): LastSound {
-  return { layers: state.layers.map((layer) => ({ soundId: layer.soundId, level: layer.level })), master: state.master, timerMin: state.timer };
+  return {
+    layers: state.layers.map((layer) => ({ soundId: layer.soundId, level: layer.level })),
+    master: state.master,
+    timerMin: state.timer,
+  };
 }
 
 export function toSavedSound(last: LastSound): SavedSound {
@@ -42,7 +49,10 @@ export function toSavedSound(last: LastSound): SavedSound {
  * storage already has it. Never a render's copy: that can predate a cap raise's rescale (the old, louder
  * master under the new cap) or the launch's restore (the default selection over the stored one).
  */
-export function lastSoundToPersist(snapshot: Pick<EngineState, 'layers' | 'master' | 'timer'>, stored: LastSound | undefined): LastSound | null {
+export function lastSoundToPersist(
+  snapshot: Pick<EngineState, 'layers' | 'master' | 'timer'>,
+  stored: LastSound | undefined,
+): LastSound | null {
   const next = lastSoundOf(snapshot);
   return sameLastSound(next, stored) ? null : next;
 }
@@ -56,6 +66,9 @@ export function sameLastSound(a: LastSound, b: LastSound | undefined): boolean {
     a.master === other.master &&
     a.timerMin === other.timerMin &&
     a.layers.length === other.layers.length &&
-    a.layers.every((layer, i) => layer.soundId === other.layers[i]!.soundId && layer.level === other.layers[i]!.level)
+    a.layers.every(
+      (layer, i) =>
+        layer.soundId === other.layers[i]!.soundId && layer.level === other.layers[i]!.level,
+    )
   );
 }

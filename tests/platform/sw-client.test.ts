@@ -57,16 +57,24 @@ describe('waitUntilInstalled', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it.each(['installed', 'activating', 'activated'] as const)('resolves true when the worker becomes %s', async (state) => {
-    const worker = new FakeWorker('installing');
-    const result = waitUntilInstalled(worker as unknown as ServiceWorker);
-    worker.moveTo(state);
-    expect(await result).toBe(true);
-  });
+  it.each(['installed', 'activating', 'activated'] as const)(
+    'resolves true when the worker becomes %s',
+    async (state) => {
+      const worker = new FakeWorker('installing');
+      const result = waitUntilInstalled(worker as unknown as ServiceWorker);
+      worker.moveTo(state);
+      expect(await result).toBe(true);
+    },
+  );
 
-  it.each(['installed', 'activating', 'activated'] as const)('resolves true when the worker is already %s', async (state) => {
-    expect(await waitUntilInstalled(new FakeWorker(state) as unknown as ServiceWorker)).toBe(true);
-  });
+  it.each(['installed', 'activating', 'activated'] as const)(
+    'resolves true when the worker is already %s',
+    async (state) => {
+      expect(await waitUntilInstalled(new FakeWorker(state) as unknown as ServiceWorker)).toBe(
+        true,
+      );
+    },
+  );
 
   it('resolves false when the worker becomes redundant', async () => {
     const worker = new FakeWorker('installing');
@@ -106,7 +114,10 @@ describe('checkForUpdate', () => {
   let markerAtUpdate: string | null | undefined;
 
   function stubRegistration(
-    update: (registration: { installing: FakeWorker | null; waiting: FakeWorker | null }) => Promise<void>,
+    update: (registration: {
+      installing: FakeWorker | null;
+      waiting: FakeWorker | null;
+    }) => Promise<void>,
     scope = 'https://app.test/',
   ) {
     const registration = {
@@ -140,7 +151,9 @@ describe('checkForUpdate', () => {
     const scope = 'https://qundaq.github.io/qundaq/';
     let seenDuringUpdate: string | undefined;
     stubRegistration(async () => {
-      const marker = await caches.stores.get(UPDATE_CONTROL_CACHE)?.match(new URL('__update-requested__', scope).href);
+      const marker = await caches.stores
+        .get(UPDATE_CONTROL_CACHE)
+        ?.match(new URL('__update-requested__', scope).href);
       seenDuringUpdate = marker ? await marker.text() : undefined;
     }, scope);
     await checkForUpdate();

@@ -14,7 +14,8 @@ afterEach(() => {
   else process.env.TZ = previousTz;
 });
 
-const at = (month: number, day: number, hour = 0, minute = 0) => new Date(2026, month - 1, day, hour, minute).getTime();
+const at = (month: number, day: number, hour = 0, minute = 0) =>
+  new Date(2026, month - 1, day, hour, minute).getTime();
 let seq = 0;
 function ev(draft: EventDraft, extra: Partial<TrackerEvent> = {}): TrackerEvent {
   seq += 1;
@@ -25,13 +26,22 @@ describe('dailyTotals', () => {
   it('splits a sleep that crosses midnight between the two days; the count goes to the day it began', () => {
     const sleep = ev({ type: 'sleep', babyId: 'a', startAt: at(9, 24, 23), endAt: at(9, 25, 2) });
     const now = at(9, 25, 12);
-    expect(dailyTotals([sleep], 'a', at(9, 24), at(9, 25), now)).toMatchObject({ sleepMs: HOUR, sleeps: 1 });
-    expect(dailyTotals([sleep], 'a', at(9, 25), at(9, 26), now)).toMatchObject({ sleepMs: 2 * HOUR, sleeps: 0 });
+    expect(dailyTotals([sleep], 'a', at(9, 24), at(9, 25), now)).toMatchObject({
+      sleepMs: HOUR,
+      sleeps: 1,
+    });
+    expect(dailyTotals([sleep], 'a', at(9, 25), at(9, 26), now)).toMatchObject({
+      sleepMs: 2 * HOUR,
+      sleeps: 0,
+    });
   });
 
   it('a running sleep counts up to now', () => {
     const sleep = ev({ type: 'sleep', babyId: 'a', startAt: at(9, 25, 9) });
-    expect(dailyTotals([sleep], 'a', at(9, 25), at(9, 26), at(9, 25, 10, 30))).toMatchObject({ sleepMs: 90 * MINUTE, sleeps: 1 });
+    expect(dailyTotals([sleep], 'a', at(9, 25), at(9, 26), at(9, 25, 10, 30))).toMatchObject({
+      sleepMs: 90 * MINUTE,
+      sleeps: 1,
+    });
   });
 
   it('a 25-hour day can hold 25 hours of sleep', () => {
@@ -52,9 +62,24 @@ describe('dailyTotals', () => {
       ],
     });
     const runningStart = at(9, 25, 11);
-    const running = ev({ type: 'breastfeed', babyId: 'a', startAt: runningStart, segments: [{ side: 'L', start: runningStart }] });
-    const totals = dailyTotals([finished, running], 'a', at(9, 25), at(9, 26), runningStart + 5 * MINUTE);
-    expect(totals).toMatchObject({ feeds: 2, breastMs: 23 * MINUTE, breastMsBySide: { L: 15 * MINUTE, R: 8 * MINUTE } });
+    const running = ev({
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt: runningStart,
+      segments: [{ side: 'L', start: runningStart }],
+    });
+    const totals = dailyTotals(
+      [finished, running],
+      'a',
+      at(9, 25),
+      at(9, 26),
+      runningStart + 5 * MINUTE,
+    );
+    expect(totals).toMatchObject({
+      feeds: 2,
+      breastMs: 23 * MINUTE,
+      breastMsBySide: { L: 15 * MINUTE, R: 8 * MINUTE },
+    });
   });
 
   it('counts bottles and feeds by start time', () => {
@@ -63,24 +88,57 @@ describe('dailyTotals', () => {
       ev({ type: 'bottle', babyId: 'a', startAt: at(9, 25, 13), ml: 120, contents: 'breastmilk' }),
       ev({ type: 'bottle', babyId: 'a', startAt: at(9, 24, 23), ml: 60, contents: 'formula' }),
     ];
-    expect(dailyTotals(events, 'a', at(9, 25), at(9, 26), at(9, 25, 20))).toMatchObject({ feeds: 2, bottles: 2, bottleMl: 210 });
+    expect(dailyTotals(events, 'a', at(9, 25), at(9, 26), at(9, 25, 20))).toMatchObject({
+      feeds: 2,
+      bottles: 2,
+      bottleMl: 210,
+    });
   });
 
   it('a wet and dirty diaper counts as both', () => {
     const events = [
-      ev({ type: 'diaper', babyId: 'a', startAt: at(9, 25, 6), wet: true, dirty: true, stoolColor: 'yellow' }),
+      ev({
+        type: 'diaper',
+        babyId: 'a',
+        startAt: at(9, 25, 6),
+        wet: true,
+        dirty: true,
+        stoolColor: 'yellow',
+      }),
       ev({ type: 'diaper', babyId: 'a', startAt: at(9, 25, 9), wet: true, dirty: false }),
       ev({ type: 'diaper', babyId: 'a', startAt: at(9, 25, 12), wet: false, dirty: true }),
     ];
-    expect(dailyTotals(events, 'a', at(9, 25), at(9, 26), at(9, 25, 20))).toMatchObject({ diapers: 3, wet: 2, dirty: 2 });
+    expect(dailyTotals(events, 'a', at(9, 25), at(9, 26), at(9, 25, 20))).toMatchObject({
+      diapers: 3,
+      wet: 2,
+      dirty: 2,
+    });
   });
 
   it('ignores other babies and deleted entries, and survives rows with missing fields', () => {
     const events = [
       ev({ type: 'diaper', babyId: 'b', startAt: at(9, 25, 6), wet: true, dirty: false }),
-      ev({ type: 'diaper', babyId: 'a', startAt: at(9, 25, 7), wet: true, dirty: false }, { deletedAt: at(9, 25, 8) }),
-      { id: 'broken-bottle', type: 'bottle', babyId: 'a', startAt: at(9, 25, 9), createdAt: 0, updatedAt: 0 } as unknown as TrackerEvent,
-      { id: 'broken-feed', type: 'breastfeed', babyId: 'a', startAt: at(9, 25, 10), endAt: at(9, 25, 11), createdAt: 0, updatedAt: 0 } as unknown as TrackerEvent,
+      ev(
+        { type: 'diaper', babyId: 'a', startAt: at(9, 25, 7), wet: true, dirty: false },
+        { deletedAt: at(9, 25, 8) },
+      ),
+      {
+        id: 'broken-bottle',
+        type: 'bottle',
+        babyId: 'a',
+        startAt: at(9, 25, 9),
+        createdAt: 0,
+        updatedAt: 0,
+      } as unknown as TrackerEvent,
+      {
+        id: 'broken-feed',
+        type: 'breastfeed',
+        babyId: 'a',
+        startAt: at(9, 25, 10),
+        endAt: at(9, 25, 11),
+        createdAt: 0,
+        updatedAt: 0,
+      } as unknown as TrackerEvent,
     ];
     expect(dailyTotals(events, 'a', at(9, 25), at(9, 26), at(9, 25, 20))).toEqual({
       feeds: 2,
@@ -101,7 +159,9 @@ describe('weekTotals', () => {
   it('gives seven days: the chosen day first, then the six before it', () => {
     const lastDay = at(10, 27);
     const week = weekTotals([], 'a', lastDay, at(10, 27, 12));
-    expect(week.map((entry) => entry.dayStart)).toEqual([0, 1, 2, 3, 4, 5, 6].map((i) => addDays(lastDay, -i)));
+    expect(week.map((entry) => entry.dayStart)).toEqual(
+      [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(lastDay, -i)),
+    );
     expect(week[2]!.dayStart).toBe(at(10, 25));
   });
 
@@ -120,7 +180,10 @@ describe('pumpTotalMl', () => {
       ev({ type: 'pump', babyId: null, startAt: at(9, 25, 7), mlLeft: 60, mlRight: 40 }),
       ev({ type: 'pump', babyId: null, startAt: at(9, 25, 15), mlRight: 50 }),
       ev({ type: 'pump', babyId: null, startAt: at(9, 24, 15), mlLeft: 70 }),
-      ev({ type: 'pump', babyId: null, startAt: at(9, 25, 16), mlLeft: 30 }, { deletedAt: at(9, 25, 17) }),
+      ev(
+        { type: 'pump', babyId: null, startAt: at(9, 25, 16), mlLeft: 30 },
+        { deletedAt: at(9, 25, 17) },
+      ),
     ];
     expect(pumpTotalMl(events, at(9, 25), at(9, 26))).toBe(150);
   });
@@ -132,7 +195,10 @@ describe('growthSeries', () => {
       ev({ type: 'growth', babyId: 'a', startAt: at(9, 20, 9), weightG: 3600, headMm: 355 }),
       ev({ type: 'growth', babyId: 'a', startAt: at(9, 10, 9), weightG: 3300 }),
       ev({ type: 'growth', babyId: 'a', startAt: at(9, 15, 9), heightMm: 520 }),
-      ev({ type: 'growth', babyId: 'a', startAt: at(9, 12, 9), weightG: 3400 }, { deletedAt: at(9, 12, 10) }),
+      ev(
+        { type: 'growth', babyId: 'a', startAt: at(9, 12, 9), weightG: 3400 },
+        { deletedAt: at(9, 12, 10) },
+      ),
     ];
     expect(growthSeries(events, 'weightG')).toEqual([
       { at: at(9, 10, 9), value: 3300 },

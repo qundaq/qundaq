@@ -68,7 +68,10 @@ export class Automation {
     let from = 0;
     let target: Extract<AutomationEvent, { type: 'target' }> | null = null;
     const onTarget = (at: number) =>
-      target === null ? value : target.value + (value - target.value) * Math.exp(-(at - target.time) / target.timeConstant);
+      target === null
+        ? value
+        : target.value +
+          (value - target.value) * Math.exp(-(at - target.time) / target.timeConstant);
     for (const event of this.list) {
       if (event.type === 'linear') {
         if (target !== null) {

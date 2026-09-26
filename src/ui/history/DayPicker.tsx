@@ -1,4 +1,10 @@
-import { fromDateInputValue, resolveDay, startOfDay, stepDay, toDateInputValue } from '../../domain/days';
+import {
+  fromDateInputValue,
+  resolveDay,
+  startOfDay,
+  stepDay,
+  toDateInputValue,
+} from '../../domain/days';
 import { useLocale, useT } from '../I18nProvider';
 import { dayLabel } from './describe';
 
@@ -26,7 +32,12 @@ export function DayPicker({ day, now, onChange }: Props) {
 
   return (
     <div className="day-picker" role="group" aria-label={t('day.label')}>
-      <button type="button" className="btn day-step" aria-label={t('day.previous')} onClick={() => onChange(stepDay(day, now, -1))}>
+      <button
+        type="button"
+        className="btn day-step"
+        aria-label={t('day.previous')}
+        onClick={() => onChange(stepDay(day, now, -1))}
+      >
         ‹
       </button>
       <label className="day-current">

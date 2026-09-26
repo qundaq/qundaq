@@ -11,7 +11,10 @@ test('shows five tabs and switches screens', async ({ page }) => {
   }
   await nav.getByRole('button', { name: 'Ayarlar', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Ayarlar' })).toBeVisible();
-  await expect(nav.getByRole('button', { name: 'Ayarlar', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByRole('button', { name: 'Ayarlar', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 });
 
 test('language choice persists across reloads', async ({ page }) => {

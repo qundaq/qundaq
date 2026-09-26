@@ -22,13 +22,17 @@ export function BabyCard({ baby, status, now, children }: Props) {
     });
   } else if (status.lastFeed) {
     const detail =
-      status.lastFeed.kind === 'breastfeed' ? t(`side.${status.lastFeed.side}`) : t('status.bottleMl', { ml: status.lastFeed.ml });
+      status.lastFeed.kind === 'breastfeed'
+        ? t(`side.${status.lastFeed.side}`)
+        : t('status.bottleMl', { ml: status.lastFeed.ml });
     feed = `${formatAgo(t, now - status.lastFeed.at)} · ${detail}`;
   }
 
   let sleep = t('status.none');
-  if (status.sleep.state === 'asleep') sleep = t('status.asleep', { duration: formatDuration(t, now - status.sleep.since) });
-  else if (status.sleep.since !== null) sleep = t('status.awake', { duration: formatDuration(t, now - status.sleep.since) });
+  if (status.sleep.state === 'asleep')
+    sleep = t('status.asleep', { duration: formatDuration(t, now - status.sleep.since) });
+  else if (status.sleep.since !== null)
+    sleep = t('status.awake', { duration: formatDuration(t, now - status.sleep.since) });
 
   let diaper = t('status.none');
   if (status.lastDiaper) {
@@ -38,7 +42,11 @@ export function BabyCard({ baby, status, now, children }: Props) {
   }
 
   return (
-    <article className="card baby-card" aria-label={baby.name} style={{ borderLeftColor: baby.color }}>
+    <article
+      className="card baby-card"
+      aria-label={baby.name}
+      style={{ borderLeftColor: baby.color }}
+    >
       <h2>{baby.name}</h2>
       <dl className="status">
         <div>

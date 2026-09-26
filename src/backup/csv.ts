@@ -12,7 +12,9 @@ export function csvSeparatorFor(locale: Locale): CsvSeparator {
 
 /** RFC 4180: a field holding the separator, a quote, CR or LF is quoted, with inner quotes doubled. */
 export function quoteCell(value: string, separator: CsvSeparator): string {
-  return value.includes(separator) || /["\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+  return value.includes(separator) || /["\r\n]/.test(value)
+    ? `"${value.replaceAll('"', '""')}"`
+    : value;
 }
 
 /** A text cell that a spreadsheet would run as a formula (=, +, -, @, tab, CR) gets a leading apostrophe. */
@@ -41,7 +43,8 @@ function durationMinutes(event: TrackerEvent, end: number): number {
   if (event.type === 'breastfeed' && Array.isArray(event.segments)) {
     let ms = 0;
     for (const segment of event.segments) {
-      if (typeof segment.end === 'number' && typeof segment.start === 'number') ms += segment.end - segment.start;
+      if (typeof segment.end === 'number' && typeof segment.start === 'number')
+        ms += segment.end - segment.start;
     }
     return Math.round(ms / 60_000);
   }
@@ -80,7 +83,11 @@ const FILE_NAME_MAX = 40;
 
 /** Characters that no file system takes (`/ \ : * ? " < > |` and control characters) become "-". */
 export function sanitizeFileName(name: string): string {
-  return name.replace(/[/\\:*?"<>|\u0000-\u001f\u007f]/g, '-').trim().slice(0, FILE_NAME_MAX).trim();
+  return name
+    .replace(/[/\\:*?"<>|\u0000-\u001f\u007f]/g, '-')
+    .trim()
+    .slice(0, FILE_NAME_MAX)
+    .trim();
 }
 
 /** The second "ada" (case ignored, as on iOS) becomes "ada-2", the third "ada-3". */
@@ -124,7 +131,8 @@ export function buildCsvFiles(input: CsvInput): CsvFile[] {
     const events = live.filter((event) => event.babyId === baby.id);
     // A malformed device row whose name is not text gets the fallback label, like a name with nothing usable.
     const label = typeof baby.name === 'string' ? sanitizeFileName(baby.name) : '';
-    if (events.length > 0) groups.push({ label: /[\p{L}\p{N}]/u.test(label) ? label : input.fallbackLabel, events });
+    if (events.length > 0)
+      groups.push({ label: /[\p{L}\p{N}]/u.test(label) ? label : input.fallbackLabel, events });
   }
   const pumps = live.filter((event) => event.babyId === null && event.type === 'pump');
   if (pumps.length > 0) groups.push({ label: sanitizeFileName(input.pumpLabel), events: pumps });

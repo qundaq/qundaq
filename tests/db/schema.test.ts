@@ -20,7 +20,11 @@ describe('schema', () => {
     v1.close();
 
     const db = openDb(name);
-    expect(await loadSettings(db, 'tr')).toEqual({ locale: 'en', nightMode: true, lastBabyIds: [] });
+    expect(await loadSettings(db, 'tr')).toEqual({
+      locale: 'en',
+      nightMode: true,
+      lastBabyIds: [],
+    });
     expect(await db.babies.count()).toBe(0);
     expect(await db.events.count()).toBe(0);
     expect(await db.mixes.count()).toBe(0);
@@ -37,7 +41,13 @@ describe('schema', () => {
     const base = { babyId: 'a', createdAt: 1, updatedAt: 1 };
     await v2.table('events').bulkAdd([
       { ...base, id: 'running-sleep', type: 'sleep', startAt: 100 },
-      { ...base, id: 'running-feed', type: 'breastfeed', startAt: 100, segments: [{ side: 'L', start: 100 }] },
+      {
+        ...base,
+        id: 'running-feed',
+        type: 'breastfeed',
+        startAt: 100,
+        segments: [{ side: 'L', start: 100 }],
+      },
       { ...base, id: 'finished', type: 'sleep', startAt: 100, endAt: 200 },
       { ...base, id: 'deleted-running', type: 'sleep', startAt: 100, deletedAt: 150 },
       { ...base, id: 'diaper', type: 'diaper', startAt: 100, wet: true, dirty: false },
@@ -45,7 +55,10 @@ describe('schema', () => {
     v2.close();
 
     const db = openDb(name);
-    expect((await db.events.where('open').equals(1).primaryKeys()).sort()).toEqual(['running-feed', 'running-sleep']);
+    expect((await db.events.where('open').equals(1).primaryKeys()).sort()).toEqual([
+      'running-feed',
+      'running-sleep',
+    ]);
     expect(await db.events.get('finished')).not.toHaveProperty('open');
     expect(await db.events.get('deleted-running')).not.toHaveProperty('open');
     expect(await db.events.count()).toBe(5);
@@ -62,8 +75,24 @@ describe('schema', () => {
     await v3.open();
     await v3.table('settings').put({ id: 'app', locale: 'tr', nightMode: true });
     await v3.table('events').bulkAdd([
-      { id: 'running', type: 'sleep', babyId: 'a', startAt: 100, createdAt: 1, updatedAt: 1, open: 1 },
-      { id: 'done', type: 'sleep', babyId: 'a', startAt: 100, endAt: 200, createdAt: 1, updatedAt: 1 },
+      {
+        id: 'running',
+        type: 'sleep',
+        babyId: 'a',
+        startAt: 100,
+        createdAt: 1,
+        updatedAt: 1,
+        open: 1,
+      },
+      {
+        id: 'done',
+        type: 'sleep',
+        babyId: 'a',
+        startAt: 100,
+        endAt: 200,
+        createdAt: 1,
+        updatedAt: 1,
+      },
     ]);
     v3.close();
 
@@ -71,8 +100,18 @@ describe('schema', () => {
     expect(db.verno).toBe(4);
     expect(await db.mixes.count()).toBe(0);
     expect(await db.events.where('open').equals(1).primaryKeys()).toEqual(['running']);
-    expect(await loadSettings(db, 'en')).toEqual({ locale: 'tr', nightMode: true, lastBabyIds: [] });
-    await db.mixes.add({ id: 'm1', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: 1, updatedAt: 1 });
+    expect(await loadSettings(db, 'en')).toEqual({
+      locale: 'tr',
+      nightMode: true,
+      lastBabyIds: [],
+    });
+    await db.mixes.add({
+      id: 'm1',
+      name: 'Gece',
+      layers: [{ soundId: 'white', gain: 0.7 }],
+      createdAt: 1,
+      updatedAt: 1,
+    });
     expect(await db.mixes.count()).toBe(1);
     await db.delete();
   });

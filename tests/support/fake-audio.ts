@@ -68,7 +68,8 @@ export class FakeParam implements ParamLike {
 
   private replay(event: AutomationEvent): void {
     if (event.type === 'set') this.automation.setValueAtTime(event.value, event.time);
-    else if (event.type === 'linear') this.automation.linearRampToValueAtTime(event.value, event.time);
+    else if (event.type === 'linear')
+      this.automation.linearRampToValueAtTime(event.value, event.time);
     else this.automation.setTargetAtTime(event.value, event.time, event.timeConstant);
   }
 
@@ -221,9 +222,16 @@ export class FakeContext implements ContextLike {
   }
 
   /** The five gains the engine builds first, in order: layer bus, master, transport, sleep, cap. */
-  get graph(): { bus: FakeGain; master: FakeGain; transport: FakeGain; sleep: FakeGain; cap: FakeGain } {
+  get graph(): {
+    bus: FakeGain;
+    master: FakeGain;
+    transport: FakeGain;
+    sleep: FakeGain;
+    cap: FakeGain;
+  } {
     const [bus, master, transport, sleep, cap] = this.gains;
-    if (!bus || !master || !transport || !sleep || !cap) throw new Error('The engine has not built its graph');
+    if (!bus || !master || !transport || !sleep || !cap)
+      throw new Error('The engine has not built its graph');
     return { bus, master, transport, sleep, cap };
   }
 
@@ -312,7 +320,9 @@ export class FakeDeps implements EngineDeps {
   private timers: Timer[] = [];
   private nextTimer = 1;
   readonly createContext = vi.fn((): FakeContext => this.context);
-  readonly generate = vi.fn((_soundId: SoundId, sampleRate: number): Float32Array => new Float32Array(sampleRate));
+  readonly generate = vi.fn(
+    (_soundId: SoundId, sampleRate: number): Float32Array => new Float32Array(sampleRate),
+  );
   readonly prepareSession = vi.fn();
 
   constructor(options: FakeContextOptions = {}) {

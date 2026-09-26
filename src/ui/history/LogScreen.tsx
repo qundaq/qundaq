@@ -23,12 +23,24 @@ export interface LogView {
 export const DEFAULT_LOG_VIEW: LogView = { day: null, babyId: null, type: 'all' };
 
 /** Babies and the day's entries in one live query, so rows never flash in and out. */
-async function readDay(from: number, to: number): Promise<{ babies: Baby[]; events: TrackerEvent[] }> {
-  const [babies, events] = await Promise.all([listBabies(db), listEventsOverlapping(db, from, to, Date.now())]);
+async function readDay(
+  from: number,
+  to: number,
+): Promise<{ babies: Baby[]; events: TrackerEvent[] }> {
+  const [babies, events] = await Promise.all([
+    listBabies(db),
+    listEventsOverlapping(db, from, to, Date.now()),
+  ]);
   return { babies, events };
 }
 
-export function LogScreen({ view, onViewChange }: { view: LogView; onViewChange: (next: LogView) => void }) {
+export function LogScreen({
+  view,
+  onViewChange,
+}: {
+  view: LogView;
+  onViewChange: (next: LogView) => void;
+}) {
   const t = useT();
   const tick = useNow();
   const day = resolveDay(view.day, tick);
@@ -39,7 +51,10 @@ export function LogScreen({ view, onViewChange }: { view: LogView; onViewChange:
   if (data && data.babies !== knownBabies) setKnownBabies(data.babies);
   const babies = data?.babies ?? knownBabies;
   const [editing, setEditing] = useState<TrackerEvent | null>(null);
-  const babyFilter = babies.length > 1 && view.babyId !== null && babies.some((baby) => baby.id === view.babyId) ? view.babyId : null;
+  const babyFilter =
+    babies.length > 1 && view.babyId !== null && babies.some((baby) => baby.id === view.babyId)
+      ? view.babyId
+      : null;
   const set = (patch: Partial<LogView>) => onViewChange({ ...view, ...patch });
 
   return (
@@ -50,7 +65,12 @@ export function LogScreen({ view, onViewChange }: { view: LogView; onViewChange:
         <fieldset className="filter">
           <legend>{t('log.filter.baby')}</legend>
           <div className="chips">
-            <button type="button" className="chip" aria-pressed={babyFilter === null} onClick={() => set({ babyId: null })}>
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={babyFilter === null}
+              onClick={() => set({ babyId: null })}
+            >
               {t('sheet.all')}
             </button>
             {babies.map((baby) => (
@@ -71,7 +91,13 @@ export function LogScreen({ view, onViewChange }: { view: LogView; onViewChange:
         <legend>{t('log.filter.type')}</legend>
         <div className="chips">
           {TYPE_FILTERS.map((filter) => (
-            <button key={filter} type="button" className="chip" aria-pressed={view.type === filter} onClick={() => set({ type: filter })}>
+            <button
+              key={filter}
+              type="button"
+              className="chip"
+              aria-pressed={view.type === filter}
+              onClick={() => set({ type: filter })}
+            >
               {t(`log.type.${filter}`)}
             </button>
           ))}
@@ -112,7 +138,11 @@ function DayList({ events, babies, day, babyFilter, typeFilter, now, onOpen }: D
     .filter((event) => matchesFilters(event, babyFilter, typeFilter))
     .sort((a, b) => b.startAt - a.startAt);
   if (rows.length === 0) {
-    return <p className="muted">{t(babyFilter !== null || typeFilter !== 'all' ? 'log.emptyFiltered' : 'log.empty')}</p>;
+    return (
+      <p className="muted">
+        {t(babyFilter !== null || typeFilter !== 'all' ? 'log.emptyFiltered' : 'log.empty')}
+      </p>
+    );
   }
   return (
     <ul className="log-list" role="list" aria-label={t('log.list')}>

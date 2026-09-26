@@ -92,7 +92,10 @@ describe('sleepSteps', () => {
         for (let t = 0; t <= secondsLeft; t += 0.25) {
           const value = param.valueAt(t);
           if (!recovers) expect(value).toBeLessThanOrEqual(current + 1e-9);
-          else if (t < RECOVER_SECONDS) expect(value).toBeLessThanOrEqual(current + (1 - current) * (t / RECOVER_SECONDS) + 1e-9);
+          else if (t < RECOVER_SECONDS)
+            expect(value).toBeLessThanOrEqual(
+              current + (1 - current) * (t / RECOVER_SECONDS) + 1e-9,
+            );
         }
         expect(param.valueAt(secondsLeft)).toBe(0);
       }

@@ -12,7 +12,8 @@ export interface Baby {
 }
 
 export type Side = 'L' | 'R';
-export type StoolColor = 'yellow' | 'mustard' | 'green' | 'brown' | 'pale-yellow' | 'clay' | 'white' | 'red' | 'black';
+export type StoolColor =
+  'yellow' | 'mustard' | 'green' | 'brown' | 'pale-yellow' | 'clay' | 'white' | 'red' | 'black';
 export type Consistency = 'watery' | 'soft' | 'formed' | 'hard';
 export type BottleContents = 'breastmilk' | 'formula' | 'mixed';
 
@@ -26,7 +27,13 @@ export type EventPayload =
   | { type: 'sleep' }
   | { type: 'breastfeed'; segments: BreastSegment[] }
   | { type: 'bottle'; ml: number; contents: BottleContents }
-  | { type: 'diaper'; wet: boolean; dirty: boolean; stoolColor?: StoolColor; consistency?: Consistency }
+  | {
+      type: 'diaper';
+      wet: boolean;
+      dirty: boolean;
+      stoolColor?: StoolColor;
+      consistency?: Consistency;
+    }
   | { type: 'pump'; mlLeft?: number; mlRight?: number }
   | { type: 'growth'; weightG?: number; heightMm?: number; headMm?: number }
   | { type: 'temperature'; celsius: number }

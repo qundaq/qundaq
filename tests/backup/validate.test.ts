@@ -1,10 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildBackup, serializeBackup } from '../../src/backup/export';
 import { BACKUP_VERSION } from '../../src/backup/format';
-import { MAX_BACKUP_BYTES, PROBLEM_CODES, checkFileSize, parseBackup, type ParseResult, type ProblemCode } from '../../src/backup/validate';
+import {
+  MAX_BACKUP_BYTES,
+  PROBLEM_CODES,
+  checkFileSize,
+  parseBackup,
+  type ParseResult,
+  type ProblemCode,
+} from '../../src/backup/validate';
 import type { Settings } from '../../src/db/settings';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
-import type { Baby, BreastSegment, EventDraft, Mix, MixLayer, TrackerEvent } from '../../src/domain/types';
+import type {
+  Baby,
+  BreastSegment,
+  EventDraft,
+  Mix,
+  MixLayer,
+  TrackerEvent,
+} from '../../src/domain/types';
 import { buildDrafts, eventToInput, inputToDraft, type SheetInput } from '../../src/ui/log/drafts';
 
 let previousTz: string | undefined;
@@ -20,11 +34,27 @@ afterEach(() => {
 const NOW = Date.UTC(2026, 8, 26, 7, 0);
 const T = NOW - 2 * DAY;
 
-const baby = (id = 'b1', extra: Partial<Baby> = {}): Baby => ({ id, name: 'Ada', color: '#7cb7ff', archived: false, createdAt: T, updatedAt: T, ...extra });
+const baby = (id = 'b1', extra: Partial<Baby> = {}): Baby => ({
+  id,
+  name: 'Ada',
+  color: '#7cb7ff',
+  archived: false,
+  createdAt: T,
+  updatedAt: T,
+  ...extra,
+});
 const event = (draft: EventDraft, id = 'e1', extra: Partial<TrackerEvent> = {}): TrackerEvent =>
   ({ ...draft, id, createdAt: T, updatedAt: T, ...extra }) as TrackerEvent;
-const sleep = (id = 'e1', extra: Partial<TrackerEvent> = {}) => event({ type: 'sleep', babyId: 'b1', startAt: T, endAt: T + HOUR }, id, extra);
-const mix = (id = 'm1', extra: Partial<Mix> = {}): Mix => ({ id, name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 }], createdAt: T, updatedAt: T, ...extra });
+const sleep = (id = 'e1', extra: Partial<TrackerEvent> = {}) =>
+  event({ type: 'sleep', babyId: 'b1', startAt: T, endAt: T + HOUR }, id, extra);
+const mix = (id = 'm1', extra: Partial<Mix> = {}): Mix => ({
+  id,
+  name: 'Gece',
+  layers: [{ soundId: 'white', gain: 0.7 }],
+  createdAt: T,
+  updatedAt: T,
+  ...extra,
+});
 
 /** A file as the app writes it, with rows that may be anything. */
 function file(parts: Record<string, unknown> = {}): string {
@@ -64,7 +94,10 @@ describe('fatal problems refuse the whole file', () => {
   });
 
   it('a file from a newer version of the app', () => {
-    expect(parseBackup(file({ schemaVersion: BACKUP_VERSION + 1 }), NOW)).toEqual({ ok: false, error: 'newer-version' });
+    expect(parseBackup(file({ schemaVersion: BACKUP_VERSION + 1 }), NOW)).toEqual({
+      ok: false,
+      error: 'newer-version',
+    });
   });
 
   it('reads a file that starts with a byte order mark', () => {
@@ -72,7 +105,10 @@ describe('fatal problems refuse the whole file', () => {
   });
 
   it('a value just above the usable time range is not-backup', () => {
-    expect(parseBackup(file({ exportedAt: 253402300800000 }), NOW)).toEqual({ ok: false, error: 'not-backup' });
+    expect(parseBackup(file({ exportedAt: 253402300800000 }), NOW)).toEqual({
+      ok: false,
+      error: 'not-backup',
+    });
   });
 });
 
@@ -84,7 +120,10 @@ describe('rows that fail their checks are skipped and reported', () => {
     ['bad-time', { events: [{ ...sleep(), endAt: T - 1 }] }],
     ['bad-baby', { babies: [baby(), { ...baby('b2'), color: 'blue' }] }],
     ['unknown-type', { events: [{ ...sleep(), type: 'nap' }] }],
-    ['bad-payload', { events: [event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T, segments: [] })] }],
+    [
+      'bad-payload',
+      { events: [event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T, segments: [] })] },
+    ],
     ['bad-field', { events: [{ ...sleep(), note: 5 }] }],
     ['missing-baby', { events: [{ ...sleep(), babyId: 'nobody' }] }],
     ['bad-mix', { mixes: [mix('m1', { name: '  ' })] }],
@@ -101,20 +140,43 @@ describe('rows that fail their checks are skipped and reported', () => {
 
   it.each([
     ['no layers', { layers: [] }],
-    ['seven layers', { layers: ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat'].map((soundId) => ({ soundId, gain: 0.5 })) }],
+    [
+      'seven layers',
+      {
+        layers: ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat'].map((soundId) => ({
+          soundId,
+          gain: 0.5,
+        })),
+      },
+    ],
     ['a layer that is not an object', { layers: ['white'] }],
     ['an empty sound id', { layers: [{ soundId: '', gain: 0.5 }] }],
     ['a gain above 1', { layers: [{ soundId: 'white', gain: 1.5 }] }],
     ['a gain that is not a number', { layers: [{ soundId: 'white', gain: '0.5' }] }],
-    ['the same sound twice', { layers: [{ soundId: 'white', gain: 0.5 }, { soundId: 'white', gain: 0.6 }] }],
+    [
+      'the same sound twice',
+      {
+        layers: [
+          { soundId: 'white', gain: 0.5 },
+          { soundId: 'white', gain: 0.6 },
+        ],
+      },
+    ],
   ])('a mix with %s is skipped as bad-mix, named by its name', (_label, parts) => {
-    const { skipped, backup } = ok(parseBackup(file({ mixes: [mix('m1', parts as Partial<Mix>)] }), NOW));
-    expect(skipped.map((row) => [row.list, row.code, row.name])).toEqual([['mixes', 'bad-mix', 'Gece']]);
+    const { skipped, backup } = ok(
+      parseBackup(file({ mixes: [mix('m1', parts as Partial<Mix>)] }), NOW),
+    );
+    expect(skipped.map((row) => [row.list, row.code, row.name])).toEqual([
+      ['mixes', 'bad-mix', 'Gece'],
+    ]);
     expect(backup.mixes).toEqual([]);
   });
 
   it('a mix with a name over 40 characters, or a bad time, is skipped and named by the start of its name', () => {
-    const rows = [mix('m1', { name: 'x'.repeat(41) }), mix('m2', { updatedAt: 'now' as unknown as number })];
+    const rows = [
+      mix('m1', { name: 'x'.repeat(41) }),
+      mix('m2', { updatedAt: 'now' as unknown as number }),
+    ];
     const { skipped, backup } = ok(parseBackup(file({ mixes: rows }), NOW));
     expect(skipped.map((row) => [row.code, row.name])).toEqual([
       ['bad-mix', 'x'.repeat(40)],
@@ -127,18 +189,30 @@ describe('rows that fail their checks are skipped and reported', () => {
     const rows = [mix('m1', { name: ` ${'x'.repeat(40)} ` }), mix('m2', { name: ' Gece ' })];
     const { skipped, backup } = ok(parseBackup(file({ mixes: rows }), NOW));
     expect(skipped).toEqual([]);
-    expect(backup.mixes).toEqual([mix('m1', { name: 'x'.repeat(40) }), mix('m2', { name: 'Gece' })]);
+    expect(backup.mixes).toEqual([
+      mix('m1', { name: 'x'.repeat(40) }),
+      mix('m2', { name: 'Gece' }),
+    ]);
   });
 
   it('keeps a mix whose sound this version does not know: it comes from a newer version and is skipped only when played', () => {
-    const newer = mix('m1', { layers: [{ soundId: 'train', gain: 0.5 }, { soundId: 'white', gain: 1 }] });
-    const { skipped, backup } = ok(parseBackup(file({ mixes: [newer, mix('m2', { deletedAt: T + 1 })] }), NOW));
+    const newer = mix('m1', {
+      layers: [
+        { soundId: 'train', gain: 0.5 },
+        { soundId: 'white', gain: 1 },
+      ],
+    });
+    const { skipped, backup } = ok(
+      parseBackup(file({ mixes: [newer, mix('m2', { deletedAt: T + 1 })] }), NOW),
+    );
     expect(skipped).toEqual([]);
     expect(backup.mixes).toEqual([newer, mix('m2', { deletedAt: T + 1 })]);
   });
 
   it('reads a version-1 file with mixes by the version-2 rules', () => {
-    const { skipped, backup } = ok(parseBackup(file({ schemaVersion: 1, mixes: [mix(), { id: 'bad' }] }), NOW));
+    const { skipped, backup } = ok(
+      parseBackup(file({ schemaVersion: 1, mixes: [mix(), { id: 'bad' }] }), NOW),
+    );
     expect(backup.schemaVersion).toBe(2);
     expect(backup.mixes).toEqual([mix()]);
     expect(skipped.map((row) => [row.list, row.code])).toEqual([['mixes', 'bad-mix']]);
@@ -147,13 +221,21 @@ describe('rows that fail their checks are skipped and reported', () => {
   it('names a skipped event by what could be read of it', () => {
     const bad = { ...sleep(), type: 'breastfeed', segments: 'none' };
     const { skipped, backup } = ok(parseBackup(file({ events: [sleep('good'), bad] }), NOW));
-    expect(skipped).toEqual([{ list: 'events', index: 1, code: 'bad-payload', type: 'breastfeed', startAt: T }]);
+    expect(skipped).toEqual([
+      { list: 'events', index: 1, code: 'bad-payload', type: 'breastfeed', startAt: T },
+    ]);
     expect(backup.events.map((row) => row.id)).toEqual(['good']);
   });
 
   it('skips the events of a skipped baby, and keeps the later duplicate out', () => {
     const { skipped, backup } = ok(
-      parseBackup(file({ babies: [baby(), { ...baby('b2'), name: '  ' }], events: [sleep('e1'), { ...sleep('e2'), babyId: 'b2' }] }), NOW),
+      parseBackup(
+        file({
+          babies: [baby(), { ...baby('b2'), name: '  ' }],
+          events: [sleep('e1'), { ...sleep('e2'), babyId: 'b2' }],
+        }),
+        NOW,
+      ),
     );
     expect(backup.babies.map((row) => row.id)).toEqual(['b1']);
     expect(skipped.map((row) => [row.list, row.index, row.code])).toEqual([
@@ -165,17 +247,40 @@ describe('rows that fail their checks are skipped and reported', () => {
   it.each([
     ['a side that is not L or R', [{ side: 'X', start: T, end: T + 1 }]],
     ['a side ending before it starts', [{ side: 'L', start: T + 5, end: T }]],
-    ['overlapping sides', [{ side: 'L', start: T, end: T + 10 }, { side: 'R', start: T + 5, end: T + 20 }]],
-    ['an open side that is not the last', [{ side: 'L', start: T }, { side: 'R', start: T + 5, end: T + 20 }]],
+    [
+      'overlapping sides',
+      [
+        { side: 'L', start: T, end: T + 10 },
+        { side: 'R', start: T + 5, end: T + 20 },
+      ],
+    ],
+    [
+      'an open side that is not the last',
+      [
+        { side: 'L', start: T },
+        { side: 'R', start: T + 5, end: T + 20 },
+      ],
+    ],
   ])('breastfeed: %s', (_label, segments) => {
-    const feed = { ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T + 20, segments: [] }), segments };
-    expect(ok(parseBackup(file({ events: [feed] }), NOW)).skipped.map((row) => row.code)).toEqual(['bad-payload']);
+    const feed = {
+      ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T + 20, segments: [] }),
+      segments,
+    };
+    expect(ok(parseBackup(file({ events: [feed] }), NOW)).skipped.map((row) => row.code)).toEqual([
+      'bad-payload',
+    ]);
   });
 
   it('a finished breastfeed needs every side closed; a running one may have its last side open', () => {
     const open = [{ side: 'L', start: T }];
-    const finished = { ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T + 20, segments: [] }, 'f'), segments: open };
-    const running = { ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, segments: [] }, 'r'), segments: open };
+    const finished = {
+      ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, endAt: T + 20, segments: [] }, 'f'),
+      segments: open,
+    };
+    const running = {
+      ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, segments: [] }, 'r'),
+      segments: open,
+    };
     const result = ok(parseBackup(file({ events: [finished, running] }), NOW));
     expect(result.skipped.map((row) => row.index)).toEqual([0]);
     expect(result.backup.events.map((row) => row.id)).toEqual(['r']);
@@ -193,19 +298,38 @@ describe('rows that fail their checks are skipped and reported', () => {
     ['health note without text', { type: 'healthNote', note: '  ' }],
   ])('%s', (_label, payload) => {
     const row = { id: 'x', babyId: 'b1', startAt: T, createdAt: T, updatedAt: T, ...payload };
-    expect(ok(parseBackup(file({ events: [row] }), NOW)).skipped.map((skip) => skip.code)).toEqual(['bad-payload']);
+    expect(ok(parseBackup(file({ events: [row] }), NOW)).skipped.map((skip) => skip.code)).toEqual([
+      'bad-payload',
+    ]);
   });
 
   it('a time that no date can show is a bad time, and is not reported', () => {
-    const { skipped } = ok(parseBackup(file({ events: [{ ...sleep(), startAt: 1e20, endAt: undefined }] }), NOW));
+    const { skipped } = ok(
+      parseBackup(file({ events: [{ ...sleep(), startAt: 1e20, endAt: undefined }] }), NOW),
+    );
     expect(skipped).toEqual([{ list: 'events', index: 0, code: 'bad-time', type: 'sleep' }]);
-    const feed = { ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, segments: [] }), segments: [{ side: 'L', start: T, end: 9e15 }] };
-    expect(ok(parseBackup(file({ events: [feed] }), NOW)).skipped.map((row) => row.code)).toEqual(['bad-payload']);
+    const feed = {
+      ...event({ type: 'breastfeed', babyId: 'b1', startAt: T, segments: [] }),
+      segments: [{ side: 'L', start: T, end: 9e15 }],
+    };
+    expect(ok(parseBackup(file({ events: [feed] }), NOW)).skipped.map((row) => row.code)).toEqual([
+      'bad-payload',
+    ]);
   });
 
   it('a pump that names a baby is a bad field', () => {
-    const row = { id: 'x', type: 'pump', babyId: 'b1', mlLeft: 60, startAt: T, createdAt: T, updatedAt: T };
-    expect(ok(parseBackup(file({ events: [row] }), NOW)).skipped.map((skip) => skip.code)).toEqual(['bad-field']);
+    const row = {
+      id: 'x',
+      type: 'pump',
+      babyId: 'b1',
+      mlLeft: 60,
+      startAt: T,
+      createdAt: T,
+      updatedAt: T,
+    };
+    expect(ok(parseBackup(file({ events: [row] }), NOW)).skipped.map((skip) => skip.code)).toEqual([
+      'bad-field',
+    ]);
   });
 
   it('keeps a later duplicate when the earlier row sharing its id was itself broken (never claimed the id)', () => {
@@ -217,9 +341,19 @@ describe('rows that fail their checks are skipped and reported', () => {
   });
 
   it("does not report a skipped event's own `name` field (a medicine) as if it were a baby name", () => {
-    const row = { id: 'x', type: 'medication', babyId: 'nobody', startAt: T, createdAt: T, updatedAt: T, name: 'Parol' };
+    const row = {
+      id: 'x',
+      type: 'medication',
+      babyId: 'nobody',
+      startAt: T,
+      createdAt: T,
+      updatedAt: T,
+      name: 'Parol',
+    };
     const { skipped } = ok(parseBackup(file({ events: [row] }), NOW));
-    expect(skipped).toEqual([{ list: 'events', index: 0, code: 'missing-baby', type: 'medication', startAt: T }]);
+    expect(skipped).toEqual([
+      { list: 'events', index: 0, code: 'missing-baby', type: 'medication', startAt: T },
+    ]);
   });
 });
 
@@ -227,13 +361,24 @@ describe('whitelisting', () => {
   it('builds new rows from the known fields only', () => {
     const text = file({
       babies: [{ ...baby(), isAdmin: true }],
-      events: [JSON.parse('{"id":"e1","type":"sleep","babyId":"b1","startAt":1,"createdAt":1,"updatedAt":1,"open":1,"extra":2,"__proto__":{"polluted":true},"constructor":"x"}')],
+      events: [
+        JSON.parse(
+          '{"id":"e1","type":"sleep","babyId":"b1","startAt":1,"createdAt":1,"updatedAt":1,"open":1,"extra":2,"__proto__":{"polluted":true},"constructor":"x"}',
+        ),
+      ],
       mixes: [{ ...mix(), layers: [{ soundId: 'white', gain: 0.7, colour: 'red' }], extra: 1 }],
     });
     const { backup } = ok(parseBackup(text, NOW));
     expect(backup.babies[0]).toEqual(baby());
     expect(backup.mixes).toEqual([mix()]);
-    expect(backup.events[0]).toEqual({ id: 'e1', type: 'sleep', babyId: 'b1', startAt: 1, createdAt: 1, updatedAt: 1 });
+    expect(backup.events[0]).toEqual({
+      id: 'e1',
+      type: 'sleep',
+      babyId: 'b1',
+      startAt: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    });
     expect(Object.getPrototypeOf(backup.events[0])).toBe(Object.prototype);
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
   });
@@ -242,8 +387,25 @@ describe('whitelisting', () => {
   // samples fail to compile (they are Required<…>); once completed, the test fails until the validator
   // knows the field. Then bump BACKUP_VERSION and add a migration step.
   it('keeps every field of every stored type', () => {
-    const b: Required<Baby> = { id: 'b1', name: 'Ada', color: '#7cb7ff', birthDate: '2026-09-01', archived: true, createdAt: T, updatedAt: T, deletedAt: T };
-    const common = { babyId: 'b1', groupId: 'g1', startAt: T, note: 'note', createdAt: T, updatedAt: T, deletedAt: T };
+    const b: Required<Baby> = {
+      id: 'b1',
+      name: 'Ada',
+      color: '#7cb7ff',
+      birthDate: '2026-09-01',
+      archived: true,
+      createdAt: T,
+      updatedAt: T,
+      deletedAt: T,
+    };
+    const common = {
+      babyId: 'b1',
+      groupId: 'g1',
+      startAt: T,
+      note: 'note',
+      createdAt: T,
+      updatedAt: T,
+      deletedAt: T,
+    };
     // `satisfies`, never `as`: an assertion would let a sample miss a new field without a compile error.
     type Full<K extends TrackerEvent['type']> = Required<Extract<TrackerEvent, { type: K }>>;
     const samples: TrackerEvent[] = [
@@ -259,15 +421,67 @@ describe('whitelisting', () => {
           { side: 'R', start: T + 1, end: T + 2 } satisfies Required<BreastSegment>,
         ],
       } satisfies Full<'breastfeed'>,
-      { ...common, id: 'bottle', type: 'bottle', endAt: T, ml: 90, contents: 'formula' } satisfies Full<'bottle'>,
-      { ...common, id: 'diaper', type: 'diaper', endAt: T, wet: true, dirty: true, stoolColor: 'yellow', consistency: 'soft' } satisfies Full<'diaper'>,
-      { ...common, id: 'pump', type: 'pump', babyId: null, endAt: T, mlLeft: 60, mlRight: 70 } satisfies Full<'pump'>,
-      { ...common, id: 'growth', type: 'growth', endAt: T, weightG: 3450, heightMm: 525, headMm: 350 } satisfies Full<'growth'>,
-      { ...common, id: 'temp', type: 'temperature', endAt: T, celsius: 38.2 } satisfies Full<'temperature'>,
-      { ...common, id: 'med', type: 'medication', endAt: T, name: 'D vitamini', dose: '400 IU' } satisfies Full<'medication'>,
+      {
+        ...common,
+        id: 'bottle',
+        type: 'bottle',
+        endAt: T,
+        ml: 90,
+        contents: 'formula',
+      } satisfies Full<'bottle'>,
+      {
+        ...common,
+        id: 'diaper',
+        type: 'diaper',
+        endAt: T,
+        wet: true,
+        dirty: true,
+        stoolColor: 'yellow',
+        consistency: 'soft',
+      } satisfies Full<'diaper'>,
+      {
+        ...common,
+        id: 'pump',
+        type: 'pump',
+        babyId: null,
+        endAt: T,
+        mlLeft: 60,
+        mlRight: 70,
+      } satisfies Full<'pump'>,
+      {
+        ...common,
+        id: 'growth',
+        type: 'growth',
+        endAt: T,
+        weightG: 3450,
+        heightMm: 525,
+        headMm: 350,
+      } satisfies Full<'growth'>,
+      {
+        ...common,
+        id: 'temp',
+        type: 'temperature',
+        endAt: T,
+        celsius: 38.2,
+      } satisfies Full<'temperature'>,
+      {
+        ...common,
+        id: 'med',
+        type: 'medication',
+        endAt: T,
+        name: 'D vitamini',
+        dose: '400 IU',
+      } satisfies Full<'medication'>,
       { ...common, id: 'health', type: 'healthNote', endAt: T } satisfies Full<'healthNote'>,
     ];
-    const m: Required<Mix> = { id: 'm1', name: 'Gece', layers: [{ soundId: 'white', gain: 0.7 } satisfies Required<MixLayer>], createdAt: T, updatedAt: T, deletedAt: T };
+    const m: Required<Mix> = {
+      id: 'm1',
+      name: 'Gece',
+      layers: [{ soundId: 'white', gain: 0.7 } satisfies Required<MixLayer>],
+      createdAt: T,
+      updatedAt: T,
+      deletedAt: T,
+    };
     const settings: Required<Settings> = {
       locale: 'en',
       nightMode: true,
@@ -277,14 +491,25 @@ describe('whitelisting', () => {
       volumeCap: 0.7,
       lastSound: { layers: [{ soundId: 'white', level: 0.5 }], master: 0.6, timerMin: 30 },
     };
-    const text = serializeBackup(buildBackup({ babies: [b], events: samples, mixes: [m], settings }, { exportedAt: T, appVersion: '0.1.0' }));
+    const text = serializeBackup(
+      buildBackup(
+        { babies: [b], events: samples, mixes: [m], settings },
+        { exportedAt: T, appVersion: '0.1.0' },
+      ),
+    );
     const { backup, skipped } = ok(parseBackup(text, NOW));
     expect(skipped).toEqual([]);
     expect(backup.babies).toEqual([b]);
     expect(backup.events).toEqual(samples);
     expect(backup.mixes).toEqual([m]);
     // Device-only settings stay behind on purpose; everything else comes back.
-    const { lastBackupAt: _last, backupReminderSnoozedUntil: _snooze, volumeCap: _cap, lastSound: _sound, ...portable } = settings;
+    const {
+      lastBackupAt: _last,
+      backupReminderSnoozedUntil: _snooze,
+      volumeCap: _cap,
+      lastSound: _sound,
+      ...portable
+    } = settings;
     expect(backup.settings).toEqual(portable);
   });
 });
@@ -293,8 +518,25 @@ describe('normalisation touches only what the app never writes', () => {
   it('drops a whitespace-only note, trims a medicine, rounds a temperature', () => {
     const rows = [
       { ...sleep('s'), note: ' \n ' },
-      { id: 'm', type: 'medication', babyId: 'b1', startAt: T, name: '  D vitamini ', dose: '   ', createdAt: T, updatedAt: T },
-      { id: 't', type: 'temperature', babyId: 'b1', startAt: T, celsius: 37.95, createdAt: T, updatedAt: T },
+      {
+        id: 'm',
+        type: 'medication',
+        babyId: 'b1',
+        startAt: T,
+        name: '  D vitamini ',
+        dose: '   ',
+        createdAt: T,
+        updatedAt: T,
+      },
+      {
+        id: 't',
+        type: 'temperature',
+        babyId: 'b1',
+        startAt: T,
+        celsius: 37.95,
+        createdAt: T,
+        updatedAt: T,
+      },
     ];
     const { backup } = ok(parseBackup(file({ events: rows }), NOW));
     expect(backup.events[0]).not.toHaveProperty('note');
@@ -309,7 +551,13 @@ describe('normalisation touches only what the app never writes', () => {
       [{ kind: 'breastfeed', value: { side: 'L', durationMin: null } }, ''],
       [{ kind: 'bottle', value: { ml: 90, contents: 'mixed' } }, ''],
       [{ kind: 'sleep', value: { durationMin: 45 } }, ''],
-      [{ kind: 'diaper', value: { wet: true, dirty: true, stoolColor: 'clay', consistency: 'watery' } }, ''],
+      [
+        {
+          kind: 'diaper',
+          value: { wet: true, dirty: true, stoolColor: 'clay', consistency: 'watery' },
+        },
+        '',
+      ],
       [{ kind: 'pump', value: { mlLeft: '60', mlRight: '' } }, 'sağ taraf ağrıyor '],
       [{ kind: 'growth', value: { weightKg: '3,45', heightCm: '52,5', headCm: '' } }, ''],
       [{ kind: 'temperature', value: { celsius: '37,95' } }, '\nateş düştü\n'],
@@ -335,15 +583,28 @@ describe('normalisation touches only what the app never writes', () => {
 
 describe('warnings', () => {
   it('keeps rows from before 2000 or more than a day ahead, and counts them', () => {
-    const old = sleep('old', { startAt: new Date(1999, 11, 31).getTime(), endAt: new Date(1999, 11, 31, 1).getTime() });
-    const ahead = event({ type: 'diaper', babyId: 'b1', startAt: NOW + 2 * DAY, wet: true, dirty: false }, 'ahead');
-    const { backup, warnings } = ok(parseBackup(file({ events: [old, ahead, sleep('fine')] }), NOW));
+    const old = sleep('old', {
+      startAt: new Date(1999, 11, 31).getTime(),
+      endAt: new Date(1999, 11, 31, 1).getTime(),
+    });
+    const ahead = event(
+      { type: 'diaper', babyId: 'b1', startAt: NOW + 2 * DAY, wet: true, dirty: false },
+      'ahead',
+    );
+    const { backup, warnings } = ok(
+      parseBackup(file({ events: [old, ahead, sleep('fine')] }), NOW),
+    );
     expect(backup.events).toHaveLength(3);
     expect(warnings).toEqual({ outOfRange: 2, settings: false, badBirthDate: 0 });
   });
 
   it('falls back field by field when the settings are unreadable', () => {
-    const result = ok(parseBackup(file({ settings: { locale: 'de', nightMode: true, lastBabyIds: ['b1', 'gone', 7] } }), NOW));
+    const result = ok(
+      parseBackup(
+        file({ settings: { locale: 'de', nightMode: true, lastBabyIds: ['b1', 'gone', 7] } }),
+        NOW,
+      ),
+    );
     expect(result.backup.settings).toEqual({ nightMode: true, lastBabyIds: ['b1'] });
     expect(result.warnings.settings).toBe(true);
     const missing = ok(parseBackup(file({ settings: null }), NOW));
@@ -358,7 +619,10 @@ describe('warnings', () => {
   it('drops an unparseable birth date but keeps the baby and its events, and counts a warning', () => {
     // A 6-digit year: nothing in the app writes this, but some browsers' <input type="date"> accept it.
     const result = ok(
-      parseBackup(file({ babies: [{ ...baby(), birthDate: '20266-01-01' }], events: [sleep()] }), NOW),
+      parseBackup(
+        file({ babies: [{ ...baby(), birthDate: '20266-01-01' }], events: [sleep()] }),
+        NOW,
+      ),
     );
     expect(result.skipped).toEqual([]);
     expect(result.backup.babies).toEqual([baby()]);

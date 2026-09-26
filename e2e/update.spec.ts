@@ -14,13 +14,21 @@ async function servedPaths(request: APIRequestContext): Promise<string[]> {
 }
 
 async function offlineReadyVersion(page: Page): Promise<string> {
-  await page.getByRole('navigation', { name: 'Ana gezinme' }).getByRole('button', { name: 'Ayarlar', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .click();
   const ready = page.getByText(READY);
   await expect(ready).toBeVisible({ timeout: 20_000 });
   return READY.exec((await ready.textContent()) ?? '')?.[1] ?? '';
 }
 
-test('a new version is downloaded only after the user asks for it', async ({ page, context, request, browserName }) => {
+test('a new version is downloaded only after the user asks for it', async ({
+  page,
+  context,
+  request,
+  browserName,
+}) => {
   test.skip(
     browserName !== 'chromium',
     'The update-gate e2e runs in Chromium only; on iOS it is covered by docs/device-checklist.md',
@@ -42,7 +50,11 @@ test('a new version is downloaded only after the user asks for it', async ({ pag
       .catch(() => {}),
   );
   await expect
-    .poll(() => page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.installing === null))
+    .poll(() =>
+      page.evaluate(
+        async () => (await navigator.serviceWorker.getRegistration())?.installing === null,
+      ),
+    )
     .toBe(true);
 
   // Nothing was installed, and nothing but sw.js itself was downloaded.
@@ -53,7 +65,10 @@ test('a new version is downloaded only after the user asks for it', async ({ pag
   expect.soft(waiting, 'registration.waiting').toBeNull();
   const served = await servedPaths(request);
   expect.soft(served, 'the browser fetched the new sw.js').toContain('/sw.js');
-  expect(served.filter((path) => path !== '/sw.js'), 'paths served besides /sw.js').toEqual([]);
+  expect(
+    served.filter((path) => path !== '/sw.js'),
+    'paths served besides /sw.js',
+  ).toEqual([]);
 
   // Closing the app and opening it again still runs v1.
   await page.close();

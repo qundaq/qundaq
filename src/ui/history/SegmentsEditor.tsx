@@ -1,6 +1,12 @@
 import type { Side } from '../../domain/types';
 import { useT } from '../I18nProvider';
-import { addSegment, removeSegment, setSegmentMinutes, setSegmentSide, type BreastfeedEdit } from '../log/drafts';
+import {
+  addSegment,
+  removeSegment,
+  setSegmentMinutes,
+  setSegmentSide,
+  type BreastfeedEdit,
+} from '../log/drafts';
 
 const SIDES: readonly Side[] = ['L', 'R'];
 
@@ -46,7 +52,9 @@ export function SegmentsEditor({
               ))}
             </div>
             {running ? (
-              <span className="muted">{index === last ? t('log.ongoing') : t('time.minutes', { m: segment.minutes })}</span>
+              <span className="muted">
+                {index === last ? t('log.ongoing') : t('time.minutes', { m: segment.minutes })}
+              </span>
             ) : (
               <label className="field segment-minutes">
                 {t('edit.minutes')}
@@ -56,7 +64,9 @@ export function SegmentsEditor({
                   min={1}
                   max={240}
                   value={segment.minutes > 0 ? segment.minutes : ''}
-                  onChange={(e) => onChange(setSegmentMinutes(value, index, parseMinutes(e.target.value)))}
+                  onChange={(e) =>
+                    onChange(setSegmentMinutes(value, index, parseMinutes(e.target.value)))
+                  }
                 />
               </label>
             )}

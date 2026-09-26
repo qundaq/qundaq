@@ -30,7 +30,9 @@ describe('translate', () => {
   });
 
   it('leaves unknown placeholders intact', () => {
-    expect(translate('en', 'settings.about.version', { version: '1.2.3' })).toBe('Version 1.2.3 ({commit})');
+    expect(translate('en', 'settings.about.version', { version: '1.2.3' })).toBe(
+      'Version 1.2.3 ({commit})',
+    );
   });
 });
 

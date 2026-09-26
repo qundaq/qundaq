@@ -57,7 +57,10 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
         </label>
       </div>
 
-      <CapCard cap={settings.volumeCap ?? DEFAULT_CAP} onChange={(volumeCap) => void onChange({ volumeCap })} />
+      <CapCard
+        cap={settings.volumeCap ?? DEFAULT_CAP}
+        onChange={(volumeCap) => void onChange({ volumeCap })}
+      />
 
       <OfflineCard />
       <StorageCard />
@@ -70,7 +73,9 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
 
       <div className="card">
         <h2>{t('settings.about.title')}</h2>
-        <p className="muted small">{t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}</p>
+        <p className="muted small">
+          {t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}
+        </p>
         <button type="button" className="btn" onClick={() => setSources(true)}>
           {t('settings.sources')}
         </button>

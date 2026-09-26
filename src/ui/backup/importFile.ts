@@ -1,5 +1,10 @@
 import type { ImportMode } from '../../backup/merge';
-import { checkFileSize, parseBackup, type FatalCode, type ParseResult } from '../../backup/validate';
+import {
+  checkFileSize,
+  parseBackup,
+  type FatalCode,
+  type ParseResult,
+} from '../../backup/validate';
 import type { Id } from '../../domain/types';
 
 export type ImportError = FatalCode | 'too-large' | 'unreadable';

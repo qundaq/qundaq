@@ -23,7 +23,8 @@ const RATE = 48_000;
 
 function sine(freq: number, seconds = 1, amplitude = 1, rate = RATE): Float32Array {
   const out = new Float32Array(Math.round(seconds * rate));
-  for (let i = 0; i < out.length; i++) out[i] = amplitude * Math.sin((2 * Math.PI * freq * i) / rate);
+  for (let i = 0; i < out.length; i++)
+    out[i] = amplitude * Math.sin((2 * Math.PI * freq * i) / rate);
   return out;
 }
 

@@ -37,7 +37,9 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
   // then validate the fields this version knows about.
   const { id: _id, ...rest } = row;
   const stored: Record<string, unknown> = rest;
-  const locale = LOCALES.includes(stored.locale as Locale) ? (stored.locale as Locale) : defaults.locale;
+  const locale = LOCALES.includes(stored.locale as Locale)
+    ? (stored.locale as Locale)
+    : defaults.locale;
   const nightMode = typeof stored.nightMode === 'boolean' ? stored.nightMode : defaults.nightMode;
   const lastBabyIds =
     Array.isArray(stored.lastBabyIds) && stored.lastBabyIds.every((id) => typeof id === 'string')
@@ -58,7 +60,11 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
   return settings;
 }
 
-export async function saveSettings(db: TrackerDb, patch: Partial<Settings>, fallbackLocale: Locale): Promise<Settings> {
+export async function saveSettings(
+  db: TrackerDb,
+  patch: Partial<Settings>,
+  fallbackLocale: Locale,
+): Promise<Settings> {
   return db.transaction('rw', db.settings, async () => {
     const next = { ...(await loadSettings(db, fallbackLocale)), ...patch };
     await db.settings.put({ id: SETTINGS_ID, ...next });

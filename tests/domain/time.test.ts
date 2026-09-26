@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { HOUR, MINUTE, elapsedParts, fromLocalInputValue, toLocalInputValue } from '../../src/domain/time';
+import {
+  HOUR,
+  MINUTE,
+  elapsedParts,
+  fromLocalInputValue,
+  toLocalInputValue,
+} from '../../src/domain/time';
 
 describe('elapsedParts', () => {
   it.each([

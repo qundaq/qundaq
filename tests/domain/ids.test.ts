@@ -7,7 +7,9 @@ const getRandomValues = <T extends ArrayBufferView>(array: T): T =>
 
 describe('newId', () => {
   it('uses crypto.randomUUID when it exists', () => {
-    expect(newId({ getRandomValues, randomUUID: () => 'from-random-uuid' })).toBe('from-random-uuid');
+    expect(newId({ getRandomValues, randomUUID: () => 'from-random-uuid' })).toBe(
+      'from-random-uuid',
+    );
   });
 
   it('falls back to a v4 UUID built from getRandomValues (insecure contexts lack randomUUID)', () => {

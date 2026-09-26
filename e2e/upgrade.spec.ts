@@ -31,7 +31,9 @@ function readStored(page: import('@playwright/test').Page) {
 
 // Phones updating to this version hold a Dexie v2 database (IndexedDB version 20), perhaps with a timer
 // running. This build must open it, mark the running row for the `open` index (v3), add the mixes table (v4), and carry on.
-test('a v2 database with a running sleep opens in this version and the sleep can be stopped', async ({ page }) => {
+test('a v2 database with a running sleep opens in this version and the sleep can be stopped', async ({
+  page,
+}) => {
   await page.clock.install({ time: NOW });
 
   // Seed once, from a same-origin page that does not load the app: the database exactly as the v2 build
@@ -57,12 +59,35 @@ test('a v2 database with a running sleep opens in this version and the sleep can
           const db = request.result;
           const tx = db.transaction(['babies', 'events'], 'readwrite');
           const created = now - 30 * 24 * 60 * minute;
-          tx.objectStore('babies').add({ id: 'baby-1', name: 'Ada', color: '#7cb7ff', archived: false, createdAt: created, updatedAt: created });
+          tx.objectStore('babies').add({
+            id: 'baby-1',
+            name: 'Ada',
+            color: '#7cb7ff',
+            archived: false,
+            createdAt: created,
+            updatedAt: created,
+          });
           const events = tx.objectStore('events');
           const sleepAt = now - 60 * minute;
-          events.add({ id: 'sleep-1', type: 'sleep', babyId: 'baby-1', startAt: sleepAt, createdAt: sleepAt, updatedAt: sleepAt });
+          events.add({
+            id: 'sleep-1',
+            type: 'sleep',
+            babyId: 'baby-1',
+            startAt: sleepAt,
+            createdAt: sleepAt,
+            updatedAt: sleepAt,
+          });
           const diaperAt = now - 90 * minute;
-          events.add({ id: 'diaper-1', type: 'diaper', babyId: 'baby-1', startAt: diaperAt, wet: true, dirty: false, createdAt: diaperAt, updatedAt: diaperAt });
+          events.add({
+            id: 'diaper-1',
+            type: 'diaper',
+            babyId: 'baby-1',
+            startAt: diaperAt,
+            wet: true,
+            dirty: false,
+            createdAt: diaperAt,
+            updatedAt: diaperAt,
+          });
           tx.oncomplete = () => {
             db.close();
             resolve();

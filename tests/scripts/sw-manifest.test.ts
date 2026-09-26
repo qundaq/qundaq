@@ -30,7 +30,9 @@ describe('renderServiceWorker', () => {
   it('stamps version and list into the template', () => {
     const { source, version } = renderServiceWorker(TEMPLATE, files);
     expect(version).toMatch(/^[0-9a-f]{12}$/);
-    expect(source).toBe(`const VERSION = "${version}";\nconst PRECACHE = ${JSON.stringify(EXPECTED_PRECACHE)};\n`);
+    expect(source).toBe(
+      `const VERSION = "${version}";\nconst PRECACHE = ${JSON.stringify(EXPECTED_PRECACHE)};\n`,
+    );
   });
 
   it('version is stable for identical input and ignores file order', () => {
@@ -40,13 +42,19 @@ describe('renderServiceWorker', () => {
   });
 
   it('version changes when any content changes', () => {
-    const changed = files.map((f) => (f.path === 'index.html' ? { ...f, content: '<html lang="en">' } : f));
-    expect(renderServiceWorker(TEMPLATE, changed).version).not.toBe(renderServiceWorker(TEMPLATE, files).version);
+    const changed = files.map((f) =>
+      f.path === 'index.html' ? { ...f, content: '<html lang="en">' } : f,
+    );
+    expect(renderServiceWorker(TEMPLATE, changed).version).not.toBe(
+      renderServiceWorker(TEMPLATE, files).version,
+    );
   });
 
   it('version changes when only the service worker template changes', () => {
     const otherTemplate = `${TEMPLATE}// new service worker logic\n`;
-    expect(renderServiceWorker(otherTemplate, files).version).not.toBe(renderServiceWorker(TEMPLATE, files).version);
+    expect(renderServiceWorker(otherTemplate, files).version).not.toBe(
+      renderServiceWorker(TEMPLATE, files).version,
+    );
   });
 
   it('inserts file names containing $ replacement patterns literally', () => {

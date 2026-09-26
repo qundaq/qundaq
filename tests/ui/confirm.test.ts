@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DELETE_CONFIRM_MAX_MS, DELETE_CONFIRM_MIN_MS, deleteTap } from '../../src/ui/history/confirm';
+import {
+  DELETE_CONFIRM_MAX_MS,
+  DELETE_CONFIRM_MIN_MS,
+  deleteTap,
+} from '../../src/ui/history/confirm';
 
 describe('deleteTap', () => {
   it('the first tap arms the button', () => {
@@ -7,8 +11,14 @@ describe('deleteTap', () => {
   });
 
   it('a second tap between 600 ms and 4 s after the first deletes', () => {
-    expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MIN_MS)).toEqual({ armedAt: null, confirmed: true });
-    expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MAX_MS)).toEqual({ armedAt: null, confirmed: true });
+    expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MIN_MS)).toEqual({
+      armedAt: null,
+      confirmed: true,
+    });
+    expect(deleteTap(1000, 1000 + DELETE_CONFIRM_MAX_MS)).toEqual({
+      armedAt: null,
+      confirmed: true,
+    });
   });
 
   it('a double tap does not delete and re-arms from the fast tap', () => {

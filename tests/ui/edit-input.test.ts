@@ -26,7 +26,14 @@ function saved(draft: EventDraft): TrackerEvent {
 
 /** The draft part of a stored entry: everything but the bookkeeping fields. */
 function draftOf(event: TrackerEvent): EventDraft {
-  const { id: _id, groupId: _groupId, createdAt: _createdAt, updatedAt: _updatedAt, deletedAt: _deletedAt, ...draft } = event;
+  const {
+    id: _id,
+    groupId: _groupId,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    deletedAt: _deletedAt,
+    ...draft
+  } = event;
   return draft as EventDraft;
 }
 
@@ -53,27 +60,72 @@ const FINISHED_FEED = saved({
   ],
 });
 const RUNNING_SLEEP = saved({ type: 'sleep', babyId: 'a', startAt: T0 + 17 * SECOND });
-const GROWTH = saved({ type: 'growth', babyId: 'a', startAt: T0, weightG: 3453, heightMm: 525, headMm: 350 });
+const GROWTH = saved({
+  type: 'growth',
+  babyId: 'a',
+  startAt: T0,
+  weightG: 3453,
+  heightMm: 525,
+  headMm: 350,
+});
 
 const EVERY_TYPE: [string, TrackerEvent][] = [
   ['a running sleep', RUNNING_SLEEP],
-  ['a finished sleep with a note', saved({ type: 'sleep', babyId: 'a', startAt: T0, endAt: T0 + 95 * MINUTE + 17 * SECOND, note: 'Huzursuz uyudu' })],
+  [
+    'a finished sleep with a note',
+    saved({
+      type: 'sleep',
+      babyId: 'a',
+      startAt: T0,
+      endAt: T0 + 95 * MINUTE + 17 * SECOND,
+      note: 'Huzursuz uyudu',
+    }),
+  ],
   ['a running breastfeed', RUNNING_FEED],
   ['a finished breastfeed with pauses and a sub-minute side', FINISHED_FEED],
   ['a bottle', saved({ type: 'bottle', babyId: 'a', startAt: T0, ml: 90, contents: 'formula' })],
   ['a wet diaper', saved({ type: 'diaper', babyId: 'a', startAt: T0, wet: true, dirty: false })],
   [
     'a dirty diaper with stool details and a note',
-    saved({ type: 'diaper', babyId: 'a', startAt: T0, wet: false, dirty: true, stoolColor: 'mustard', consistency: 'soft', note: 'Az' }),
+    saved({
+      type: 'diaper',
+      babyId: 'a',
+      startAt: T0,
+      wet: false,
+      dirty: true,
+      stoolColor: 'mustard',
+      consistency: 'soft',
+      note: 'Az',
+    }),
   ],
   ['a pump with one side', saved({ type: 'pump', babyId: null, startAt: T0, mlLeft: 60 })],
-  ['a pump with both sides', saved({ type: 'pump', babyId: null, startAt: T0, mlLeft: 60, mlRight: 45 })],
+  [
+    'a pump with both sides',
+    saved({ type: 'pump', babyId: null, startAt: T0, mlLeft: 60, mlRight: 45 }),
+  ],
   ['growth with every measurement', GROWTH],
-  ['growth with the weight only', saved({ type: 'growth', babyId: 'a', startAt: T0, weightG: 4100 })],
+  [
+    'growth with the weight only',
+    saved({ type: 'growth', babyId: 'a', startAt: T0, weightG: 4100 }),
+  ],
   ['a temperature', saved({ type: 'temperature', babyId: 'a', startAt: T0, celsius: 38.2 })],
-  ['a medicine with a dose', saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'D vitamini', dose: '400 IU' })],
-  ['a medicine without a dose', saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'Parasetamol' })],
-  ['a health note', saved({ type: 'healthNote', babyId: 'a', startAt: T0, note: 'Aşı yapıldı\nKolunda hafif kızarıklık' })],
+  [
+    'a medicine with a dose',
+    saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'D vitamini', dose: '400 IU' }),
+  ],
+  [
+    'a medicine without a dose',
+    saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'Parasetamol' }),
+  ],
+  [
+    'a health note',
+    saved({
+      type: 'healthNote',
+      babyId: 'a',
+      startAt: T0,
+      note: 'Aşı yapıldı\nKolunda hafif kızarıklık',
+    }),
+  ],
 ];
 
 describe('eventToInput → inputToDraft', () => {
@@ -83,8 +135,12 @@ describe('eventToInput → inputToDraft', () => {
   });
 
   it('shows decimals with the chosen separator', () => {
-    expect(eventToInput(GROWTH, ',')).toMatchObject({ value: { weightKg: '3,453', heightCm: '52,5', headCm: '35' } });
-    expect(eventToInput(GROWTH, '.')).toMatchObject({ value: { weightKg: '3.453', heightCm: '52.5', headCm: '35' } });
+    expect(eventToInput(GROWTH, ',')).toMatchObject({
+      value: { weightKg: '3,453', heightCm: '52,5', headCm: '35' },
+    });
+    expect(eventToInput(GROWTH, '.')).toMatchObject({
+      value: { weightKg: '3.453', heightCm: '52.5', headCm: '35' },
+    });
   });
 
   it('shows segment minutes rounded and never below 1', () => {
@@ -132,7 +188,9 @@ describe('breastfeed edits', () => {
   it('changing a side is an edit too', () => {
     const input = setSegmentSide(eventToInput(FINISHED_FEED) as BreastfeedEdit, 1, 'L');
     expect(segmentsChanged(input)).toBe(true);
-    expect(inputToDraft(input)).toMatchObject({ segments: [{ side: 'L' }, { side: 'L' }, { side: 'L' }] });
+    expect(inputToDraft(input)).toMatchObject({
+      segments: [{ side: 'L' }, { side: 'L' }, { side: 'L' }],
+    });
   });
 
   it('an edit that is undone leaves the exact timing alone', () => {
@@ -150,7 +208,13 @@ describe('breastfeed edits', () => {
   });
 
   it('a finished feed whose last side has no end (a bad import) still takes edited minutes', () => {
-    const broken = saved({ type: 'breastfeed', babyId: 'a', startAt: T0, endAt: T0 + 10 * MINUTE, segments: [{ side: 'L', start: T0 }] });
+    const broken = saved({
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt: T0,
+      endAt: T0 + 10 * MINUTE,
+      segments: [{ side: 'L', start: T0 }],
+    });
     const input = setSegmentMinutes(eventToInput(broken) as BreastfeedEdit, 0, 9);
     expect(input.running).toBe(false);
     expect(inputToDraft(input)).toStrictEqual({
@@ -240,9 +304,15 @@ describe('edit sheet time fields', () => {
   it('changed and changed back, leave the edit equal to the stored entry (not dirty)', () => {
     const initial = eventToInput(RUNNING_SLEEP) as SleepEdit;
     const storedStart = RUNNING_SLEEP.startAt;
-    const moved = { ...initial, startAt: editedTime('2026-09-25T09:30', initial.startAt, storedStart) };
+    const moved = {
+      ...initial,
+      startAt: editedTime('2026-09-25T09:30', initial.startAt, storedStart),
+    };
     expect(moved).not.toEqual(initial);
-    const back = { ...moved, startAt: editedTime(toLocalInputValue(storedStart), moved.startAt, storedStart) };
+    const back = {
+      ...moved,
+      startAt: editedTime(toLocalInputValue(storedStart), moved.startAt, storedStart),
+    };
     expect(JSON.stringify(back)).toBe(JSON.stringify(initial));
   });
 

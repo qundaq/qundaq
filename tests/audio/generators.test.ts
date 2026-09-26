@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { SOUNDS, generateSound, soundById } from '../../src/audio/catalog';
-import { bandPass, filter, highPass, peak, periodSamples, rms, toDb, weightedRms } from '../../src/audio/dsp';
+import {
+  bandPass,
+  filter,
+  highPass,
+  peak,
+  periodSamples,
+  rms,
+  toDb,
+  weightedRms,
+} from '../../src/audio/dsp';
 import {
   BED_FADE_SECONDS,
   DUB_DELAY_SECONDS,
@@ -32,7 +41,12 @@ function loop(id: SoundId, rate: number): Float32Array {
 
 /** Byte-for-byte equality; much faster than a deep equal over a million samples. */
 function sameSamples(a: Float32Array, b: Float32Array): boolean {
-  return Buffer.compare(Buffer.from(a.buffer, a.byteOffset, a.byteLength), Buffer.from(b.buffer, b.byteOffset, b.byteLength)) === 0;
+  return (
+    Buffer.compare(
+      Buffer.from(a.buffer, a.byteOffset, a.byteLength),
+      Buffer.from(b.buffer, b.byteOffset, b.byteLength),
+    ) === 0
+  );
 }
 
 /** A window of `width` samples centred on `centre`, read around the loop (the loop point included). */
@@ -101,7 +115,9 @@ function envelope(x: Float32Array, rate: number, cutoff: number): Float32Array {
 /** Index of the largest value in [from, to), read around the loop. */
 function argmaxAround(x: Float32Array, from: number, to: number): number {
   let best = from;
-  for (let i = from; i < to; i++) if (x[((i % x.length) + x.length) % x.length]! > x[((best % x.length) + x.length) % x.length]!) best = i;
+  for (let i = from; i < to; i++)
+    if (x[((i % x.length) + x.length) % x.length]! > x[((best % x.length) + x.length) % x.length]!)
+      best = i;
   return ((best % x.length) + x.length) % x.length;
 }
 
@@ -124,7 +140,8 @@ function seamClickDb(x: Float32Array, rate: number): number {
   const width = 6; // a 3-sample radius: about the high-pass's own settling time at this cutoff
   const wrapEnergy = rms(windowAround(trace, 0, width));
   const others: number[] = [];
-  for (let c = width; c + width <= trace.length - width; c += width) others.push(rms(windowAround(trace, c, width)));
+  for (let c = width; c + width <= trace.length - width; c += width)
+    others.push(rms(windowAround(trace, c, width)));
   others.sort((a, b) => a - b);
   const reference = others[Math.floor(others.length * 0.9)]!;
   return toDb(wrapEnergy / Math.max(reference, 1e-12));
@@ -147,7 +164,8 @@ function blendKurtosisShift(x: Float32Array, rate: number): number {
   const width = to - from;
   const blend = kurtosis(x.slice(from, to));
   const controls: number[] = [];
-  for (let c = fade + width; c + width <= x.length; c += width * 3) controls.push(kurtosis(x.slice(c, c + width)));
+  for (let c = fade + width; c + width <= x.length; c += width * 3)
+    controls.push(kurtosis(x.slice(c, c + width)));
   const control = controls.reduce((sum, value) => sum + value, 0) / controls.length;
   return blend - control;
 }
@@ -181,9 +199,14 @@ describe.each(RATES)('every sound at %i Hz', (rate) => {
     for (const id of ['white', 'pink', 'brown', 'rain', 'wind', 'airplane'] as const) {
       const sound = soundById(id);
       const samples = loop(id, rate);
-      const expected = id === 'airplane' ? 2 * Math.round(sound.seconds / 2) * rate : Math.round(sound.seconds * rate);
+      const expected =
+        id === 'airplane'
+          ? 2 * Math.round(sound.seconds / 2) * rate
+          : Math.round(sound.seconds * rate);
       expect(samples.length, id).toBe(expected);
-      expect(Math.abs(seamDeviation(samples, rate)), id).toBeLessThanOrEqual(Math.max(1, ownVariation(samples, rate)));
+      expect(Math.abs(seamDeviation(samples, rate)), id).toBeLessThanOrEqual(
+        Math.max(1, ownVariation(samples, rate)),
+      );
     }
   });
 
@@ -233,13 +256,18 @@ describe.each(RATES)('every sound at %i Hz', (rate) => {
     const smooth = envelope(samples, rate, 30);
     const dubDelay = Math.round(DUB_DELAY_SECONDS * rate);
     const peaks = starts.map((start) => argmaxAround(smooth, start, start + dubDelay));
-    const intervals = peaks.map((at, i) => (i + 1 < peaks.length ? peaks[i + 1]! - at : samples.length - at + peaks[0]!));
-    for (const interval of intervals) expect(Math.abs(interval - period) / rate).toBeLessThanOrEqual(0.001);
+    const intervals = peaks.map((at, i) =>
+      i + 1 < peaks.length ? peaks[i + 1]! - at : samples.length - at + peaks[0]!,
+    );
+    for (const interval of intervals)
+      expect(Math.abs(interval - period) / rate).toBeLessThanOrEqual(0.001);
     expect(60 / (period / rate)).toBeCloseTo(HEARTBEAT_BPM, 0);
     // The window on the loop point matches the same window one beat earlier.
     const width = Math.round(0.2 * rate);
     const seam = rms(windowAround(samples, 0, width));
-    expect(Math.abs(toDb(seam / rms(windowAround(samples, -period, width))))).toBeLessThanOrEqual(1);
+    expect(Math.abs(toDb(seam / rms(windowAround(samples, -period, width))))).toBeLessThanOrEqual(
+      1,
+    );
   });
 
   it('shush: whole "shh" cycles of 1.4 s, 1 s on and 0.4 s off, on a circle', () => {
@@ -255,8 +283,11 @@ describe.each(RATES)('every sound at %i Hz', (rate) => {
       if (previous < 0.5 && env[i]! >= 0.5) onsets.push(i);
     }
     expect(onsets).toHaveLength(samples.length / period);
-    const intervals = onsets.map((at, i) => (i + 1 < onsets.length ? onsets[i + 1]! - at : env.length - at + onsets[0]!));
-    for (const interval of intervals) expect(Math.abs(interval - period) / rate).toBeLessThanOrEqual(0.001);
+    const intervals = onsets.map((at, i) =>
+      i + 1 < onsets.length ? onsets[i + 1]! - at : env.length - at + onsets[0]!,
+    );
+    for (const interval of intervals)
+      expect(Math.abs(interval - period) / rate).toBeLessThanOrEqual(0.001);
     // On for 1 s of every 1.4 s: above half level from about the middle of the rise (0.06 s) to about the
     // middle of the fall (0.875 s), a little longer as the floor lifts the whole envelope.
     const on = env.filter((value) => value >= 0.5).length / env.length;
@@ -264,7 +295,9 @@ describe.each(RATES)('every sound at %i Hz', (rate) => {
     expect(on).toBeLessThan(0.62);
     const width = Math.round(0.2 * rate);
     const seam = rms(windowAround(samples, 0, width));
-    expect(Math.abs(toDb(seam / rms(windowAround(samples, -period, width))))).toBeLessThanOrEqual(1);
+    expect(Math.abs(toDb(seam / rms(windowAround(samples, -period, width))))).toBeLessThanOrEqual(
+      1,
+    );
   });
 
   it('waves: whole swells of 10 s ± 15%, smooth across the loop point', () => {
@@ -283,7 +316,9 @@ describe.each(RATES)('every sound at %i Hz', (rate) => {
     });
     expect(starts[0]).toBe(0);
     expect(starts).toHaveLength(samples.length / swell);
-    const intervals = starts.map((at, i) => (i + 1 < starts.length ? starts[i + 1]! - at : env.length - at));
+    const intervals = starts.map((at, i) =>
+      i + 1 < starts.length ? starts[i + 1]! - at : env.length - at,
+    );
     for (const interval of intervals) {
       expect(interval / rate).toBeGreaterThanOrEqual(SWELL_SECONDS * 0.85);
       expect(interval / rate).toBeLessThanOrEqual(SWELL_SECONDS * 1.15);
@@ -298,7 +333,8 @@ describe('catalog', () => {
   });
 
   it('noise beds are at least 30 s long, so a repeat is hard to hear', () => {
-    for (const id of ['white', 'pink', 'brown'] as const) expect(soundById(id).seconds).toBeGreaterThanOrEqual(30);
+    for (const id of ['white', 'pink', 'brown'] as const)
+      expect(soundById(id).seconds).toBeGreaterThanOrEqual(30);
   });
 
   it('crossfades random beds over one second', () => {

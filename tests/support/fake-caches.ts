@@ -20,13 +20,20 @@ export class FakeCache {
 
   async match(key: Key, _options?: unknown): Promise<Response | undefined> {
     const stored = this.entries.get(this.resolve(key));
-    return stored && new Response(stored.body.slice(0), { status: stored.status, headers: stored.headers });
+    return (
+      stored &&
+      new Response(stored.body.slice(0), { status: stored.status, headers: stored.headers })
+    );
   }
 
   async put(key: Key, response: Response): Promise<void> {
     if (this.failPut) throw new Error('QuotaExceededError (fake)');
     const body = await response.arrayBuffer();
-    this.entries.set(this.resolve(key), { body, status: response.status, headers: [...response.headers] });
+    this.entries.set(this.resolve(key), {
+      body,
+      status: response.status,
+      headers: [...response.headers],
+    });
   }
 
   async delete(key: Key): Promise<boolean> {

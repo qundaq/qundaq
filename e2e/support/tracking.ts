@@ -1,7 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 
 export async function openTab(page: Page, name: string) {
-  await page.getByRole('navigation', { name: 'Ana gezinme' }).getByRole('button', { name, exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('button', { name, exact: true })
+    .click();
 }
 
 export async function addBabyInSettings(page: Page, name: string) {
@@ -19,7 +22,9 @@ export function babyCard(page: Page, name: string) {
 }
 
 export function quick(page: Page, name: string) {
-  return page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
+  return page
+    .getByRole('group', { name: 'Hızlı kayıt' })
+    .getByRole('button', { name, exact: true });
 }
 
 /** The rows of the Günlük list. */
@@ -54,7 +59,10 @@ export async function logDiaper(page: Page, options: { at?: string; all?: boolea
 export async function openOther(page: Page, chip: 'İlaç' | 'Büyüme' | 'Ateş' | 'Sağım' | 'Not') {
   await quick(page, 'Diğer').click();
   const sheet = page.getByRole('dialog');
-  await sheet.getByRole('group', { name: 'Kayıt türü', exact: true }).getByRole('button', { name: chip, exact: true }).click();
+  await sheet
+    .getByRole('group', { name: 'Kayıt türü', exact: true })
+    .getByRole('button', { name: chip, exact: true })
+    .click();
   return sheet;
 }
 

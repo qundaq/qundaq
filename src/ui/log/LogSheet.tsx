@@ -49,10 +49,16 @@ export function LogSheet({ kind, babies, defaultBabyIds, onClose, onLogged }: Pr
   const session = useSheetSession(kind);
   // The "Diğer" chip lives here because the sheet's title follows it; every opening starts at the default.
   const [picked, setPicked] = useState<{ session: number; type: OtherType } | null>(null);
-  const otherType = picked !== null && picked.session === session?.id ? picked.type : DEFAULT_OTHER_TYPE;
-  const inputKind: InputKind | null = session === null ? null : session.value === 'other' ? otherType : session.value;
+  const otherType =
+    picked !== null && picked.session === session?.id ? picked.type : DEFAULT_OTHER_TYPE;
+  const inputKind: InputKind | null =
+    session === null ? null : session.value === 'other' ? otherType : session.value;
   return (
-    <Sheet open={kind !== null} title={inputKind ? t(`sheet.${inputKind}.title`) : ''} onClose={onClose}>
+    <Sheet
+      open={kind !== null}
+      title={inputKind ? t(`sheet.${inputKind}.title`) : ''}
+      onClose={onClose}
+    >
       {session && inputKind && (
         <LogForm
           key={session.id}
@@ -75,10 +81,20 @@ interface FormArgs extends Omit<Props, 'kind'> {
   onOtherTypeChange: (type: OtherType) => void;
 }
 
-function LogForm({ kind, inputKind, onOtherTypeChange, babies, defaultBabyIds, onClose, onLogged }: FormArgs) {
+function LogForm({
+  kind,
+  inputKind,
+  onOtherTypeChange,
+  babies,
+  defaultBabyIds,
+  onClose,
+  onLogged,
+}: FormArgs) {
   const t = useT();
   const known = defaultBabyIds.filter((id) => babies.some((b) => b.id === id));
-  const [selected, setSelected] = useState<Id[]>(known.length > 0 ? known : babies[0] ? [babies[0].id] : []);
+  const [selected, setSelected] = useState<Id[]>(
+    known.length > 0 ? known : babies[0] ? [babies[0].id] : [],
+  );
   const [time, setTime] = useState<number | null>(null); // null = "now"
   const [input, setInput] = useState<SheetInput>(() => initialInput(inputKind));
   const [note, setNote] = useState('');
@@ -90,7 +106,8 @@ function LogForm({ kind, inputKind, onOtherTypeChange, babies, defaultBabyIds, o
   useEffect(() => setError(null), [input, selected, time, note]);
 
   const single = SINGLE_BABY.has(input.kind);
-  const isTimer = (input.kind === 'breastfeed' || input.kind === 'sleep') && input.value.durationMin === null;
+  const isTimer =
+    (input.kind === 'breastfeed' || input.kind === 'sleep') && input.value.durationMin === null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -114,28 +131,55 @@ function LogForm({ kind, inputKind, onOtherTypeChange, babies, defaultBabyIds, o
 
   return (
     <form onSubmit={(event) => void submit(event)} noValidate>
-      {kind === 'other' && <OtherTypeChips value={inputKind as OtherType} onChange={onOtherTypeChange} />}
+      {kind === 'other' && (
+        <OtherTypeChips value={inputKind as OtherType} onChange={onOtherTypeChange} />
+      )}
       {input.kind === 'pump' ? null : single ? (
-        <SingleBabyPicker babies={babies} selected={selected[0] ?? null} onChange={(id) => setSelected([id])} />
+        <SingleBabyPicker
+          babies={babies}
+          selected={selected[0] ?? null}
+          onChange={(id) => setSelected([id])}
+        />
       ) : (
         <BabyPicker babies={babies} selected={selected} onChange={setSelected} />
       )}
       <TimeField value={time} onChange={setTime} />
       {input.kind === 'breastfeed' && (
-        <BreastfeedForm value={input.value} onChange={(value) => setInput({ kind: 'breastfeed', value })} />
+        <BreastfeedForm
+          value={input.value}
+          onChange={(value) => setInput({ kind: 'breastfeed', value })}
+        />
       )}
-      {input.kind === 'bottle' && <BottleForm value={input.value} onChange={(value) => setInput({ kind: 'bottle', value })} />}
-      {input.kind === 'sleep' && <SleepForm value={input.value} onChange={(value) => setInput({ kind: 'sleep', value })} />}
-      {input.kind === 'diaper' && <DiaperForm value={input.value} onChange={(value) => setInput({ kind: 'diaper', value })} />}
-      {input.kind === 'pump' && <PumpForm value={input.value} onChange={(value) => setInput({ kind: 'pump', value })} />}
-      {input.kind === 'growth' && <GrowthForm value={input.value} onChange={(value) => setInput({ kind: 'growth', value })} />}
+      {input.kind === 'bottle' && (
+        <BottleForm value={input.value} onChange={(value) => setInput({ kind: 'bottle', value })} />
+      )}
+      {input.kind === 'sleep' && (
+        <SleepForm value={input.value} onChange={(value) => setInput({ kind: 'sleep', value })} />
+      )}
+      {input.kind === 'diaper' && (
+        <DiaperForm value={input.value} onChange={(value) => setInput({ kind: 'diaper', value })} />
+      )}
+      {input.kind === 'pump' && (
+        <PumpForm value={input.value} onChange={(value) => setInput({ kind: 'pump', value })} />
+      )}
+      {input.kind === 'growth' && (
+        <GrowthForm value={input.value} onChange={(value) => setInput({ kind: 'growth', value })} />
+      )}
       {input.kind === 'temperature' && (
-        <TemperatureForm value={input.value} onChange={(value) => setInput({ kind: 'temperature', value })} />
+        <TemperatureForm
+          value={input.value}
+          onChange={(value) => setInput({ kind: 'temperature', value })}
+        />
       )}
       {input.kind === 'medication' && (
-        <RecentMedicationForm value={input.value} onChange={(value) => setInput({ kind: 'medication', value })} />
+        <RecentMedicationForm
+          value={input.value}
+          onChange={(value) => setInput({ kind: 'medication', value })}
+        />
       )}
-      {kind === 'other' && <NoteField value={note} required={input.kind === 'healthNote'} onChange={setNote} />}
+      {kind === 'other' && (
+        <NoteField value={note} required={input.kind === 'healthNote'} onChange={setNote} />
+      )}
       {error && (
         <p role="alert" className="status-warn">
           {error}
@@ -155,6 +199,7 @@ function LogForm({ kind, inputKind, onOtherTypeChange, babies, defaultBabyIds, o
 
 /** The medicine form with chips for the medicines used lately (name and last dose). */
 function RecentMedicationForm(props: FormProps<MedicationInput>) {
-  const recent = useLiveQuery(() => recentMedicationNames(db, Date.now()), [], useReportLoadError()) ?? [];
+  const recent =
+    useLiveQuery(() => recentMedicationNames(db, Date.now()), [], useReportLoadError()) ?? [];
   return <MedicationForm {...props} recent={recent} />;
 }

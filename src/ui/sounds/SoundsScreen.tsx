@@ -32,7 +32,13 @@ export function SoundsScreen() {
         disabled={state.layers.length === 0}
         onClick={() => (state.status === 'playing' ? engine.pause() : engine.play())}
       >
-        {t(state.status === 'playing' ? 'sounds.pause' : state.status === 'interrupted' ? 'sounds.resume' : 'sounds.play')}
+        {t(
+          state.status === 'playing'
+            ? 'sounds.pause'
+            : state.status === 'interrupted'
+              ? 'sounds.resume'
+              : 'sounds.play',
+        )}
       </button>
       {/* Only the state is announced: inside the live region the countdown would be read out every minute. */}
       <p className="sound-status">
@@ -77,13 +83,20 @@ export function SoundsScreen() {
           type="button"
           className="btn"
           disabled={state.layers.length === 0}
-          onClick={() => setMixRequest({ kind: 'save', layers: state.layers.map((layer) => ({ soundId: layer.soundId, gain: layer.level })) })}
+          onClick={() =>
+            setMixRequest({
+              kind: 'save',
+              layers: state.layers.map((layer) => ({ soundId: layer.soundId, gain: layer.level })),
+            })
+          }
         >
           {t('sounds.saveMix')}
         </button>
       </div>
       <MixList
-        onPlay={(mix) => setNotice(engine.loadMix(mix.layers) === 'empty' ? t('sounds.mix.empty') : null)}
+        onPlay={(mix) =>
+          setNotice(engine.loadMix(mix.layers) === 'empty' ? t('sounds.mix.empty') : null)
+        }
         onRename={(mix) => setMixRequest({ kind: 'rename', mix })}
       />
       <MixNameSheet request={mixRequest} onClose={() => setMixRequest(null)} />

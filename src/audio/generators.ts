@@ -29,7 +29,11 @@ export const HEARTBEAT_TARGET_DB = -24;
 export const BED_FADE_SECONDS = 1;
 
 /** A random bed of exactly `length` samples that loops seamlessly (`make` gets the crossfade on top). */
-function bedLoop(sampleRate: number, length: number, make: (length: number) => Float32Array): Float32Array {
+function bedLoop(
+  sampleRate: number,
+  length: number,
+  make: (length: number) => Float32Array,
+): Float32Array {
   const fade = Math.round(BED_FADE_SECONDS * sampleRate);
   return makeLoop(make(length + fade), sampleRate, BED_FADE_SECONDS);
 }
@@ -75,24 +79,39 @@ function loopLength(sampleRate: number, seconds: number): number {
 
 export const white: Generator = (sampleRate, seconds, seed) => {
   const random = mulberry32(seed);
-  return normalise(bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => whiteNoise(n, random)), sampleRate, TARGET_DB);
+  return normalise(
+    bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => whiteNoise(n, random)),
+    sampleRate,
+    TARGET_DB,
+  );
 };
 
 export const pink: Generator = (sampleRate, seconds, seed) => {
   const random = mulberry32(seed);
-  return normalise(bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => pinkNoise(n, random)), sampleRate, TARGET_DB);
+  return normalise(
+    bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => pinkNoise(n, random)),
+    sampleRate,
+    TARGET_DB,
+  );
 };
 
 export const brown: Generator = (sampleRate, seconds, seed) => {
   const random = mulberry32(seed);
-  return normalise(bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => brownNoise(n, random, sampleRate)), sampleRate, TARGET_DB);
+  return normalise(
+    bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => brownNoise(n, random, sampleRate)),
+    sampleRate,
+    TARGET_DB,
+  );
 };
 
 /** A band-limited pink bed with sparse droplets: short decaying bursts of bright noise at random levels. */
 export const rain: Generator = (sampleRate, seconds, seed) => {
   const random = mulberry32(seed);
   const bed = bedLoop(sampleRate, loopLength(sampleRate, seconds), (n) => {
-    const out = filter(filter(pinkNoise(n, random), highPass(sampleRate, 400)), lowPass(sampleRate, 9000));
+    const out = filter(
+      filter(pinkNoise(n, random), highPass(sampleRate, 400)),
+      lowPass(sampleRate, 9000),
+    );
     const drops = Math.round((n / sampleRate) * 150); // about 150 droplets a second
     for (let d = 0; d < drops; d++) {
       const start = Math.floor(random() * n);
@@ -121,7 +140,11 @@ export const SWELL_SECONDS = 10;
  * SWELL_SECONDS. Each swell is sin², 0 at both ends, so the envelope is smooth everywhere, the loop point
  * included.
  */
-export function swellEnvelope(length: number, sampleRate: number, random: () => number): Float32Array {
+export function swellEnvelope(
+  length: number,
+  sampleRate: number,
+  random: () => number,
+): Float32Array {
   const count = Math.max(1, Math.round(length / (SWELL_SECONDS * sampleRate)));
   const weights = Array.from({ length: count }, () => 1 + 0.1 * (random() * 2 - 1));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
@@ -159,11 +182,16 @@ export const waves: Generator = (sampleRate, seconds, seed) => {
  * samples and interpolated in between: the curve changes over seconds, not samples.
  */
 function driftCurve(length: number, random: () => number, low: number, high: number): Float32Array {
-  const harmonics = [1, 2, 3, 4].map((h) => ({ h, amplitude: random() / h, phase: random() * 2 * Math.PI }));
+  const harmonics = [1, 2, 3, 4].map((h) => ({
+    h,
+    amplitude: random() / h,
+    phase: random() * 2 * Math.PI,
+  }));
   const reach = harmonics.reduce((sum, { amplitude }) => sum + amplitude, 0);
   const at = (i: number) => {
     let value = 0;
-    for (const { h, amplitude, phase } of harmonics) value += amplitude * Math.sin((2 * Math.PI * h * i) / length + phase);
+    for (const { h, amplitude, phase } of harmonics)
+      value += amplitude * Math.sin((2 * Math.PI * h * i) / length + phase);
     return low + ((value / reach + 1) / 2) * (high - low);
   };
   const step = 64;
@@ -184,7 +212,11 @@ export const wind: Generator = (sampleRate, seconds, seed) => {
   const raw = pinkNoise(length + Math.round(BED_FADE_SECONDS * sampleRate), random);
   const out = new Float32Array(length);
   for (const centre of [300, 600, 1200]) {
-    const band = makeLoop(filter(raw, bandPass(sampleRate, centre, 1.2)), sampleRate, BED_FADE_SECONDS);
+    const band = makeLoop(
+      filter(raw, bandPass(sampleRate, centre, 1.2)),
+      sampleRate,
+      BED_FADE_SECONDS,
+    );
     const gain = driftCurve(length, random, 0.1, 1);
     for (let i = 0; i < length; i++) out[i] = out[i]! + band[i]! * gain[i]! ** 2;
   }

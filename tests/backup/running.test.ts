@@ -5,17 +5,49 @@ import type { Baby, TrackerEvent } from '../../src/domain/types';
 
 const T = 1_790_000_000_000;
 const NOW = T + 10 * HOUR;
-const baby = (id: string, extra: Partial<Baby> = {}): Baby => ({ id, name: id, color: '#7cb7ff', archived: false, createdAt: T, updatedAt: T, ...extra });
+const baby = (id: string, extra: Partial<Baby> = {}): Baby => ({
+  id,
+  name: id,
+  color: '#7cb7ff',
+  archived: false,
+  createdAt: T,
+  updatedAt: T,
+  ...extra,
+});
 const BABIES = new Map([['a', baby('a')]]);
 const sleep = (id: string, startAt: number, extra: Partial<TrackerEvent> = {}) =>
-  ({ id, type: 'sleep', babyId: 'a', startAt, createdAt: startAt, updatedAt: startAt, ...extra }) as TrackerEvent;
-const feed = (id: string, startAt: number, segments: { side: 'L' | 'R'; start: number; end?: number }[]) =>
-  ({ id, type: 'breastfeed', babyId: 'a', startAt, segments, createdAt: startAt, updatedAt: startAt }) as TrackerEvent;
+  ({
+    id,
+    type: 'sleep',
+    babyId: 'a',
+    startAt,
+    createdAt: startAt,
+    updatedAt: startAt,
+    ...extra,
+  }) as TrackerEvent;
+const feed = (
+  id: string,
+  startAt: number,
+  segments: { side: 'L' | 'R'; start: number; end?: number }[],
+) =>
+  ({
+    id,
+    type: 'breastfeed',
+    babyId: 'a',
+    startAt,
+    segments,
+    createdAt: startAt,
+    updatedAt: startAt,
+  }) as TrackerEvent;
 const context = { exportedAt: T, now: NOW, stopStale: new Set<string>() };
 
 describe('stopTimerAt', () => {
   it('ends a timer at the given time, never before it started', () => {
-    expect(stopTimerAt(sleep('s', T), T + HOUR, NOW)).toEqual({ ...sleep('s', T), endAt: T + HOUR, updatedAt: NOW });
+    expect(stopTimerAt(sleep('s', T), T + HOUR, NOW)).toEqual({
+      ...sleep('s', T),
+      endAt: T + HOUR,
+      updatedAt: NOW,
+    });
     expect(stopTimerAt(sleep('s', T), T - HOUR, NOW)).toMatchObject({ endAt: T });
   });
 
@@ -38,21 +70,45 @@ describe('stopTimerAt: a paused feed', () => {
   it("never ends before its last side's end, when that side is already closed", () => {
     // Paused: the left side ended at 06:30, and nothing has started since.
     const paused = feed('f', T, [{ side: 'L', start: T, end: T + 30 * MINUTE }]);
-    expect(stopTimerAt(paused, T + 10 * MINUTE, NOW)).toEqual({ ...paused, endAt: T + 30 * MINUTE, updatedAt: NOW });
-    expect(stopTimerAt(paused, T + HOUR, NOW)).toMatchObject({ endAt: T + HOUR, segments: [{ side: 'L', start: T, end: T + 30 * MINUTE }] });
+    expect(stopTimerAt(paused, T + 10 * MINUTE, NOW)).toEqual({
+      ...paused,
+      endAt: T + 30 * MINUTE,
+      updatedAt: NOW,
+    });
+    expect(stopTimerAt(paused, T + HOUR, NOW)).toMatchObject({
+      endAt: T + HOUR,
+      segments: [{ side: 'L', start: T, end: T + 30 * MINUTE }],
+    });
   });
 });
 
 describe('repairRunning', () => {
   it('two running sleeps for one baby: the later one runs on, the other ends when it started', () => {
-    const { changed, stopped } = repairRunning([sleep('early', T), sleep('late', T + HOUR)], BABIES, context);
+    const { changed, stopped } = repairRunning(
+      [sleep('early', T), sleep('late', T + HOUR)],
+      BABIES,
+      context,
+    );
     expect(changed).toEqual([{ ...sleep('early', T), endAt: T + HOUR, updatedAt: NOW }]);
-    expect(stopped).toEqual([{ id: 'early', babyId: 'a', type: 'sleep', startAt: T, stopAt: T + HOUR, reason: 'collision' }]);
+    expect(stopped).toEqual([
+      {
+        id: 'early',
+        babyId: 'a',
+        type: 'sleep',
+        startAt: T,
+        stopAt: T + HOUR,
+        reason: 'collision',
+      },
+    ]);
   });
 
   it('a tie on the start goes to the larger id, so both phones agree', () => {
-    expect(repairRunning([sleep('b', T), sleep('a', T)], BABIES, context).changed.map((row) => row.id)).toEqual(['a']);
-    expect(repairRunning([sleep('a', T), sleep('b', T)], BABIES, context).changed.map((row) => row.id)).toEqual(['a']);
+    expect(
+      repairRunning([sleep('b', T), sleep('a', T)], BABIES, context).changed.map((row) => row.id),
+    ).toEqual(['a']);
+    expect(
+      repairRunning([sleep('a', T), sleep('b', T)], BABIES, context).changed.map((row) => row.id),
+    ).toEqual(['a']);
   });
 
   it('a feed that switched sides after the other one started never gets a side ending before it begins', () => {
@@ -74,72 +130,146 @@ describe('repairRunning', () => {
       sleep('done', T + 3, { endAt: T + 4 }),
       sleep('deleted', T + 5, { deletedAt: T + 6 }),
     ];
-    expect(repairRunning(rows, new Map([...BABIES, ['c', baby('c')]]), context)).toEqual({ changed: [], stopped: [] });
+    expect(repairRunning(rows, new Map([...BABIES, ['c', baby('c')]]), context)).toEqual({
+      changed: [],
+      stopped: [],
+    });
   });
 
   it("stops a deleted baby's timers when the baby was deleted", () => {
     const babies = new Map([['a', baby('a', { deletedAt: T + HOUR, updatedAt: T + HOUR })]]);
     const { stopped } = repairRunning([sleep('s', T)], babies, context);
-    expect(stopped).toEqual([{ id: 's', babyId: 'a', type: 'sleep', startAt: T, stopAt: T + HOUR, reason: 'deleted-baby' }]);
+    expect(stopped).toEqual([
+      { id: 's', babyId: 'a', type: 'sleep', startAt: T, stopAt: T + HOUR, reason: 'deleted-baby' },
+    ]);
   });
 
   it("ignores a deleted baby's unreadable deletion time instead of stopping its timer at NaN", () => {
     const babies = new Map([['a', { ...baby('a'), deletedAt: 'yesterday' } as unknown as Baby]]);
     expect(repairRunning([sleep('s', T)], babies, context)).toEqual({ changed: [], stopped: [] });
     // Chosen as stale, it still stops at the time of the backup.
-    const stale = repairRunning([sleep('s', T - HOUR)], babies, { ...context, stopStale: new Set(['s']) });
+    const stale = repairRunning([sleep('s', T - HOUR)], babies, {
+      ...context,
+      stopStale: new Set(['s']),
+    });
     expect(stale.stopped).toMatchObject([{ id: 's', stopAt: T, reason: 'stale' }]);
   });
 
   it('never throws on a malformed running row from the device, and stops it without guessing', () => {
-    const broken = { id: 'broken', type: 'breastfeed', babyId: 'a', startAt: T, segments: 'broken', createdAt: T, updatedAt: T } as unknown as TrackerEvent;
+    const broken = {
+      id: 'broken',
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt: T,
+      segments: 'broken',
+      createdAt: T,
+      updatedAt: T,
+    } as unknown as TrackerEvent;
     const good = feed('good', T + HOUR, [{ side: 'L', start: T + HOUR }]);
     const { changed } = repairRunning([broken, good], BABIES, context);
     expect(changed).toEqual([{ ...broken, endAt: T + HOUR, updatedAt: NOW }]);
-    const noStart = { id: 'x', type: 'sleep', babyId: 'a', startAt: 'soon', createdAt: T, updatedAt: T } as unknown as TrackerEvent;
+    const noStart = {
+      id: 'x',
+      type: 'sleep',
+      babyId: 'a',
+      startAt: 'soon',
+      createdAt: T,
+      updatedAt: T,
+    } as unknown as TrackerEvent;
     expect(repairRunning([noStart, sleep('s', T)], BABIES, context).changed).toEqual([]);
   });
 
   it('never stops a timer in the future, even when the backup comes from a clock that ran ahead', () => {
-    const { stopped } = repairRunning([sleep('s', T)], BABIES, { exportedAt: NOW + HOUR, now: NOW, stopStale: new Set(['s']) });
+    const { stopped } = repairRunning([sleep('s', T)], BABIES, {
+      exportedAt: NOW + HOUR,
+      now: NOW,
+      stopStale: new Set(['s']),
+    });
     expect(stopped[0]!.stopAt).toBe(NOW);
   });
 
   it('a stale stop is stamped with the time of the backup, never later than now', () => {
     // updatedAt < exportedAt: stamped exportedAt, so a real later stop made on the other phone still wins.
-    const plain = repairRunning([sleep('s', T - HOUR)], BABIES, { exportedAt: T, now: NOW, stopStale: new Set(['s']) });
+    const plain = repairRunning([sleep('s', T - HOUR)], BABIES, {
+      exportedAt: T,
+      now: NOW,
+      stopStale: new Set(['s']),
+    });
     expect(plain.changed[0]).toMatchObject({ endAt: T, updatedAt: T });
     // The backup's clock ran ahead of this phone's: capped at now.
-    const ahead = repairRunning([sleep('s', T)], BABIES, { exportedAt: NOW + HOUR, now: NOW, stopStale: new Set(['s']) });
+    const ahead = repairRunning([sleep('s', T)], BABIES, {
+      exportedAt: NOW + HOUR,
+      now: NOW,
+      stopStale: new Set(['s']),
+    });
     expect(ahead.changed[0]).toMatchObject({ endAt: NOW, updatedAt: NOW });
   });
 
   it("a stale stop is stamped after the row's own updatedAt when that is not before the backup", () => {
     // The row was changed at (or after) the backup's time: one more than its own updatedAt, so the stop wins.
     const row = sleep('s', T - HOUR, { updatedAt: T + 5 });
-    const { changed } = repairRunning([row], BABIES, { exportedAt: T, now: NOW, stopStale: new Set(['s']) });
+    const { changed } = repairRunning([row], BABIES, {
+      exportedAt: T,
+      now: NOW,
+      stopStale: new Set(['s']),
+    });
     expect(changed[0]).toMatchObject({ endAt: T, updatedAt: T + 6 });
-    const same = repairRunning([sleep('s', T - HOUR, { updatedAt: T })], BABIES, { exportedAt: T, now: NOW, stopStale: new Set(['s']) });
+    const same = repairRunning([sleep('s', T - HOUR, { updatedAt: T })], BABIES, {
+      exportedAt: T,
+      now: NOW,
+      stopStale: new Set(['s']),
+    });
     expect(same.changed[0]).toMatchObject({ updatedAt: T + 1 });
   });
 
-  it("a stale timer of a deleted baby ends when the baby was deleted, if that came before the backup, never before it started", () => {
+  it('a stale timer of a deleted baby ends when the baby was deleted, if that came before the backup, never before it started', () => {
     const babies = new Map([['a', baby('a', { deletedAt: T - HOUR, updatedAt: T - HOUR })]]);
-    const { stopped } = repairRunning([sleep('s', T - 3 * HOUR)], babies, { exportedAt: T, now: NOW, stopStale: new Set(['s']) });
-    expect(stopped).toEqual([{ id: 's', babyId: 'a', type: 'sleep', startAt: T - 3 * HOUR, stopAt: T - HOUR, reason: 'stale' }]);
+    const { stopped } = repairRunning([sleep('s', T - 3 * HOUR)], babies, {
+      exportedAt: T,
+      now: NOW,
+      stopStale: new Set(['s']),
+    });
+    expect(stopped).toEqual([
+      {
+        id: 's',
+        babyId: 'a',
+        type: 'sleep',
+        startAt: T - 3 * HOUR,
+        stopAt: T - HOUR,
+        reason: 'stale',
+      },
+    ]);
     // Deleted after the backup: the backup's time comes first.
     const later = new Map([['a', baby('a', { deletedAt: T + HOUR, updatedAt: T + HOUR })]]);
-    expect(repairRunning([sleep('s', T - 3 * HOUR)], later, { exportedAt: T, now: NOW, stopStale: new Set(['s']) }).stopped[0]!.stopAt).toBe(T);
+    expect(
+      repairRunning([sleep('s', T - 3 * HOUR)], later, {
+        exportedAt: T,
+        now: NOW,
+        stopStale: new Set(['s']),
+      }).stopped[0]!.stopAt,
+    ).toBe(T);
     // Deleted before the timer even started: it ends at its own start.
-    expect(repairRunning([sleep('s', T - 30 * MINUTE)], babies, { exportedAt: T, now: NOW, stopStale: new Set(['s']) }).stopped[0]!.stopAt).toBe(T - 30 * MINUTE);
+    expect(
+      repairRunning([sleep('s', T - 30 * MINUTE)], babies, {
+        exportedAt: T,
+        now: NOW,
+        stopStale: new Set(['s']),
+      }).stopped[0]!.stopAt,
+    ).toBe(T - 30 * MINUTE);
   });
 
   it('stops the chosen stale timers at the time of the backup, before anything else', () => {
-    const { stopped } = repairRunning([sleep('old', T - 5 * HOUR), sleep('new', T + HOUR)], BABIES, {
-      ...context,
-      stopStale: new Set(['old']),
-    });
-    expect(stopped).toEqual([{ id: 'old', babyId: 'a', type: 'sleep', startAt: T - 5 * HOUR, stopAt: T, reason: 'stale' }]);
+    const { stopped } = repairRunning(
+      [sleep('old', T - 5 * HOUR), sleep('new', T + HOUR)],
+      BABIES,
+      {
+        ...context,
+        stopStale: new Set(['old']),
+      },
+    );
+    expect(stopped).toEqual([
+      { id: 'old', babyId: 'a', type: 'sleep', startAt: T - 5 * HOUR, stopAt: T, reason: 'stale' },
+    ]);
   });
 });
 
@@ -151,7 +281,10 @@ describe('findStale', () => {
       { id: 'file', babyId: 'a', type: 'sleep', startAt: T - HOUR },
     ]);
     // A diaper is not a sleep, and another baby's sleep is not this baby's.
-    const other = [sleep('x', T, { babyId: 'c', endAt: T + 1 }), { ...sleep('y', T), type: 'diaper', wet: true, dirty: false } as TrackerEvent];
+    const other = [
+      sleep('x', T, { babyId: 'c', endAt: T + 1 }),
+      { ...sleep('y', T), type: 'diaper', wet: true, dirty: false } as TrackerEvent,
+    ];
     expect(findStale([fromFile], new Set(['file']), other, T, T + MINUTE)).toEqual([]);
   });
 
@@ -164,6 +297,8 @@ describe('findStale', () => {
   });
 
   it("ignores the device's own timers", () => {
-    expect(findStale([sleep('mine', T - HOUR)], new Set(), [sleep('newer', T)], T, NOW)).toEqual([]);
+    expect(findStale([sleep('mine', T - HOUR)], new Set(), [sleep('newer', T)], T, NOW)).toEqual(
+      [],
+    );
   });
 });

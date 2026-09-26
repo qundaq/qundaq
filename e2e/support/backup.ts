@@ -42,7 +42,12 @@ export async function stubShare(page: Page) {
         for (const file of data?.files ?? []) {
           const bytes = new Uint8Array(await file.arrayBuffer());
           const bom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
-          stub.__shared.push({ name: file.name, type: file.type, bom, text: new TextDecoder().decode(bytes) });
+          stub.__shared.push({
+            name: file.name,
+            type: file.type,
+            bom,
+            text: new TextDecoder().decode(bytes),
+          });
         }
       },
     });
@@ -79,7 +84,10 @@ export async function downloadedText(download: Download): Promise<string> {
 
 /** Ayarlar → Yedek al; returns the open export sheet. */
 export async function openExport(page: Page) {
-  await page.getByRole('navigation', { name: 'Ana gezinme' }).getByRole('button', { name: 'Ayarlar', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Yedek al', exact: true }).click();
   return page.getByRole('dialog', { name: 'Yedek al' });
 }
@@ -118,7 +126,9 @@ export function babyIdOf(page: Page, name: string): Promise<string> {
           const getAll = db.transaction('babies', 'readonly').objectStore('babies').getAll();
           getAll.onsuccess = () => {
             db.close();
-            const baby = (getAll.result as { id: string; name: string }[]).find((row) => row.name === wanted);
+            const baby = (getAll.result as { id: string; name: string }[]).find(
+              (row) => row.name === wanted,
+            );
             if (baby) resolve(baby.id);
             else reject(new Error(`No baby called ${wanted}`));
           };
@@ -136,7 +146,8 @@ export async function takeBackup(page: Page): Promise<string> {
   await sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
   await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
   const files = await sharedFiles(page);
-  if (files.length !== before + 1) throw new Error(`expected one new shared file, got ${files.length - before}`);
+  if (files.length !== before + 1)
+    throw new Error(`expected one new shared file, got ${files.length - before}`);
   return files.at(-1)!.text;
 }
 
@@ -162,7 +173,12 @@ export async function clearAppData(page: Page) {
 
 /** Ayarlar → Yedekten geri yükle with a file holding `text`; returns the import sheet. */
 export async function pickBackupFile(page: Page, text: string, name = 'qundaq-backup.json') {
-  await page.getByRole('navigation', { name: 'Ana gezinme' }).getByRole('button', { name: 'Ayarlar', exact: true }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(text) });
+  await page
+    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .click();
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(text) });
   return page.getByRole('dialog', { name: 'Yedekten geri yükle' });
 }

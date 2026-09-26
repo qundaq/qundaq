@@ -23,10 +23,22 @@ export interface GrowthPoint {
 }
 
 function emptyTotals(): DailyTotals {
-  return { feeds: 0, breastMs: 0, breastMsBySide: { L: 0, R: 0 }, bottleMl: 0, bottles: 0, sleepMs: 0, sleeps: 0, wet: 0, dirty: 0, diapers: 0 };
+  return {
+    feeds: 0,
+    breastMs: 0,
+    breastMsBySide: { L: 0, R: 0 },
+    bottleMl: 0,
+    bottles: 0,
+    sleepMs: 0,
+    sleeps: 0,
+    wet: 0,
+    dirty: 0,
+    diapers: 0,
+  };
 }
 
-const finite = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+const finite = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : 0;
 const isSide = (side: unknown): side is Side => side === 'L' || side === 'R';
 
 /**
@@ -34,7 +46,13 @@ const isSide = (side: unknown): side is Side => side === 'L' || side === 'R';
  * running sleep or feed counts up to `now`. Deleted entries are left out, and a row with missing fields
  * (for example a bad import) never throws.
  */
-export function dailyTotals(events: readonly TrackerEvent[], babyId: Id, from: number, to: number, now: number): DailyTotals {
+export function dailyTotals(
+  events: readonly TrackerEvent[],
+  babyId: Id,
+  from: number,
+  to: number,
+  now: number,
+): DailyTotals {
   const totals = emptyTotals();
   const startsInside = (event: TrackerEvent) => event.startAt >= from && event.startAt < to;
   for (const event of events) {
@@ -79,7 +97,13 @@ export function dailyTotals(events: readonly TrackerEvent[], babyId: Id, from: n
 export function pumpTotalMl(events: readonly TrackerEvent[], from: number, to: number): number {
   let total = 0;
   for (const event of events) {
-    if (event.type !== 'pump' || event.deletedAt !== undefined || event.startAt < from || event.startAt >= to) continue;
+    if (
+      event.type !== 'pump' ||
+      event.deletedAt !== undefined ||
+      event.startAt < from ||
+      event.startAt >= to
+    )
+      continue;
     total += finite(event.mlLeft) + finite(event.mlRight);
   }
   return total;
@@ -104,7 +128,8 @@ export function growthSeries(events: readonly TrackerEvent[], metric: GrowthMetr
   for (const event of events) {
     if (event.type !== 'growth' || event.deletedAt !== undefined) continue;
     const value = event[metric];
-    if (typeof value === 'number' && Number.isFinite(value)) points.push({ at: event.startAt, value });
+    if (typeof value === 'number' && Number.isFinite(value))
+      points.push({ at: event.startAt, value });
   }
   return points.sort((a, b) => a.at - b.at);
 }

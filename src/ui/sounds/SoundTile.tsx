@@ -17,7 +17,13 @@ export function SoundTile({ name, level, preparing, onToggle, onLevel }: Props) 
   return (
     <div className="sound-tile">
       {/* The name is the accessible name; the "Hazırlanıyor…" text is visual only, so the name never changes. */}
-      <button type="button" className="tile" aria-pressed={active} aria-label={name} onClick={onToggle}>
+      <button
+        type="button"
+        className="tile"
+        aria-pressed={active}
+        aria-label={name}
+        onClick={onToggle}
+      >
         <span>{name}</span>
         {preparing && <span className="small">{t('sounds.preparing')}</span>}
       </button>

@@ -17,7 +17,11 @@ export function formatNumber(locale: Locale, value: number, maximumFractionDigit
 }
 
 export function clockTime(locale: Locale, ms: number): string {
-  return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ms);
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(ms);
 }
 
 export function shortDate(locale: Locale, ms: number): string {
@@ -25,7 +29,11 @@ export function shortDate(locale: Locale, ms: number): string {
 }
 
 export function longDate(locale: Locale, ms: number): string {
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(ms);
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(ms);
 }
 
 export function weekdayShort(locale: Locale, ms: number): string {
@@ -37,7 +45,9 @@ export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: 
   const daysAgo = dayOffset(dayStart, now);
   if (daysAgo === 0) return t('day.today');
   if (daysAgo === 1) return t('day.yesterday');
-  return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(dayStart);
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(
+    dayStart,
+  );
 }
 
 /** A clock time, marked when it falls on another day than the one shown. */
@@ -51,7 +61,12 @@ export function timeOnDay(t: TranslateFn, locale: Locale, ms: number, shownDay: 
 }
 
 /** "14:05"; for a timer "22:10 – 06:30" or "22:10 – devam ediyor", each end marked if on another day. */
-export function timeRange(t: TranslateFn, locale: Locale, event: TrackerEvent, shownDay: number): string {
+export function timeRange(
+  t: TranslateFn,
+  locale: Locale,
+  event: TrackerEvent,
+  shownDay: number,
+): string {
   const start = timeOnDay(t, locale, event.startAt, shownDay);
   if (!isTimedType(event.type)) return start;
   if (event.endAt === undefined) return t('log.range.running', { start });
@@ -70,13 +85,19 @@ export function firstLine(text: string, max = 80): string {
 
 /** Grams as "3,453 kg" (exact: weights are stored in whole grams), millimetres as "52,5 cm", in the locale's number format. */
 export function formatMeasurement(locale: Locale, metric: GrowthMetric, value: number): string {
-  return metric === 'weightG' ? `${formatNumber(locale, value / 1000, 3)} kg` : `${formatNumber(locale, value / 10, 1)} cm`;
+  return metric === 'weightG'
+    ? `${formatNumber(locale, value / 1000, 3)} kg`
+    : `${formatNumber(locale, value / 10, 1)} cm`;
 }
 
-function sideTotals(t: TranslateFn, segments: readonly { side: Side; start: number; end?: number }[]): string {
+function sideTotals(
+  t: TranslateFn,
+  segments: readonly { side: Side; start: number; end?: number }[],
+): string {
   const totals = new Map<Side, number>();
   for (const segment of segments) {
-    if (segment.end !== undefined) totals.set(segment.side, (totals.get(segment.side) ?? 0) + (segment.end - segment.start));
+    if (segment.end !== undefined)
+      totals.set(segment.side, (totals.get(segment.side) ?? 0) + (segment.end - segment.start));
   }
   return (['L', 'R'] as const)
     .filter((side) => totals.has(side))
@@ -89,7 +110,12 @@ function sideTotals(t: TranslateFn, segments: readonly { side: Side; start: numb
 }
 
 /** One line of detail per entry for the Günlük list. Tolerates rows with missing optional fields. */
-export function describeEvent(t: TranslateFn, locale: Locale, event: TrackerEvent, now: number): string {
+export function describeEvent(
+  t: TranslateFn,
+  locale: Locale,
+  event: TrackerEvent,
+  now: number,
+): string {
   const ml = (value: number) => t('unit.ml', { ml: formatNumber(locale, value) });
   switch (event.type) {
     case 'sleep':
@@ -97,13 +123,19 @@ export function describeEvent(t: TranslateFn, locale: Locale, event: TrackerEven
     case 'breastfeed': {
       const segments = event.segments ?? [];
       const current = segments.at(-1);
-      if (event.endAt === undefined && current) return `${t(`side.${current.side}.button`)} · ${t('log.ongoing')}`;
+      if (event.endAt === undefined && current)
+        return `${t(`side.${current.side}.button`)} · ${t('log.ongoing')}`;
       return sideTotals(t, segments);
     }
     case 'bottle':
       return `${ml(event.ml)} · ${t(`bottle.${event.contents}`)}`;
     case 'diaper': {
-      const kind = event.wet && event.dirty ? t('describe.diaper.both') : event.dirty ? t('diaper.dirty.button') : t('diaper.wet.button');
+      const kind =
+        event.wet && event.dirty
+          ? t('describe.diaper.both')
+          : event.dirty
+            ? t('diaper.dirty.button')
+            : t('diaper.wet.button');
       const parts = [kind];
       if (event.stoolColor) parts.push(t(`stool.color.${event.stoolColor}`));
       if (event.consistency) parts.push(t(`consistency.${event.consistency}`));
@@ -117,9 +149,12 @@ export function describeEvent(t: TranslateFn, locale: Locale, event: TrackerEven
     }
     case 'growth': {
       const parts: string[] = [];
-      if (event.weightG !== undefined) parts.push(formatMeasurement(locale, 'weightG', event.weightG));
-      if (event.heightMm !== undefined) parts.push(t('describe.height', { value: formatNumber(locale, event.heightMm / 10, 1) }));
-      if (event.headMm !== undefined) parts.push(t('describe.head', { value: formatNumber(locale, event.headMm / 10, 1) }));
+      if (event.weightG !== undefined)
+        parts.push(formatMeasurement(locale, 'weightG', event.weightG));
+      if (event.heightMm !== undefined)
+        parts.push(t('describe.height', { value: formatNumber(locale, event.heightMm / 10, 1) }));
+      if (event.headMm !== undefined)
+        parts.push(t('describe.head', { value: formatNumber(locale, event.headMm / 10, 1) }));
       return parts.join(' · ');
     }
     case 'temperature':

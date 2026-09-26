@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fakeAudio, soundStatus, tile } from './support/audio';
-import { downloadedText, failNextShare, openExport, pickBackupFile, stubShare, takeBackup } from './support/backup';
+import {
+  downloadedText,
+  failNextShare,
+  openExport,
+  pickBackupFile,
+  stubShare,
+  takeBackup,
+} from './support/backup';
 import { addBabyInSettings, babyCard, logRows, openRow, openTab } from './support/tracking';
 
 // The browser may re-check the app's own sw.js for updates on navigation. That is the single request
@@ -58,7 +65,8 @@ test('makes no network requests after the first load', async ({ page, context, b
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   const card = babyCard(page, 'Ada');
-  const quick = (name: string) => page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
+  const quick = (name: string) =>
+    page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
 
   await quick('Bez').click();
   const diaper = page.getByRole('dialog', { name: 'Bez' });
@@ -68,7 +76,10 @@ test('makes no network requests after the first load', async ({ page, context, b
   await expect(card).toContainText('ıslak + kirli');
 
   await quick('Emzir').click();
-  await page.getByRole('dialog', { name: 'Emzirme' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Emzirme' })
+    .getByRole('button', { name: 'Başlat', exact: true })
+    .click();
   await expect(card).toContainText('Emziriyor');
   await card.getByRole('button', { name: /Emzirmeyi bitir/ }).click();
   await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
@@ -129,7 +140,9 @@ test('makes no network requests after the first load', async ({ page, context, b
   await csv.getByRole('button', { name: 'Tamam', exact: true }).click();
   const exportSheet = await openExport(page);
   await failNextShare(page, 'DataError');
-  await exportSheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
+  await exportSheet
+    .getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true })
+    .click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     exportSheet.getByRole('button', { name: 'Dosyayı indir', exact: true }).click(),
@@ -139,7 +152,9 @@ test('makes no network requests after the first load', async ({ page, context, b
   await exportSheet.getByRole('button', { name: 'Tamam', exact: true }).click();
   const restore = await pickBackupFile(page, backup);
   await restore.getByRole('button', { name: 'Geri yükle', exact: true }).click();
-  await expect(restore.getByRole('status')).toHaveText('Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.');
+  await expect(restore.getByRole('status')).toHaveText(
+    'Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.',
+  );
   await restore.getByRole('button', { name: 'Tamam', exact: true }).click();
 
   await openTab(page, 'Ayarlar');

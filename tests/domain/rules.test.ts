@@ -21,30 +21,54 @@ function saved(draft: EventDraft, id = 'e1'): TrackerEvent {
 
 describe('validateEvent — common rules', () => {
   it('accepts a finished sleep', () => {
-    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 60 * MINUTE, endAt: NOW }, [], NOW)).toEqual([]);
+    expect(
+      validateEvent(
+        { type: 'sleep', babyId: 'a', startAt: NOW - 60 * MINUTE, endAt: NOW },
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
   });
 
   it('requires a baby except for pumping', () => {
-    expect(validateEvent({ type: 'diaper', babyId: null, startAt: NOW, wet: true, dirty: false }, [], NOW)).toContain(
-      'baby-required',
-    );
-    expect(validateEvent({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60 }, [], NOW)).toEqual([]);
+    expect(
+      validateEvent(
+        { type: 'diaper', babyId: null, startAt: NOW, wet: true, dirty: false },
+        [],
+        NOW,
+      ),
+    ).toContain('baby-required');
+    expect(
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60 }, [], NOW),
+    ).toEqual([]);
   });
 
   it('allows a small clock skew but rejects times further in the future', () => {
-    const ok: EventDraft = { type: 'sleep', babyId: 'a', startAt: NOW + FUTURE_TOLERANCE_MS - MINUTE };
-    const late: EventDraft = { type: 'sleep', babyId: 'a', startAt: NOW + FUTURE_TOLERANCE_MS + MINUTE };
+    const ok: EventDraft = {
+      type: 'sleep',
+      babyId: 'a',
+      startAt: NOW + FUTURE_TOLERANCE_MS - MINUTE,
+    };
+    const late: EventDraft = {
+      type: 'sleep',
+      babyId: 'a',
+      startAt: NOW + FUTURE_TOLERANCE_MS + MINUTE,
+    };
     expect(validateEvent(ok, [], NOW)).toEqual([]);
     expect(validateEvent(late, [], NOW)).toEqual(['in-future']);
-    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW, endAt: NOW + 10 * MINUTE }, [], NOW)).toEqual([
-      'in-future',
-    ]);
+    expect(
+      validateEvent(
+        { type: 'sleep', babyId: 'a', startAt: NOW, endAt: NOW + 10 * MINUTE },
+        [],
+        NOW,
+      ),
+    ).toEqual(['in-future']);
   });
 
   it('rejects an end before the start', () => {
-    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW, endAt: NOW - MINUTE }, [], NOW)).toEqual([
-      'end-before-start',
-    ]);
+    expect(
+      validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW, endAt: NOW - MINUTE }, [], NOW),
+    ).toEqual(['end-before-start']);
   });
 });
 
@@ -59,10 +83,20 @@ describe('validateEvent — running timers', () => {
 
   it('allows only one running breastfeed per baby', () => {
     const openFeedA = saved(
-      { type: 'breastfeed', babyId: 'a', startAt: NOW - 10 * MINUTE, segments: [{ side: 'L', start: NOW - 10 * MINUTE }] },
+      {
+        type: 'breastfeed',
+        babyId: 'a',
+        startAt: NOW - 10 * MINUTE,
+        segments: [{ side: 'L', start: NOW - 10 * MINUTE }],
+      },
       'feeding',
     );
-    const draft: EventDraft = { type: 'breastfeed', babyId: 'a', startAt: NOW, segments: [{ side: 'R', start: NOW }] };
+    const draft: EventDraft = {
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt: NOW,
+      segments: [{ side: 'R', start: NOW }],
+    };
     expect(validateEvent(draft, [openFeedA], NOW)).toEqual(['already-running']);
     expect(validateEvent({ ...draft, babyId: 'b' }, [openFeedA], NOW)).toEqual([]);
     expect(validateEvent(draft, [openSleepA], NOW)).toEqual([]);
@@ -77,7 +111,11 @@ describe('validateEvent — running timers', () => {
 
   it('a finished entry never conflicts with a running one', () => {
     expect(
-      validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 90 * MINUTE, endAt: NOW - 60 * MINUTE }, [openSleepA], NOW),
+      validateEvent(
+        { type: 'sleep', babyId: 'a', startAt: NOW - 90 * MINUTE, endAt: NOW - 60 * MINUTE },
+        [openSleepA],
+        NOW,
+      ),
     ).toEqual([]);
   });
 });
@@ -85,18 +123,43 @@ describe('validateEvent — running timers', () => {
 describe('validateEvent — breastfeeding segments', () => {
   const start = NOW - 20 * MINUTE;
   const draft = (segments: BreastSegment[], endAt?: number) =>
-    ({ type: 'breastfeed', babyId: 'a', startAt: start, segments, ...(endAt === undefined ? {} : { endAt }) }) as EventDraft;
+    ({
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt: start,
+      segments,
+      ...(endAt === undefined ? {} : { endAt }),
+    }) as EventDraft;
 
   it('accepts closed segments followed by one open segment', () => {
     expect(
-      validateEvent(draft([{ side: 'L', start, end: start + 8 * MINUTE }, { side: 'R', start: start + 8 * MINUTE }]), [], NOW),
+      validateEvent(
+        draft([
+          { side: 'L', start, end: start + 8 * MINUTE },
+          { side: 'R', start: start + 8 * MINUTE },
+        ]),
+        [],
+        NOW,
+      ),
     ).toEqual([]);
   });
 
   it.each([
     ['no segments', []],
-    ['an open segment that is not last', [{ side: 'L' as const, start }, { side: 'R' as const, start: start + MINUTE }]],
-    ['overlapping segments', [{ side: 'L' as const, start, end: start + 10 * MINUTE }, { side: 'R' as const, start: start + 5 * MINUTE }]],
+    [
+      'an open segment that is not last',
+      [
+        { side: 'L' as const, start },
+        { side: 'R' as const, start: start + MINUTE },
+      ],
+    ],
+    [
+      'overlapping segments',
+      [
+        { side: 'L' as const, start, end: start + 10 * MINUTE },
+        { side: 'R' as const, start: start + 5 * MINUTE },
+      ],
+    ],
     ['a segment before the feed started', [{ side: 'L' as const, start: start - MINUTE }]],
     ['a segment that ends before it starts', [{ side: 'L' as const, start, end: start - MINUTE }]],
   ])('rejects %s', (_label, segments) => {
@@ -104,29 +167,55 @@ describe('validateEvent — breastfeeding segments', () => {
   });
 
   it('a finished feed must have every segment closed within it', () => {
-    expect(validateEvent(draft([{ side: 'L', start }], start + 10 * MINUTE), [], NOW)).toContain('segments-invalid');
-    expect(validateEvent(draft([{ side: 'L', start, end: start + 12 * MINUTE }], start + 10 * MINUTE), [], NOW)).toContain(
+    expect(validateEvent(draft([{ side: 'L', start }], start + 10 * MINUTE), [], NOW)).toContain(
       'segments-invalid',
     );
-    expect(validateEvent(draft([{ side: 'L', start, end: start + 10 * MINUTE }], start + 10 * MINUTE), [], NOW)).toEqual([]);
+    expect(
+      validateEvent(
+        draft([{ side: 'L', start, end: start + 12 * MINUTE }], start + 10 * MINUTE),
+        [],
+        NOW,
+      ),
+    ).toContain('segments-invalid');
+    expect(
+      validateEvent(
+        draft([{ side: 'L', start, end: start + 10 * MINUTE }], start + 10 * MINUTE),
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
   });
 });
 
 describe('validateEvent — amounts and diapers', () => {
   it.each([0, -5, 1001, Number.NaN])('rejects a bottle of %s ml', (ml) => {
-    expect(validateEvent({ type: 'bottle', babyId: 'a', startAt: NOW, ml, contents: 'formula' }, [], NOW)).toEqual([
-      'amount-invalid',
-    ]);
+    expect(
+      validateEvent(
+        { type: 'bottle', babyId: 'a', startAt: NOW, ml, contents: 'formula' },
+        [],
+        NOW,
+      ),
+    ).toEqual(['amount-invalid']);
   });
 
   it('accepts a normal bottle', () => {
-    expect(validateEvent({ type: 'bottle', babyId: 'a', startAt: NOW, ml: 120, contents: 'breastmilk' }, [], NOW)).toEqual([]);
+    expect(
+      validateEvent(
+        { type: 'bottle', babyId: 'a', startAt: NOW, ml: 120, contents: 'breastmilk' },
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
   });
 
   it('a diaper must be wet, dirty or both', () => {
-    expect(validateEvent({ type: 'diaper', babyId: 'a', startAt: NOW, wet: false, dirty: false }, [], NOW)).toEqual([
-      'diaper-empty',
-    ]);
+    expect(
+      validateEvent(
+        { type: 'diaper', babyId: 'a', startAt: NOW, wet: false, dirty: false },
+        [],
+        NOW,
+      ),
+    ).toEqual(['diaper-empty']);
   });
 });
 
@@ -146,8 +235,16 @@ describe('validateBabyName / ValidationError', () => {
 
 describe('validateEvent — duration limit', () => {
   it('rejects a finished sleep longer than 24 hours', () => {
-    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 25 * HOUR, endAt: NOW }, [], NOW)).toEqual(['too-long']);
-    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - MAX_DURATION_MS.sleep, endAt: NOW }, [], NOW)).toEqual([]);
+    expect(
+      validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 25 * HOUR, endAt: NOW }, [], NOW),
+    ).toEqual(['too-long']);
+    expect(
+      validateEvent(
+        { type: 'sleep', babyId: 'a', startAt: NOW - MAX_DURATION_MS.sleep, endAt: NOW },
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
   });
 
   it('rejects a finished feed longer than 4 hours, pauses included', () => {
@@ -166,7 +263,9 @@ describe('validateEvent — duration limit', () => {
   });
 
   it('never checks running entries, however old', () => {
-    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 30 * HOUR }, [], NOW)).toEqual([]);
+    expect(
+      validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW - 30 * HOUR }, [], NOW),
+    ).toEqual([]);
   });
 });
 
@@ -181,12 +280,16 @@ describe('validateEvent — pumping', () => {
     [{ mlLeft: 60.5 }, ['pump-invalid']],
     [{ mlLeft: 60, mlRight: Number.NaN }, ['pump-invalid']],
   ])('%o → %o', (amounts, expected) => {
-    expect(validateEvent({ type: 'pump', babyId: null, startAt: NOW, ...amounts }, [], NOW)).toEqual(expected);
+    expect(
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW, ...amounts }, [], NOW),
+    ).toEqual(expected);
   });
 });
 
 describe('validateEvent — growth', () => {
-  const growth = (metrics: Partial<{ weightG: number; heightMm: number; headMm: number }>): EventDraft => ({
+  const growth = (
+    metrics: Partial<{ weightG: number; heightMm: number; headMm: number }>,
+  ): EventDraft => ({
     type: 'growth',
     babyId: 'a',
     startAt: NOW,
@@ -198,7 +301,9 @@ describe('validateEvent — growth', () => {
   });
 
   it('accepts whole grams and millimetres inside the ranges', () => {
-    expect(validateEvent(growth({ weightG: 3450, heightMm: 525, headMm: 350 }), [], NOW)).toEqual([]);
+    expect(validateEvent(growth({ weightG: 3450, heightMm: 525, headMm: 350 }), [], NOW)).toEqual(
+      [],
+    );
     expect(validateEvent(growth({ weightG: 300 }), [], NOW)).toEqual([]);
     expect(validateEvent(growth({ heightMm: 1300, headMm: 700 }), [], NOW)).toEqual([]);
   });
@@ -221,18 +326,24 @@ describe('validateEvent — growth', () => {
 
 describe('validateEvent — temperature, medication and notes', () => {
   it.each([29.9, 45.1, Number.NaN, Number.POSITIVE_INFINITY])('rejects %s °C', (celsius) => {
-    expect(validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius }, [], NOW)).toEqual(['temperature-invalid']);
+    expect(
+      validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius }, [], NOW),
+    ).toEqual(['temperature-invalid']);
   });
 
   it('accepts 30.0 to 45.0 °C', () => {
-    expect(validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 30 }, [], NOW)).toEqual([]);
-    expect(validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 45 }, [], NOW)).toEqual([]);
+    expect(
+      validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 30 }, [], NOW),
+    ).toEqual([]);
+    expect(
+      validateEvent({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 45 }, [], NOW),
+    ).toEqual([]);
   });
 
   it('a medicine needs a name', () => {
-    expect(validateEvent({ type: 'medication', babyId: 'a', startAt: NOW, name: '   ' }, [], NOW)).toEqual([
-      'medication-name-required',
-    ]);
+    expect(
+      validateEvent({ type: 'medication', babyId: 'a', startAt: NOW, name: '   ' }, [], NOW),
+    ).toEqual(['medication-name-required']);
   });
 
   it('limits the length of names, doses and notes', () => {
@@ -245,16 +356,35 @@ describe('validateEvent — temperature, medication and notes', () => {
     });
     expect(validateEvent(medication('x'.repeat(60), 'y'.repeat(40)), [], NOW)).toEqual([]);
     expect(validateEvent(medication('x'.repeat(61)), [], NOW)).toEqual(['text-too-long']);
-    expect(validateEvent(medication('D vitamini', 'y'.repeat(41)), [], NOW)).toEqual(['text-too-long']);
-    const diaper = (note: string): EventDraft => ({ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false, note });
+    expect(validateEvent(medication('D vitamini', 'y'.repeat(41)), [], NOW)).toEqual([
+      'text-too-long',
+    ]);
+    const diaper = (note: string): EventDraft => ({
+      type: 'diaper',
+      babyId: 'a',
+      startAt: NOW,
+      wet: true,
+      dirty: false,
+      note,
+    });
     expect(validateEvent(diaper('n'.repeat(500)), [], NOW)).toEqual([]);
     expect(validateEvent(diaper('n'.repeat(501)), [], NOW)).toEqual(['text-too-long']);
   });
 
   it('a health note needs text', () => {
-    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW }, [], NOW)).toEqual(['note-required']);
-    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW, note: '  ' }, [], NOW)).toEqual(['note-required']);
-    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW, note: 'Aşı yapıldı' }, [], NOW)).toEqual([]);
+    expect(validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW }, [], NOW)).toEqual([
+      'note-required',
+    ]);
+    expect(
+      validateEvent({ type: 'healthNote', babyId: 'a', startAt: NOW, note: '  ' }, [], NOW),
+    ).toEqual(['note-required']);
+    expect(
+      validateEvent(
+        { type: 'healthNote', babyId: 'a', startAt: NOW, note: 'Aşı yapıldı' },
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
   });
 });
 

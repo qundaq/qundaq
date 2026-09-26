@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { REVOKE_AFTER_MS, canShareFiles, createDownloads, shareFiles, type DownloadDeps, type ShareNavigator } from '../../src/platform/share';
+import {
+  REVOKE_AFTER_MS,
+  canShareFiles,
+  createDownloads,
+  shareFiles,
+  type DownloadDeps,
+  type ShareNavigator,
+} from '../../src/platform/share';
 
 const file = (name = 'qundaq-backup.json') => new File(['{}'], name, { type: 'application/json' });
 
@@ -11,7 +18,14 @@ describe('canShareFiles', () => {
     expect(canShareFiles(files, {})).toBe(false);
     expect(canShareFiles(files, { share })).toBe(false);
     expect(canShareFiles(files, { share, canShare: () => false })).toBe(false);
-    expect(canShareFiles(files, { share, canShare: () => { throw new TypeError('bad'); } })).toBe(false);
+    expect(
+      canShareFiles(files, {
+        share,
+        canShare: () => {
+          throw new TypeError('bad');
+        },
+      }),
+    ).toBe(false);
     const canShare = vi.fn(() => true);
     expect(canShareFiles(files, { share, canShare })).toBe(true);
     expect(canShare).toHaveBeenCalledWith({ files });

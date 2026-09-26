@@ -1,10 +1,30 @@
 import { fromDateInputValue } from '../domain/days';
 import { scaleToInt } from '../domain/decimal';
-import { BABY_NAME_MAX, GROWTH_RANGES, MAX_BOTTLE_ML, MAX_PUMP_ML, MIX_NAME_MAX, TEMPERATURE_RANGE_C, TEXT_LIMITS, validateMixName } from '../domain/rules';
+import {
+  BABY_NAME_MAX,
+  GROWTH_RANGES,
+  MAX_BOTTLE_ML,
+  MAX_PUMP_ML,
+  MIX_NAME_MAX,
+  TEMPERATURE_RANGE_C,
+  TEXT_LIMITS,
+  validateMixName,
+} from '../domain/rules';
 import { MAX_LAYERS } from '../domain/sounds';
 import { STOOL_COLORS } from '../domain/stool';
 import { DAY } from '../domain/time';
-import type { Baby, BottleContents, BreastSegment, Consistency, EventPayload, EventType, Id, Mix, MixLayer, TrackerEvent } from '../domain/types';
+import type {
+  Baby,
+  BottleContents,
+  BreastSegment,
+  Consistency,
+  EventPayload,
+  EventType,
+  Id,
+  Mix,
+  MixLayer,
+  TrackerEvent,
+} from '../domain/types';
 import { LOCALES, type Locale } from '../i18n';
 import { BACKUP_APP, BACKUP_VERSION } from './format';
 import { migrateBackup, type RawBackup } from './migrate';
@@ -165,15 +185,24 @@ function readBaby(raw: unknown, warnBirthDate: () => void): Baby {
   const color = own(raw, 'color');
   const rawBirthDate = own(raw, 'birthDate');
   const archived = own(raw, 'archived');
-  if (typeof name !== 'string' || name.trim() === '' || name.length > BABY_NAME_MAX) fail('bad-baby');
+  if (typeof name !== 'string' || name.trim() === '' || name.length > BABY_NAME_MAX)
+    fail('bad-baby');
   if (typeof color !== 'string' || !COLOR.test(color)) fail('bad-baby');
   let birthDate: string | undefined;
   if (rawBirthDate !== undefined) {
-    if (typeof rawBirthDate === 'string' && fromDateInputValue(rawBirthDate) !== null) birthDate = rawBirthDate;
+    if (typeof rawBirthDate === 'string' && fromDateInputValue(rawBirthDate) !== null)
+      birthDate = rawBirthDate;
     else warnBirthDate();
   }
   if (typeof archived !== 'boolean') fail('bad-baby');
-  return { id, name, color, ...(birthDate === undefined ? {} : { birthDate }), archived, ...readBookkeeping(raw) };
+  return {
+    id,
+    name,
+    color,
+    ...(birthDate === undefined ? {} : { birthDate }),
+    archived,
+    ...readBookkeeping(raw),
+  };
 }
 
 /** A note is kept byte for byte; only a whitespace-only one, which the app never stores, is dropped. */
@@ -213,13 +242,16 @@ function optionalInt(row: Row, key: string, min: number, max: number): number | 
 type Payload = Omit<EventPayload, 'type'> | Record<string, never>;
 
 /** One reader per event type; a Record over EventType, so a new type cannot be forgotten here. */
-const PAYLOADS: { [K in EventType]: (row: Row, endAt: number | undefined, note: string | undefined) => Payload } = {
+const PAYLOADS: {
+  [K in EventType]: (row: Row, endAt: number | undefined, note: string | undefined) => Payload;
+} = {
   sleep: () => ({}),
   breastfeed: (row, endAt) => ({ segments: readSegments(row, endAt) }),
   bottle: (row) => {
     const ml = own(row, 'ml');
     const contents = own(row, 'contents');
-    if (!isIntIn(ml, 1, MAX_BOTTLE_ML) || !BOTTLE_CONTENTS.includes(contents as BottleContents)) fail('bad-payload');
+    if (!isIntIn(ml, 1, MAX_BOTTLE_ML) || !BOTTLE_CONTENTS.includes(contents as BottleContents))
+      fail('bad-payload');
     return { ml, contents: contents as BottleContents };
   },
   diaper: (row) => {
@@ -228,8 +260,10 @@ const PAYLOADS: { [K in EventType]: (row: Row, endAt: number | undefined, note: 
     const stoolColor = own(row, 'stoolColor');
     const consistency = own(row, 'consistency');
     if (typeof wet !== 'boolean' || typeof dirty !== 'boolean') fail('bad-payload');
-    if (stoolColor !== undefined && !STOOL_COLOR_IDS.includes(stoolColor as string)) fail('bad-payload');
-    if (consistency !== undefined && !CONSISTENCIES.includes(consistency as Consistency)) fail('bad-payload');
+    if (stoolColor !== undefined && !STOOL_COLOR_IDS.includes(stoolColor as string))
+      fail('bad-payload');
+    if (consistency !== undefined && !CONSISTENCIES.includes(consistency as Consistency))
+      fail('bad-payload');
     return {
       wet,
       dirty,
@@ -241,7 +275,10 @@ const PAYLOADS: { [K in EventType]: (row: Row, endAt: number | undefined, note: 
     const mlLeft = optionalInt(row, 'mlLeft', 1, MAX_PUMP_ML);
     const mlRight = optionalInt(row, 'mlRight', 1, MAX_PUMP_ML);
     if (mlLeft === undefined && mlRight === undefined) fail('bad-payload');
-    return { ...(mlLeft === undefined ? {} : { mlLeft }), ...(mlRight === undefined ? {} : { mlRight }) };
+    return {
+      ...(mlLeft === undefined ? {} : { mlLeft }),
+      ...(mlRight === undefined ? {} : { mlRight }),
+    };
   },
   growth: (row) => {
     const payload: Record<string, number> = {};
@@ -265,10 +302,12 @@ const PAYLOADS: { [K in EventType]: (row: Row, endAt: number | undefined, note: 
   medication: (row) => {
     const rawName = own(row, 'name');
     const rawDose = own(row, 'dose');
-    if (typeof rawName !== 'string' || (rawDose !== undefined && typeof rawDose !== 'string')) fail('bad-payload');
+    if (typeof rawName !== 'string' || (rawDose !== undefined && typeof rawDose !== 'string'))
+      fail('bad-payload');
     const name = rawName.trim();
     const dose = rawDose?.trim() ?? '';
-    if (name === '' || name.length > TEXT_LIMITS.medicationName || dose.length > TEXT_LIMITS.dose) fail('bad-payload');
+    if (name === '' || name.length > TEXT_LIMITS.medicationName || dose.length > TEXT_LIMITS.dose)
+      fail('bad-payload');
     return { name, ...(dose === '' ? {} : { dose }) };
   },
   healthNote: (_row, _endAt, note) => (note === undefined ? fail('bad-payload') : {}),
@@ -322,7 +361,8 @@ function readMix(raw: unknown): Mix {
   const name = own(raw, 'name');
   const rawLayers = own(raw, 'layers');
   if (typeof name !== 'string' || validateMixName(name).length > 0) fail('bad-mix');
-  if (!Array.isArray(rawLayers) || rawLayers.length === 0 || rawLayers.length > MAX_LAYERS) fail('bad-mix');
+  if (!Array.isArray(rawLayers) || rawLayers.length === 0 || rawLayers.length > MAX_LAYERS)
+    fail('bad-mix');
   const layers: MixLayer[] = [];
   for (const item of rawLayers) {
     if (!isRecord(item)) fail('bad-mix');
@@ -340,11 +380,16 @@ function readMix(raw: unknown): Mix {
  * What could be read of a skipped row, for the preview. `name` is only read for a baby or a mix row: an
  * event's own `name` field (a medicine) is not a baby name, and must never be reported as if it were one.
  */
-function describeSkipped(raw: unknown, list: SkippedRow['list']): Pick<SkippedRow, 'type' | 'startAt' | 'name'> {
+function describeSkipped(
+  raw: unknown,
+  list: SkippedRow['list'],
+): Pick<SkippedRow, 'type' | 'startAt' | 'name'> {
   if (!isRecord(raw)) return {};
   if (list === 'babies' || list === 'mixes') {
     const name = own(raw, 'name');
-    return typeof name === 'string' ? { name: name.slice(0, list === 'babies' ? BABY_NAME_MAX : MIX_NAME_MAX) } : {};
+    return typeof name === 'string'
+      ? { name: name.slice(0, list === 'babies' ? BABY_NAME_MAX : MIX_NAME_MAX) }
+      : {};
   }
   const type = own(raw, 'type');
   const startAt = own(raw, 'startAt');
@@ -388,7 +433,10 @@ function readRows<T extends { id: Id }>(
   return rows;
 }
 
-function readSettings(raw: unknown, babyIds: ReadonlySet<Id>): { settings: ParsedSettings; ok: boolean } {
+function readSettings(
+  raw: unknown,
+  babyIds: ReadonlySet<Id>,
+): { settings: ParsedSettings; ok: boolean } {
   if (!isRecord(raw)) return { settings: { lastBabyIds: [] }, ok: false };
   const locale = own(raw, 'locale');
   const nightMode = own(raw, 'nightMode');
@@ -401,7 +449,9 @@ function readSettings(raw: unknown, babyIds: ReadonlySet<Id>): { settings: Parse
       ...(localeOk ? { locale: locale as Locale } : {}),
       ...(nightOk ? { nightMode } : {}),
       // Ids of babies that are not in the file are dropped silently: they only preselect chips.
-      lastBabyIds: idsOk ? lastBabyIds.filter((id): id is Id => typeof id === 'string' && babyIds.has(id)) : [],
+      lastBabyIds: idsOk
+        ? lastBabyIds.filter((id): id is Id => typeof id === 'string' && babyIds.has(id))
+        : [],
     },
     ok: localeOk && nightOk && idsOk,
   };
@@ -413,7 +463,9 @@ const EARLIEST_BELIEVABLE = () => new Date(2000, 0, 1).getTime();
 function outOfRange(event: TrackerEvent, now: number): boolean {
   const earliest = EARLIEST_BELIEVABLE();
   const latest = now + DAY;
-  return [event.startAt, event.endAt].some((time) => time !== undefined && (time < earliest || time > latest));
+  return [event.startAt, event.endAt].some(
+    (time) => time !== undefined && (time < earliest || time > latest),
+  );
 }
 
 /**
@@ -430,9 +482,11 @@ export function parseBackup(text: string, now: number): ParseResult {
   } catch {
     return { ok: false, error: 'not-backup' };
   }
-  if (!isRecord(parsed) || own(parsed, 'app') !== BACKUP_APP) return { ok: false, error: 'not-backup' };
+  if (!isRecord(parsed) || own(parsed, 'app') !== BACKUP_APP)
+    return { ok: false, error: 'not-backup' };
   const version = own(parsed, 'schemaVersion');
-  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) return { ok: false, error: 'not-backup' };
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1)
+    return { ok: false, error: 'not-backup' };
   if (version > BACKUP_VERSION) return { ok: false, error: 'newer-version' };
 
   let raw: RawBackup;
@@ -445,7 +499,12 @@ export function parseBackup(text: string, now: number): ParseResult {
   const babies = own(raw, 'babies');
   const events = own(raw, 'events');
   const mixes = own(raw, 'mixes');
-  if (!isTime(exportedAt) || !Array.isArray(babies) || !Array.isArray(events) || !Array.isArray(mixes)) {
+  if (
+    !isTime(exportedAt) ||
+    !Array.isArray(babies) ||
+    !Array.isArray(events) ||
+    !Array.isArray(mixes)
+  ) {
     return { ok: false, error: 'not-backup' };
   }
   const appVersion = own(raw, 'appVersion');
@@ -478,13 +537,20 @@ export function parseBackup(text: string, now: number): ParseResult {
     backup: {
       schemaVersion: BACKUP_VERSION,
       exportedAt,
-      appVersion: typeof appVersion === 'string' && appVersion.length <= MAX_APP_VERSION_LENGTH ? appVersion : '',
+      appVersion:
+        typeof appVersion === 'string' && appVersion.length <= MAX_APP_VERSION_LENGTH
+          ? appVersion
+          : '',
       babies: goodBabies,
       events: goodEvents,
       mixes: goodMixes,
       settings,
     },
     skipped,
-    warnings: { outOfRange: goodEvents.filter((event) => outOfRange(event, now)).length, settings: !settingsOk, badBirthDate },
+    warnings: {
+      outOfRange: goodEvents.filter((event) => outOfRange(event, now)).length,
+      settings: !settingsOk,
+      badBirthDate,
+    },
   };
 }

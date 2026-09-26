@@ -17,9 +17,10 @@ export function toLocalInputValue(ms: number): string {
 export function fromLocalInputValue(value: string): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);
   if (!match) return null;
-  const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part ?? 0)) as [
-    number, number, number, number, number, number,
-  ];
-  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59) return null;
+  const [year, month, day, hour, minute, second] = match
+    .slice(1)
+    .map((part) => Number(part ?? 0)) as [number, number, number, number, number, number];
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59)
+    return null;
   return new Date(year, month - 1, day, hour, minute, second).getTime();
 }

@@ -50,7 +50,9 @@ async function precacheVerified() {
       const request = new Request(url, { cache: 'reload' });
       const response = await fetch(request);
       if (!response.ok) throw new Error(`Precache ${url}: HTTP ${response.status}`);
-      const digest = toHex(await crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer()));
+      const digest = toHex(
+        await crypto.subtle.digest('SHA-256', await response.clone().arrayBuffer()),
+      );
       if (digest !== sha256) throw new Error(`Precache ${url}: SHA-256 mismatch`);
       return { request, response };
     }),
@@ -72,7 +74,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k.startsWith(APP_CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k)));
+      await Promise.all(
+        keys
+          .filter((k) => k.startsWith(APP_CACHE_PREFIX) && k !== CACHE)
+          .map((k) => caches.delete(k)),
+      );
       await self.clients.claim();
     })(),
   );
@@ -112,7 +118,9 @@ self.addEventListener('fetch', (event) => {
       if (request.mode === 'navigate') {
         return (await cache.match('./index.html', { ignoreVary: true })) ?? Response.error();
       }
-      return (await cache.match(request, { ignoreSearch: true, ignoreVary: true })) ?? Response.error();
+      return (
+        (await cache.match(request, { ignoreSearch: true, ignoreVary: true })) ?? Response.error()
+      );
     })(),
   );
 });

@@ -1,5 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addBabyInSettings, dayPicker, logRows, openOther, openRow, openTab, quick, summaryValue } from './support/tracking';
+import {
+  addBabyInSettings,
+  dayPicker,
+  logRows,
+  openOther,
+  openRow,
+  openTab,
+  quick,
+  summaryValue,
+} from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
@@ -9,10 +18,14 @@ test.beforeEach(async ({ page }) => {
 });
 
 function growthMetric(page: Page, name: string) {
-  return page.getByRole('group', { name: 'Ölçüm', exact: true }).getByRole('button', { name, exact: true });
+  return page
+    .getByRole('group', { name: 'Ölçüm', exact: true })
+    .getByRole('button', { name, exact: true });
 }
 
-test('a sleep across midnight counts on both days; the week table has seven rows and fits 320px', async ({ page }) => {
+test('a sleep across midnight counts on both days; the week table has seven rows and fits 320px', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   await quick(page, 'Uyku').click();
@@ -35,10 +48,14 @@ test('a sleep across midnight counts on both days; the week table has seven rows
   await expect(summaryValue(page, 'Uyku')).toHaveText('1 sa 0 dk · 1 kez');
 
   await page.setViewportSize({ width: 320, height: 700 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });
 
-test('growth shows in the chart summary and the measurement table; the metric survives tab switches', async ({ page }) => {
+test('growth shows in the chart summary and the measurement table; the metric survives tab switches', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, 'Ana');
   let sheet = await openOther(page, 'Büyüme');
@@ -67,13 +84,17 @@ test('growth shows in the chart summary and the measurement table; the metric su
   await expect(growthMetric(page, 'Boy')).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('every record type shows up in Günlük and in Özet, without CSP violations', async ({ page }) => {
+test('every record type shows up in Günlük and in Özet, without CSP violations', async ({
+  page,
+}) => {
   test.slow(); // nine sheets in sequence: 12–26 s, close to the default 30 s timeout.
   // The rows (React style dots), the edit sheet and the SVG chart must all stay inside the CSP.
   await page.addInitScript(() => {
     const store: string[] = [];
     (window as unknown as { __cspViolations: string[] }).__cspViolations = store;
-    document.addEventListener('securitypolicyviolation', (e) => store.push(`${e.violatedDirective} ${e.blockedURI}`));
+    document.addEventListener('securitypolicyviolation', (e) =>
+      store.push(`${e.violatedDirective} ${e.blockedURI}`),
+    );
   });
   await page.reload();
   await addBabyInSettings(page, 'Ada');
@@ -131,7 +152,17 @@ test('every record type shows up in Günlük and in Özet, without CSP violation
 
   await openTab(page, 'Günlük');
   await expect(logRows(page)).toHaveCount(9);
-  for (const text of ['Sağ 15 dk', '90 ml · Anne sütü', '1 sa 0 dk', 'Islak', 'D vitamini · 400 IU', '3,45 kg', '37,2 °C', 'Sol 60 ml', 'Aşı yapıldı']) {
+  for (const text of [
+    'Sağ 15 dk',
+    '90 ml · Anne sütü',
+    '1 sa 0 dk',
+    'Islak',
+    'D vitamini · 400 IU',
+    '3,45 kg',
+    '37,2 °C',
+    'Sol 60 ml',
+    'Aşı yapıldı',
+  ]) {
     await expect(logRows(page).filter({ hasText: text }), text).toHaveCount(1);
   }
   await openRow(page, 'Biberon');
@@ -147,7 +178,9 @@ test('every record type shows up in Günlük and in Özet, without CSP violation
   await expect(summaryValue(page, 'Bez')).toHaveText('1 ıslak · 0 kirli · 1 bez');
   await expect(page.locator('.summary-pump')).toContainText('Toplam 60 ml');
   await expect(page.getByRole('img', { name: 'Kilo: 3,45 kg, 1 ölçüm' })).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations)).toEqual([]);
+  expect(
+    await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations),
+  ).toEqual([]);
 });
 
 test('without babies Özet only asks for one', async ({ page }) => {

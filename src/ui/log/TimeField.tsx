@@ -7,7 +7,13 @@ import { editedOptionalTime, editedTime } from './drafts';
  * `null` means "now": the field shows the current time, and the entry is stamped with the moment it is
  * saved. Only a time the user actually picked is kept as a number.
  */
-export function TimeField({ value, onChange }: { value: number | null; onChange: (next: number | null) => void }) {
+export function TimeField({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (next: number | null) => void;
+}) {
   const t = useT();
   useNow(); // keeps the displayed "now" current while the sheet stays open
   return (
@@ -48,7 +54,11 @@ export function EditTimeField({
     <div className="time-field">
       <label className="field">
         {label}
-        <input type="datetime-local" value={toLocalInputValue(value)} onChange={(e) => onChange(editedTime(e.target.value, value, stored))} />
+        <input
+          type="datetime-local"
+          value={toLocalInputValue(value)}
+          onChange={(e) => onChange(editedTime(e.target.value, value, stored))}
+        />
       </label>
       <button type="button" className="btn" onClick={() => onChange(Date.now())}>
         {t('sheet.now')}

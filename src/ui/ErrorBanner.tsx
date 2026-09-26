@@ -13,7 +13,11 @@ type ReportError = (error: unknown, options?: ReportOptions) => void;
 
 const ErrorContext = createContext<ReportError>((error) => console.error(error));
 
-export function messageFor(t: TranslateFn, error: unknown, babies: readonly Pick<Baby, 'id' | 'name'>[] = []): string {
+export function messageFor(
+  t: TranslateFn,
+  error: unknown,
+  babies: readonly Pick<Baby, 'id' | 'name'>[] = [],
+): string {
   const first = error instanceof ValidationError ? error.violations[0] : undefined;
   if (!first) return t('error.saveFailed');
   if (first === 'already-running' && error instanceof ValidationError) {
@@ -62,5 +66,8 @@ export function useReportError(): ReportError {
 /** For `useLiveQuery(..., onError)`: tells the user their data could not be read. */
 export function useReportLoadError(): (error: unknown) => void {
   const report = useReportError();
-  return useCallback((error: unknown) => report(error, { messageKey: 'error.loadFailed' }), [report]);
+  return useCallback(
+    (error: unknown) => report(error, { messageKey: 'error.loadFailed' }),
+    [report],
+  );
 }

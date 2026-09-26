@@ -188,7 +188,13 @@ function emptyStats(): TableStats {
 function mergeTable<T extends Row>(
   local: readonly T[],
   incoming: readonly T[],
-): { result: Map<Id, T>; writes: Map<Id, T>; fromFile: Set<Id>; stats: TableStats; counted: Map<Id, keyof TableStats> } {
+): {
+  result: Map<Id, T>;
+  writes: Map<Id, T>;
+  fromFile: Set<Id>;
+  stats: TableStats;
+  counted: Map<Id, keyof TableStats>;
+} {
   const result = new Map(local.map((row) => [row.id, row]));
   const writes = new Map<Id, T>();
   const fromFile = new Set<Id>();
@@ -217,7 +223,11 @@ function mergeTable<T extends Row>(
 }
 
 /** Moves a file row's count from where mergeTable put it to `to` (or out of the counts), once. */
-function recount(table: { stats: TableStats; counted: Map<Id, keyof TableStats> }, id: Id, to?: keyof TableStats): void {
+function recount(
+  table: { stats: TableStats; counted: Map<Id, keyof TableStats> },
+  id: Id,
+  to?: keyof TableStats,
+): void {
   const bucket = table.counted.get(id);
   if (bucket === undefined) return;
   table.stats[bucket] -= 1;
@@ -259,8 +269,12 @@ function groupByFoldedName(babies: readonly Baby[]): Map<string, Baby[]> {
 export function findSameBabies(local: readonly Baby[], incoming: readonly Baby[]): SameBabyPair[] {
   const localIds = new Set(local.map((baby) => baby.id));
   const incomingIds = new Set(incoming.map((baby) => baby.id));
-  const localGroups = groupByFoldedName(local.filter((baby) => isLive(baby) && !incomingIds.has(baby.id)));
-  const incomingGroups = groupByFoldedName(incoming.filter((baby) => isLive(baby) && !localIds.has(baby.id)));
+  const localGroups = groupByFoldedName(
+    local.filter((baby) => isLive(baby) && !incomingIds.has(baby.id)),
+  );
+  const incomingGroups = groupByFoldedName(
+    incoming.filter((baby) => isLive(baby) && !localIds.has(baby.id)),
+  );
 
   const pairs: SameBabyPair[] = [];
   for (const [key, locals] of localGroups) {
@@ -269,13 +283,22 @@ export function findSameBabies(local: readonly Baby[], incoming: readonly Baby[]
     if (!matches || matches.length !== 1) continue;
     const mine = locals[0]!;
     const theirs = matches[0]!;
-    pairs.push({ localId: mine.id, incomingId: theirs.id, name: theirs.name, localName: mine.name });
+    pairs.push({
+      localId: mine.id,
+      incomingId: theirs.id,
+      name: theirs.name,
+      localName: mine.name,
+    });
   }
   return pairs;
 }
 
 /** Remapped through `rename`, kept only for babies that are live afterwards, without duplicates. */
-function liveIds(ids: readonly Id[], babies: ReadonlyMap<Id, Baby>, rename: ReadonlyMap<Id, Id> = new Map()): Id[] {
+function liveIds(
+  ids: readonly Id[],
+  babies: ReadonlyMap<Id, Baby>,
+  rename: ReadonlyMap<Id, Id> = new Map(),
+): Id[] {
   const out: Id[] = [];
   for (const id of ids) {
     const next = rename.get(id) ?? id;
@@ -297,22 +320,47 @@ function repair(
 ): { stale: StaleTimer[]; changed: TrackerEvent[]; stopped: StoppedTimer[] } {
   const stale = findStale(merged.values(), fromFile, device, backup.exportedAt, now);
   const stopStale = new Set(options.stopStale ? stale.map((timer) => timer.id) : []);
-  return { stale, ...repairRunning(merged.values(), babies, { exportedAt: backup.exportedAt, now, stopStale }) };
+  return {
+    stale,
+    ...repairRunning(merged.values(), babies, { exportedAt: backup.exportedAt, now, stopStale }),
+  };
 }
 
-function replacePlan(local: LocalState, backup: ParsedBackup, options: ImportOptions, now: number): ImportPlan {
+function replacePlan(
+  local: LocalState,
+  backup: ParsedBackup,
+  options: ImportOptions,
+  now: number,
+): ImportPlan {
   const babies = new Map(backup.babies.map((baby) => [baby.id, baby]));
   const events = new Map(backup.events.map((event) => [event.id, event]));
-  const { stale, changed, stopped } = repair(events, new Set(events.keys()), local.events, babies, backup, options, now);
+  const { stale, changed, stopped } = repair(
+    events,
+    new Set(events.keys()),
+    local.events,
+    babies,
+    backup,
+    options,
+    now,
+  );
   for (const event of changed) events.set(event.id, event);
   const fileIds = new Set(backup.events.map((event) => event.id));
-  const lost = local.events.filter((event) => isLive(event) && (!fileIds.has(event.id) || event.updatedAt > backup.exportedAt));
+  const lost = local.events.filter(
+    (event) => isLive(event) && (!fileIds.has(event.id) || event.updatedAt > backup.exportedAt),
+  );
   // A loop, not Math.max(...): a spread of 100,000 entries exceeds JavaScriptCore's argument limit.
   let newestAt: number | null = null;
-  for (const event of lost) if (newestAt === null || event.startAt > newestAt) newestAt = event.startAt;
+  for (const event of lost)
+    if (newestAt === null || event.startAt > newestAt) newestAt = event.startAt;
   const mixFileIds = new Set(backup.mixes.map((mix) => mix.id));
-  const lostMixes = local.mixes.filter((mix) => isLive(mix) && (!mixFileIds.has(mix.id) || mix.updatedAt > backup.exportedAt)).length;
-  const count = (rows: readonly Row[]): TableStats => ({ ...emptyStats(), add: rows.filter(isLive).length, deleted: rows.filter((row) => !isLive(row)).length });
+  const lostMixes = local.mixes.filter(
+    (mix) => isLive(mix) && (!mixFileIds.has(mix.id) || mix.updatedAt > backup.exportedAt),
+  ).length;
+  const count = (rows: readonly Row[]): TableStats => ({
+    ...emptyStats(),
+    add: rows.filter(isLive).length,
+    deleted: rows.filter((row) => !isLive(row)).length,
+  });
   return {
     mode: 'replace',
     babies: [...backup.babies],
@@ -341,12 +389,19 @@ function replacePlan(local: LocalState, backup: ParsedBackup, options: ImportOpt
   };
 }
 
-function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptions, now: number): ImportPlan {
+function mergePlan(
+  local: LocalState,
+  backup: ParsedBackup,
+  options: ImportOptions,
+  now: number,
+): ImportPlan {
   const babies = mergeTable(local.babies, backup.babies);
   const events = mergeTable(local.events, backup.events);
   const mixes = mergeTable(local.mixes, backup.mixes);
   // The device's live babies that the file deletes.
-  const removed = local.babies.filter((baby) => isLive(baby) && babies.writes.has(baby.id) && !isLive(babies.writes.get(baby.id)!));
+  const removed = local.babies.filter(
+    (baby) => isLive(baby) && babies.writes.has(baby.id) && !isLive(babies.writes.get(baby.id)!),
+  );
 
   // "Aynı bebek": one of the pair survives and the other is deleted, with its entries moved to the
   // survivor. Both phones must agree on the survivor without negotiating, so it is picked by a rule that
@@ -357,8 +412,10 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
   for (const pair of options.sameBabies) {
     const mine = babies.result.get(pair.localId);
     const theirs = babies.result.get(pair.incomingId);
-    if (!mine || !isLive(mine) || !theirs || !isLive(theirs) || pair.localId === pair.incomingId) continue;
-    const mineSurvives = mine.createdAt !== theirs.createdAt ? mine.createdAt < theirs.createdAt : mine.id < theirs.id;
+    if (!mine || !isLive(mine) || !theirs || !isLive(theirs) || pair.localId === pair.incomingId)
+      continue;
+    const mineSurvives =
+      mine.createdAt !== theirs.createdAt ? mine.createdAt < theirs.createdAt : mine.id < theirs.id;
     const [keep, drop] = mineSurvives ? [mine, theirs] : [theirs, mine];
     rename.set(drop.id, keep.id);
     const tombstone = { ...drop, deletedAt: now, updatedAt: now };
@@ -374,7 +431,8 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
   // left, they follow to it, unless the user keeps them apart. Otherwise the preview says how many hide.
   const liveEntries = new Map<Id, number>();
   for (const event of events.result.values()) {
-    if (isLive(event) && event.babyId !== null) liveEntries.set(event.babyId, (liveEntries.get(event.babyId) ?? 0) + 1);
+    if (isLive(event) && event.babyId !== null)
+      liveEntries.set(event.babyId, (liveEntries.get(event.babyId) ?? 0) + 1);
   }
   const liveByName = groupByFoldedName([...babies.result.values()].filter(isLive));
   const keepApart = new Set(options.keepApart ?? []);
@@ -424,7 +482,13 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
   const handled = new Set(removed.map((baby) => baby.id));
   const stranded = new Map<Id, TrackerEvent[]>();
   for (const event of events.result.values()) {
-    if (!events.fromFile.has(event.id) || !isLive(event) || event.babyId === null || handled.has(event.babyId)) continue;
+    if (
+      !events.fromFile.has(event.id) ||
+      !isLive(event) ||
+      event.babyId === null ||
+      handled.has(event.babyId)
+    )
+      continue;
     const owner = babies.result.get(event.babyId);
     if (owner && isLive(owner)) continue;
     stranded.set(event.babyId, [...(stranded.get(event.babyId) ?? []), event]);
@@ -456,7 +520,15 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
     const target = event.babyId === null ? undefined : rename.get(event.babyId);
     return target === undefined ? event : { ...event, babyId: target };
   });
-  const { stale, changed, stopped } = repair(events.result, events.fromFile, device, babies.result, backup, options, now);
+  const { stale, changed, stopped } = repair(
+    events.result,
+    events.fromFile,
+    device,
+    babies.result,
+    backup,
+    options,
+    now,
+  );
   for (const event of changed) {
     events.result.set(event.id, event);
     events.writes.set(event.id, event);
@@ -494,11 +566,28 @@ function mergePlan(local: LocalState, backup: ParsedBackup, options: ImportOptio
  * What an import will write, computed without writing anything, so the preview can show it and
  * applyImport can check it again inside its transaction. Pure.
  */
-export function planImport(local: LocalState, backup: ParsedBackup, options: ImportOptions, now: number): ImportPlan {
-  return options.mode === 'replace' ? replacePlan(local, backup, options, now) : mergePlan(local, backup, options, now);
+export function planImport(
+  local: LocalState,
+  backup: ParsedBackup,
+  options: ImportOptions,
+  now: number,
+): ImportPlan {
+  return options.mode === 'replace'
+    ? replacePlan(local, backup, options, now)
+    : mergePlan(local, backup, options, now);
 }
 
 /** A summary of what the plan would change; applyImport refuses to write when it differs from the preview's. */
 export function planSignature(plan: ImportPlan): string {
-  return JSON.stringify([plan.mode, plan.stats, plan.loss, plan.removedBabies, plan.moves, plan.follows, plan.hidden, plan.stale, plan.stopped]);
+  return JSON.stringify([
+    plan.mode,
+    plan.stats,
+    plan.loss,
+    plan.removedBabies,
+    plan.moves,
+    plan.follows,
+    plan.hidden,
+    plan.stale,
+    plan.stopped,
+  ]);
 }

@@ -1,8 +1,22 @@
 // Licenses allowed for code that ships to users.
-export const RUNTIME_LICENSES = ['MIT', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', '0BSD'];
+export const RUNTIME_LICENSES = [
+  'MIT',
+  'ISC',
+  'BSD-2-Clause',
+  'BSD-3-Clause',
+  'Apache-2.0',
+  '0BSD',
+];
 
 // Build/test tooling never ships to users, so a few more OSI/permissive licenses are fine there.
-export const DEV_ONLY_LICENSES = [...RUNTIME_LICENSES, 'MPL-2.0', 'CC-BY-4.0', 'CC0-1.0', 'BlueOak-1.0.0', 'Python-2.0'];
+export const DEV_ONLY_LICENSES = [
+  ...RUNTIME_LICENSES,
+  'MPL-2.0',
+  'CC-BY-4.0',
+  'CC0-1.0',
+  'BlueOak-1.0.0',
+  'Python-2.0',
+];
 
 /**
  * Tokenizes an SPDX license expression into '(', ')', 'AND', 'OR', and identifier
@@ -100,7 +114,11 @@ export function findLicenseViolations(lock) {
     if (path === '' || pkg.link) continue;
     const dev = Boolean(pkg.dev || pkg.devOptional);
     if (!isLicenseAllowed(pkg.license, dev ? DEV_ONLY_LICENSES : RUNTIME_LICENSES)) {
-      violations.push({ name: path.replace(/^.*node_modules\//, ''), license: pkg.license ?? '(none)', dev });
+      violations.push({
+        name: path.replace(/^.*node_modules\//, ''),
+        license: pkg.license ?? '(none)',
+        dev,
+      });
     }
   }
   return violations;

@@ -9,7 +9,8 @@ const MB = 1024 * KB;
 
 /** "180 KB" (rounded up, at least 1) below a megabyte, "4,2 MB" above. */
 export function fileSize(t: TranslateFn, locale: Locale, bytes: number): string {
-  if (bytes < MB) return t('unit.kb', { n: formatNumber(locale, Math.max(1, Math.ceil(bytes / KB))) });
+  if (bytes < MB)
+    return t('unit.kb', { n: formatNumber(locale, Math.max(1, Math.ceil(bytes / KB))) });
   return t('unit.mb', { n: formatNumber(locale, bytes / MB, 1) });
 }
 
@@ -24,7 +25,12 @@ export function backupAgo(t: TranslateFn, days: number): string {
  * "Son yedek: 3 gün önce (23 Eyl 21:40)" or "Henüz yedek alınmadı." A time more than a day ahead counts
  * as no backup, as for Home's reminder.
  */
-export function lastBackupText(t: TranslateFn, locale: Locale, lastBackupAt: number | undefined, now: number): string {
+export function lastBackupText(
+  t: TranslateFn,
+  locale: Locale,
+  lastBackupAt: number | undefined,
+  now: number,
+): string {
   const last = believable(lastBackupAt, now + DAY);
   if (last === undefined) return t('backup.never');
   const ago = backupAgo(t, daysSinceBackup(last, now));

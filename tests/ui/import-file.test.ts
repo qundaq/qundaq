@@ -9,11 +9,18 @@ describe('readImportFile', () => {
   });
 
   it('reports a file that cannot be read, instead of throwing', async () => {
-    const broken = { name: 'x.json', size: 10, text: () => Promise.reject(new DOMException('gone', 'NotReadableError')) } as unknown as File;
+    const broken = {
+      name: 'x.json',
+      size: 10,
+      text: () => Promise.reject(new DOMException('gone', 'NotReadableError')),
+    } as unknown as File;
     expect(await readImportFile(broken, Date.now())).toEqual({ ok: false, error: 'unreadable' });
   });
 
   it('parses a readable file', async () => {
-    expect(await readImportFile(new File(['not json'], 'x.json'), Date.now())).toEqual({ ok: false, error: 'not-backup' });
+    expect(await readImportFile(new File(['not json'], 'x.json'), Date.now())).toEqual({
+      ok: false,
+      error: 'not-backup',
+    });
   });
 });

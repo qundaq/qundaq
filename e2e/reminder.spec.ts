@@ -4,7 +4,9 @@ import { addBabyInSettings, logDiaper, openTab } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
-test('the backup reminder: shown with entries and no backup, snoozed until the next morning, gone after a backup', async ({ page }) => {
+test('the backup reminder: shown with entries and no backup, snoozed until the next morning, gone after a backup', async ({
+  page,
+}) => {
   await page.clock.install({ time: new Date('2026-09-26T22:00:00+03:00') });
   await stubShare(page);
   await page.goto('./');
@@ -15,7 +17,9 @@ test('the backup reminder: shown with entries and no backup, snoozed until the n
   await expect(banner).toHaveCount(0); // nothing to lose yet
 
   await logDiaper(page);
-  await expect(banner).toContainText('Henüz yedek alınmadı. Kayıtlar yalnızca bu telefonda duruyor.');
+  await expect(banner).toContainText(
+    'Henüz yedek alınmadı. Kayıtlar yalnızca bu telefonda duruyor.',
+  );
   await banner.getByRole('button', { name: 'Yarın hatırlat', exact: true }).click();
   await expect(banner).toHaveCount(0);
 
@@ -38,7 +42,9 @@ test('the backup reminder: shown with entries and no backup, snoozed until the n
   // Eight days later it is back, and says how old the backup is.
   await page.clock.setSystemTime(new Date('2026-10-05T10:05:00+03:00'));
   await page.reload();
-  await expect(banner).toContainText('Son yedek 8 gün önce. Kayıtlar yalnızca bu telefonda duruyor.');
+  await expect(banner).toContainText(
+    'Son yedek 8 gün önce. Kayıtlar yalnızca bu telefonda duruyor.',
+  );
 });
 
 test('a CSV export does not count as a backup', async ({ page }) => {

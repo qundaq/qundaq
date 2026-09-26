@@ -13,7 +13,12 @@ export default defineConfig({
   ],
   // Tests always run against production builds so the CSP and service worker are active.
   webServer: [
-    { command: 'npm run preview', url: 'http://localhost:4173/', reuseExistingServer: false, timeout: 30_000 },
+    {
+      command: 'npm run preview',
+      url: 'http://localhost:4173/',
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
     // Two builds (made by `npm run e2e:build-versions`) behind one URL, for e2e/update.spec.ts.
     {
       command: 'node e2e/support/two-build-server.mjs',

@@ -20,18 +20,30 @@ const round = (n: number) => Math.round(n * 100) / 100;
  * time and y runs from the smallest value (bottom) to the largest (top). A single point, or a series with
  * one time or one value, sits in the middle of that axis.
  */
-export function growthChartGeometry(points: readonly GrowthPoint[], width: number, height: number, padding: number): ChartGeometry {
+export function growthChartGeometry(
+  points: readonly GrowthPoint[],
+  width: number,
+  height: number,
+  padding: number,
+): ChartGeometry {
   const sorted = [...points].sort((a, b) => a.at - b.at);
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
-  if (!first || !last) return { dots: [], polyline: null, yMax: 0, yMin: 0, firstAt: null, lastAt: null };
+  if (!first || !last)
+    return { dots: [], polyline: null, yMax: 0, yMin: 0, firstAt: null, lastAt: null };
   const values = sorted.map((point) => point.value);
   const yMin = Math.min(...values);
   const yMax = Math.max(...values);
   const innerWidth = width - 2 * padding;
   const innerHeight = height - 2 * padding;
-  const x = (at: number) => (last.at === first.at ? padding + innerWidth / 2 : padding + ((at - first.at) / (last.at - first.at)) * innerWidth);
-  const y = (value: number) => (yMax === yMin ? padding + innerHeight / 2 : padding + ((yMax - value) / (yMax - yMin)) * innerHeight);
+  const x = (at: number) =>
+    last.at === first.at
+      ? padding + innerWidth / 2
+      : padding + ((at - first.at) / (last.at - first.at)) * innerWidth;
+  const y = (value: number) =>
+    yMax === yMin
+      ? padding + innerHeight / 2
+      : padding + ((yMax - value) / (yMax - yMin)) * innerHeight;
   const dots = sorted.map((point) => ({ x: round(x(point.at)), y: round(y(point.value)) }));
   return {
     dots,

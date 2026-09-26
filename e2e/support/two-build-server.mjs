@@ -42,7 +42,9 @@ for (const build of BUILDS) {
     () => false,
   );
   if (!ok) {
-    console.error(`two-build-server: ${join(ROOT, build, 'sw.js')} is missing. Run "npm run e2e:build-versions" first.`);
+    console.error(
+      `two-build-server: ${join(ROOT, build, 'sw.js')} is missing. Run "npm run e2e:build-versions" first.`,
+    );
     process.exit(1);
   }
 }
@@ -81,7 +83,11 @@ async function serveFile(req, res, file) {
   try {
     const body = await readFile(file);
     const type = TYPES[extname(file)] ?? 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': 'no-cache' });
+    res.writeHead(200, {
+      'Content-Type': type,
+      'Content-Length': body.length,
+      'Cache-Control': 'no-cache',
+    });
     res.end(req.method === 'HEAD' ? undefined : body);
   } catch {
     send(res, 404, 'not found');
@@ -90,7 +96,8 @@ async function serveFile(req, res, file) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
-  if (url.pathname === '/__health') return listening === 2 ? send(res, 200, 'ok') : send(res, 503, 'starting');
+  if (url.pathname === '/__health')
+    return listening === 2 ? send(res, 200, 'ok') : send(res, 503, 'starting');
   if (url.pathname === '/__switch') {
     const to = url.searchParams.get('to');
     if (!BUILDS.includes(to)) return send(res, 400, `unknown build: ${to}`);
@@ -125,5 +132,7 @@ server.listen(PORT, 'localhost', () => {
 });
 subpathServer.listen(SUBPATH_PORT, 'localhost', () => {
   listening += 1;
-  console.log(`two-build-server: http://localhost:${SUBPATH_PORT}${SUBPATH} serving ${join(ROOT, 'v1')}`);
+  console.log(
+    `two-build-server: http://localhost:${SUBPATH_PORT}${SUBPATH} serving ${join(ROOT, 'v1')}`,
+  );
 });

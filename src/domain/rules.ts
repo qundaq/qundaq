@@ -42,7 +42,11 @@ export const MAX_BOTTLE_ML = 1000;
 export const MAX_DURATION_MS = { sleep: 24 * HOUR, breastfeed: 4 * HOUR } as const;
 export const MAX_PUMP_ML = 500;
 /** Inclusive ranges in whole grams and millimetres. */
-export const GROWTH_RANGES = { weightG: [300, 30_000], heightMm: [200, 1300], headMm: [200, 700] } as const;
+export const GROWTH_RANGES = {
+  weightG: [300, 30_000],
+  heightMm: [200, 1300],
+  headMm: [200, 700],
+} as const;
 export const TEMPERATURE_RANGE_C = [30, 45] as const;
 export const TEXT_LIMITS = { medicationName: 60, dose: 40, note: 500 } as const;
 export const BABY_NAME_MAX = 40;
@@ -62,7 +66,11 @@ function isIntIn(value: number, min: number, max: number): boolean {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
-function segmentsValid(segments: readonly BreastSegment[], startAt: number, endAt: number | undefined): boolean {
+function segmentsValid(
+  segments: readonly BreastSegment[],
+  startAt: number,
+  endAt: number | undefined,
+): boolean {
   if (segments.length === 0) return false;
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]!;
@@ -91,9 +99,11 @@ export function validateEvent(
   if (draft.endAt !== undefined) {
     if (draft.endAt < draft.startAt) violations.add('end-before-start');
     if (draft.endAt > latestAllowed) violations.add('in-future');
-    if (isTimedType(draft.type) && draft.endAt - draft.startAt > MAX_DURATION_MS[draft.type]) violations.add('too-long');
+    if (isTimedType(draft.type) && draft.endAt - draft.startAt > MAX_DURATION_MS[draft.type])
+      violations.add('too-long');
   }
-  if (draft.note !== undefined && draft.note.length > TEXT_LIMITS.note) violations.add('text-too-long');
+  if (draft.note !== undefined && draft.note.length > TEXT_LIMITS.note)
+    violations.add('text-too-long');
 
   if (isOpen(draft)) {
     const clash = others.some(
@@ -109,7 +119,8 @@ export function validateEvent(
 
   switch (draft.type) {
     case 'breastfeed':
-      if (!segmentsValid(draft.segments, draft.startAt, draft.endAt)) violations.add('segments-invalid');
+      if (!segmentsValid(draft.segments, draft.startAt, draft.endAt))
+        violations.add('segments-invalid');
       break;
     case 'bottle':
       if (!(draft.ml > 0 && draft.ml <= MAX_BOTTLE_ML)) violations.add('amount-invalid');
@@ -138,13 +149,15 @@ export function validateEvent(
     }
     case 'temperature': {
       const [min, max] = TEMPERATURE_RANGE_C;
-      if (!(Number.isFinite(draft.celsius) && draft.celsius >= min && draft.celsius <= max)) violations.add('temperature-invalid');
+      if (!(Number.isFinite(draft.celsius) && draft.celsius >= min && draft.celsius <= max))
+        violations.add('temperature-invalid');
       break;
     }
     case 'medication': {
       const name = draft.name ?? '';
       if (name.trim() === '') violations.add('medication-name-required');
-      if (name.length > TEXT_LIMITS.medicationName || (draft.dose ?? '').length > TEXT_LIMITS.dose) violations.add('text-too-long');
+      if (name.length > TEXT_LIMITS.medicationName || (draft.dose ?? '').length > TEXT_LIMITS.dose)
+        violations.add('text-too-long');
       break;
     }
     case 'healthNote':

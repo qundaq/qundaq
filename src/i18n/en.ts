@@ -14,7 +14,8 @@ export const en: Record<MessageKey, string> = {
   'settings.nightMode': 'Night mode',
   'settings.nightMode.hint': 'Dim red tones that are easy on the eyes in the dark.',
   'settings.cap.title': 'Volume safety cap',
-  'settings.cap.hint': "The volume on the Sounds tab can never exceed this. The phone's own volume buttons apply on top.",
+  'settings.cap.hint':
+    "The volume on the Sounds tab can never exceed this. The phone's own volume buttons apply on top.",
   'settings.cap.warning':
     "Keep the phone out of the crib, at least 2 metres (about 7 feet) away, and keep the volume as low as works. Loud sound over long periods can harm a baby's hearing. The phone's volume buttons change the loudness too.",
   'settings.cap.belowDefault': 'Below the default.',
@@ -23,12 +24,14 @@ export const en: Record<MessageKey, string> = {
   'settings.offline.notReady':
     'Not ready for offline yet. Keep the app open once while online before switching to airplane mode.',
   'settings.offline.unsupported': 'This browser does not support offline use.',
-  'settings.offline.insecure': 'Offline use requires opening the app from a secure (https) address.',
+  'settings.offline.insecure':
+    'Offline use requires opening the app from a secure (https) address.',
   'settings.offline.dev': 'The offline cache is disabled in development mode.',
   'settings.storage.title': 'Persistent storage',
   'settings.storage.persisted': 'On: the system will not delete this data to free up space.',
   'settings.storage.denied': 'Off: the system may delete data to free up space. Back up regularly.',
-  'settings.storage.unsupported': 'This browser does not support persistent storage. Back up regularly.',
+  'settings.storage.unsupported':
+    'This browser does not support persistent storage. Back up regularly.',
   'settings.update.title': 'Updates',
   'settings.update.hint':
     'The app never downloads an update by itself. A new version is downloaded only when you tap this button, and starts when you tap Restart or the next time you open the app.',
@@ -107,7 +110,8 @@ export const en: Record<MessageKey, string> = {
   'rule.pump-empty': 'Enter an amount for left or right.',
   'rule.pump-invalid': 'Enter a valid amount (1–500 ml).',
   'rule.growth-empty': 'Enter at least one measurement.',
-  'rule.growth-invalid': 'A measurement is invalid. Weight 0.3–30 kg, length 20–130 cm, head 20–70 cm.',
+  'rule.growth-invalid':
+    'A measurement is invalid. Weight 0.3–30 kg, length 20–130 cm, head 20–70 cm.',
   'rule.weight-in-kg': 'Enter the weight in kg (e.g. 3.45).',
   'rule.temperature-invalid': 'Enter a valid temperature (30–45 °C).',
   'rule.medication-name-required': 'Enter the name of the medicine or vitamin.',
@@ -200,7 +204,8 @@ export const en: Record<MessageKey, string> = {
   'stool.alert.pale':
     'Pale, white or clay-colored stool can be a sign of a bile duct problem (biliary atresia). Contact your doctor right away.',
   'stool.alert.blood': 'Red can mean blood. Contact your doctor.',
-  'stool.alert.black': 'Black stool (meconium) is normal in the first days. If you see it later, contact your doctor.',
+  'stool.alert.black':
+    'Black stool (meconium) is normal in the first days. If you see it later, contact your doctor.',
   'timer.switchSide': 'Switch side',
   'timer.stopFeed': 'Finish feed',
   'timer.wakeUp': 'Woke up',
@@ -235,8 +240,10 @@ export const en: Record<MessageKey, string> = {
   'growth.height': 'Length (cm)',
   'growth.head': 'Head circumference (cm)',
   'temperature.value': 'Temperature (°C)',
-  'temperature.alert.fever': "A temperature of 38 °C or more needs a doctor's advice, urgently for babies under 3 months.",
-  'temperature.alert.low': 'Below 36 °C is a low body temperature; warm the baby and call your doctor.',
+  'temperature.alert.fever':
+    "A temperature of 38 °C or more needs a doctor's advice, urgently for babies under 3 months.",
+  'temperature.alert.low':
+    'Below 36 °C is a low body temperature; warm the baby and call your doctor.',
   'medication.name': 'Medicine / vitamin',
   'medication.dose': 'Dose (optional)',
   'medication.recent': 'Recently used',
@@ -306,9 +313,11 @@ export const en: Record<MessageKey, string> = {
   'import.title': 'Restore from a backup',
   'import.loading': 'Reading the backup…',
   'import.error.not-backup': 'This file is not a Qundaq backup.',
-  'import.error.newer-version': 'This backup comes from a newer version of the app. Update the app first.',
+  'import.error.newer-version':
+    'This backup comes from a newer version of the app. Update the app first.',
   'import.error.too-large': 'The file is too large (20 MB at most).',
-  'import.error.unreadable': 'The file could not be read. If it is in iCloud, download it first or save it On My iPhone.',
+  'import.error.unreadable':
+    'The file could not be read. If it is in iCloud, download it first or save it On My iPhone.',
   'import.fileInfo': 'Backup: {date} · version {version}',
   'import.fileInfoNoVersion': 'Backup: {date}',
   'import.fileBabies': 'Babies: {names}',
@@ -320,23 +329,29 @@ export const en: Record<MessageKey, string> = {
   'import.skippedBaby': 'Baby',
   'import.skippedMix': 'Mix',
   'import.unknownRow': 'Unidentified entry',
-  'import.outOfRange': 'Entries with an unusual date (before 2000, or in the future): {n}. They will be added anyway.',
+  'import.outOfRange':
+    'Entries with an unusual date (before 2000, or in the future): {n}. They will be added anyway.',
   'import.badBirthDate': 'Birth dates that could not be read and will be left empty: {n}.',
-  'import.settingsWarning': "Some settings in the backup could not be read; this device's settings will be used.",
+  'import.settingsWarning':
+    "Some settings in the backup could not be read; this device's settings will be used.",
   'import.mode': 'How should it be restored?',
   'import.mode.merge': 'Merge',
   'import.mode.replace': 'Replace everything',
   'import.sameBabyTitle': 'The same baby?',
-  'import.sameBabyHint': 'If you deleted and reinstalled the app, you may have added your babies again. The entries of each ticked baby are joined into one.',
+  'import.sameBabyHint':
+    'If you deleted and reinstalled the app, you may have added your babies again. The entries of each ticked baby are joined into one.',
   'import.sameBaby': '{fileName} in the backup and {localName} on this device are the same baby',
   'import.babies': 'Babies',
   'import.events': 'Entries',
   'import.mixes': 'Mixes',
-  'import.counts': 'To add: {add} · To update: {update} · To delete: {remove} · Same: {same} · Kept because newer on this device: {keep}',
+  'import.counts':
+    'To add: {add} · To update: {update} · To delete: {remove} · Same: {same} · Kept because newer on this device: {keep}',
   'import.deleted': 'deleted: {n}',
-  'import.replaceSummary': "Everything on this device (babies: {babies}, entries: {events}) will be deleted and replaced with the backup's.",
+  'import.replaceSummary':
+    "Everything on this device (babies: {babies}, entries: {events}) will be deleted and replaced with the backup's.",
   'import.replaceMixes': 'Mixes on this device that will be deleted: {n}.',
-  'import.loss': 'Entries made on this device after the backup will be deleted: {n} (newest: {newest}).',
+  'import.loss':
+    'Entries made on this device after the backup will be deleted: {n} (newest: {newest}).',
   'import.staleTitle': 'Running timers',
   'import.staleItem': '{name} · {type}: timer still running (started {since})',
   'import.stopStale': 'Stop them at the time of the backup',
@@ -346,17 +361,21 @@ export const en: Record<MessageKey, string> = {
   'import.applyMerge': 'Restore',
   'import.applyReplace': 'Replace',
   'import.applying': 'Restoring…',
-  'import.changed': 'The data on this device changed in the meantime. The preview was updated; please check it again.',
+  'import.changed':
+    'The data on this device changed in the meantime. The preview was updated; please check it again.',
   'import.failed': 'Could not restore. Nothing was changed.',
-  'import.failedAfter': 'The backup was restored, but the result could not be shown. Check the entries in the Log.',
-  'import.done.merge': 'Restored. Entries added: {added} · updated: {updated} · deleted: {removed} · moved: {moved}.',
+  'import.failedAfter':
+    'The backup was restored, but the result could not be shown. Check the entries in the Log.',
+  'import.done.merge':
+    'Restored. Entries added: {added} · updated: {updated} · deleted: {removed} · moved: {moved}.',
   'import.done.mergeMixes': 'Mixes added: {added} · updated: {updated} · deleted: {removed}.',
   'import.done.replace': 'Restored. Babies: {babies} · Entries: {events}.',
   'import.removedBabies': 'Babies to be removed from this device: {names}',
   'import.moved': 'Entries to be combined under {name}: {n}.',
   'import.follow': '{localName} (removed baby): merge its entries into {name}',
   'import.hidden': '{name} was removed, so entries stay hidden: {n}',
-  'home.restoreHint': 'If you have a backup, restore it first; then you need not add your babies again.',
+  'home.restoreHint':
+    'If you have a backup, restore it first; then you need not add your babies again.',
   'backup.problem.not-object': 'the entry is broken',
   'backup.problem.bad-id': 'its id is missing or invalid',
   'backup.problem.duplicate-id': 'its id appears twice',

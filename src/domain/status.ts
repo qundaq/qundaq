@@ -2,7 +2,10 @@ import { isOpen } from './rules';
 import type { Id, Side, TrackerEvent } from './types';
 
 export interface BabyStatus {
-  lastFeed: { at: number; kind: 'breastfeed'; side: Side } | { at: number; kind: 'bottle'; ml: number } | null;
+  lastFeed:
+    | { at: number; kind: 'breastfeed'; side: Side }
+    | { at: number; kind: 'bottle'; ml: number }
+    | null;
   runningFeed: { eventId: Id; startAt: number; side: Side; segmentStart: number } | null;
   sleep: { state: 'asleep'; since: number; eventId: Id } | { state: 'awake'; since: number | null };
   lastDiaper: { at: number; wet: boolean; dirty: boolean } | null;
@@ -22,14 +25,20 @@ export function babyStatus(events: readonly TrackerEvent[], babyId: Id): BabySta
     (e) => e.startAt,
   );
   let lastFeed: BabyStatus['lastFeed'] = null;
-  if (feed?.type === 'breastfeed') lastFeed = { at: feed.startAt, kind: 'breastfeed', side: feed.segments.at(-1)!.side };
+  if (feed?.type === 'breastfeed')
+    lastFeed = { at: feed.startAt, kind: 'breastfeed', side: feed.segments.at(-1)!.side };
   else if (feed?.type === 'bottle') lastFeed = { at: feed.startAt, kind: 'bottle', ml: feed.ml };
 
   const openFeed = mine.find((e) => e.type === 'breastfeed' && isOpen(e));
   let runningFeed: BabyStatus['runningFeed'] = null;
   if (openFeed?.type === 'breastfeed') {
     const current = openFeed.segments.at(-1)!;
-    runningFeed = { eventId: openFeed.id, startAt: openFeed.startAt, side: current.side, segmentStart: current.start };
+    runningFeed = {
+      eventId: openFeed.id,
+      startAt: openFeed.startAt,
+      side: current.side,
+      segmentStart: current.start,
+    };
   }
 
   const openSleep = mine.find((e) => e.type === 'sleep' && isOpen(e));
@@ -45,7 +54,8 @@ export function babyStatus(events: readonly TrackerEvent[], babyId: Id): BabySta
     mine.filter((e) => e.type === 'diaper'),
     (e) => e.startAt,
   );
-  const lastDiaper = diaper?.type === 'diaper' ? { at: diaper.startAt, wet: diaper.wet, dirty: diaper.dirty } : null;
+  const lastDiaper =
+    diaper?.type === 'diaper' ? { at: diaper.startAt, wet: diaper.wet, dirty: diaper.dirty } : null;
 
   return { lastFeed, runningFeed, sleep, lastDiaper };
 }

@@ -1,5 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { addBabyInSettings, babyCard, dayPicker, filterGroup, logDiaper, logRows, openRow, openTab, quick } from './support/tracking';
+import {
+  addBabyInSettings,
+  babyCard,
+  dayPicker,
+  filterGroup,
+  logDiaper,
+  logRows,
+  openRow,
+  openTab,
+  quick,
+} from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
@@ -35,7 +45,9 @@ test.describe('Günlük list', () => {
     await expect(filterGroup(page, 'Bebek')).toHaveCount(0);
   });
 
-  test('previous and next day, the date field, and never the old day under the new heading', async ({ page }) => {
+  test('previous and next day, the date field, and never the old day under the new heading', async ({
+    page,
+  }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await logDiaper(page, { at: '2026-09-24T21:00' });
@@ -50,16 +62,27 @@ test.describe('Günlük list', () => {
       (window as unknown as { __logStates: string[] }).__logStates = seen;
       new MutationObserver(() => {
         const day = document.querySelector('.day-current')?.textContent ?? '';
-        const rows = Array.from(document.querySelectorAll('.log-list li'), (li) => li.textContent ?? '');
+        const rows = Array.from(
+          document.querySelectorAll('.log-list li'),
+          (li) => li.textContent ?? '',
+        );
         seen.push(`${day}|${rows.join('#')}`);
-      }).observe(document.querySelector('main')!, { subtree: true, childList: true, characterData: true });
+      }).observe(document.querySelector('main')!, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+      });
     });
     await dayPicker(page).getByRole('button', { name: 'Önceki gün' }).click();
     await expect(dayPicker(page)).toContainText('Dün');
     await expect(logRows(page)).toHaveCount(1);
     await expect(logRows(page).first()).toContainText('21:00');
-    const states = await page.evaluate(() => (window as unknown as { __logStates: string[] }).__logStates);
-    expect(states.filter((state) => state.startsWith('Dün') && state.includes('09:00'))).toEqual([]);
+    const states = await page.evaluate(
+      () => (window as unknown as { __logStates: string[] }).__logStates,
+    );
+    expect(states.filter((state) => state.startsWith('Dün') && state.includes('09:00'))).toEqual(
+      [],
+    );
 
     await dayPicker(page).getByRole('button', { name: 'Sonraki gün' }).click();
     await expect(dayPicker(page)).toContainText('Bugün');
@@ -94,8 +117,12 @@ test.describe('Günlük list', () => {
 
     await openTab(page, 'Ana');
     await openTab(page, 'Günlük');
-    await expect(filterGroup(page, 'Bebek').getByRole('button', { name: 'Ada', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(filterGroup(page, 'Tür').getByRole('button', { name: 'Uyku', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      filterGroup(page, 'Bebek').getByRole('button', { name: 'Ada', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      filterGroup(page, 'Tür').getByRole('button', { name: 'Uyku', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
     await filterGroup(page, 'Bebek').getByRole('button', { name: 'Hepsi', exact: true }).click();
     await filterGroup(page, 'Tür').getByRole('button', { name: 'Tümü', exact: true }).click();
     await expect(logRows(page)).toHaveCount(3);
@@ -194,7 +221,8 @@ test.describe('editing and deleting', () => {
           open.onsuccess = () => {
             const store = open.result.transaction('events', 'readwrite').objectStore('events');
             const hold = () => {
-              if (!(window as unknown as { __release?: boolean }).__release) store.get('none').onsuccess = hold;
+              if (!(window as unknown as { __release?: boolean }).__release)
+                store.get('none').onsuccess = hold;
             };
             hold();
             resolve();
@@ -271,21 +299,31 @@ test.describe('editing and deleting', () => {
     await expect(logRows(page).first()).toContainText('Sol · devam ediyor');
     await openRow(page, 'Emzirme');
     const sheet = page.getByRole('dialog', { name: 'Kaydı düzenle · Emzirme' });
-    await sheet.getByRole('group', { name: '1. taraf' }).getByRole('button', { name: 'Sağ', exact: true }).click();
+    await sheet
+      .getByRole('group', { name: '1. taraf' })
+      .getByRole('button', { name: 'Sağ', exact: true })
+      .click();
     await sheet.getByLabel('Bitiş (isteğe bağlı)').fill('2026-09-25T09:58');
     await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
     await expect(sheet).toBeHidden();
     await expect(logRows(page).first()).toContainText('09:50 – 09:58');
     await expect(logRows(page).first()).toContainText('Sağ 8 dk');
     await openTab(page, 'Ana');
-    await expect(babyCard(page, 'Ada').getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
+    await expect(
+      babyCard(page, 'Ada').getByRole('button', { name: /Emzirmeyi bitir/ }),
+    ).toHaveCount(0);
   });
 
-  test('a running sleep: changes must be saved before "Uyandı", which then stops it', async ({ page }) => {
+  test('a running sleep: changes must be saved before "Uyandı", which then stops it', async ({
+    page,
+  }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Uyku').click();
-    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Uyku' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
 
     await openTab(page, 'Günlük');
     await expect(logRows(page).first()).toContainText(/10:0\d – devam ediyor/);
@@ -318,11 +356,16 @@ test.describe('editing and deleting', () => {
     await expect(babyCard(page, 'Ada')).toContainText('Uyanık');
   });
 
-  test('"Durdurmayı unuttunuz mu?" opens the running entry so it can end at the right time', async ({ page }) => {
+  test('"Durdurmayı unuttunuz mu?" opens the running entry so it can end at the right time', async ({
+    page,
+  }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, 'Ana');
     await quick(page, 'Uyku').click();
-    await page.getByRole('dialog', { name: 'Uyku' }).getByRole('button', { name: 'Başlat', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Uyku' })
+      .getByRole('button', { name: 'Başlat', exact: true })
+      .click();
     const card = babyCard(page, 'Ada');
     const hint = card.getByRole('button', { name: 'Ada: Durdurmayı unuttunuz mu?', exact: true });
     await expect(card).toContainText('Uyuyor');

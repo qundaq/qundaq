@@ -63,7 +63,9 @@ export function CapCard({ cap, onChange }: { cap: number; onChange: (cap: number
           {t('settings.cap.warning')}
         </p>
       )}
-      {!isAboveDefaultCap(value) && value !== DEFAULT_CAP && <p className="muted small">{t('settings.cap.belowDefault')}</p>}
+      {!isAboveDefaultCap(value) && value !== DEFAULT_CAP && (
+        <p className="muted small">{t('settings.cap.belowDefault')}</p>
+      )}
     </div>
   );
 }
