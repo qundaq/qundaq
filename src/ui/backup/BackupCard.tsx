@@ -1,10 +1,12 @@
 import { useLocale, useT } from '../I18nProvider';
 import { useNow } from '../useNow';
+import { RestoreButton } from './RestoreButton';
 import { lastBackupText } from './text';
 
 /** What the backup card can start. Shell owns the sheets, so Home and the crash screen can open them too. */
 export interface BackupActions {
   onExport: () => void;
+  onImportFile: (file: File) => void;
 }
 
 export function BackupCard({ lastBackupAt, actions }: { lastBackupAt: number | undefined; actions: BackupActions }) {
@@ -20,6 +22,7 @@ export function BackupCard({ lastBackupAt, actions }: { lastBackupAt: number | u
         <button type="button" className="btn btn-primary" onClick={actions.onExport}>
           {t('backup.export')}
         </button>
+        <RestoreButton onFile={actions.onImportFile} />
       </div>
     </div>
   );

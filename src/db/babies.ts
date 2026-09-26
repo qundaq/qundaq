@@ -1,10 +1,10 @@
 import { newId } from '../domain/ids';
-import { ValidationError, isOpen, validateBabyName } from '../domain/rules';
+import { BABY_NAME_MAX, ValidationError, isOpen, validateBabyName } from '../domain/rules';
 import type { Baby, Id } from '../domain/types';
 import type { TrackerDb } from './db';
 import { stoppedAt } from './events';
 
-export const BABY_NAME_MAX = 40;
+export { BABY_NAME_MAX };
 
 export interface NewBaby {
   name: string;

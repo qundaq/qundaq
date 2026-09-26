@@ -8,6 +8,7 @@ import { babyStatus } from '../../domain/status';
 import { DAY } from '../../domain/time';
 import type { Id, TrackerEvent } from '../../domain/types';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
+import { RestoreButton } from '../backup/RestoreButton';
 import { useReportError, useReportLoadError } from '../ErrorBanner';
 import { EditSheet } from '../history/EditSheet';
 import { BabyCard } from '../home/BabyCard';
@@ -24,9 +25,11 @@ const RECENT_WINDOW = 7 * DAY;
 interface Props {
   settings: Settings;
   onSettingsChange: (patch: Partial<Settings>) => Promise<void>;
+  /** Opens the import sheet with a picked backup file (owned by Shell). */
+  onImportFile: (file: File) => void;
 }
 
-export function HomeScreen({ settings, onSettingsChange }: Props) {
+export function HomeScreen({ settings, onSettingsChange, onImportFile }: Props) {
   const t = useT();
   const tick = useNow();
   const report = useReportError();
@@ -73,6 +76,11 @@ export function HomeScreen({ settings, onSettingsChange }: Props) {
           <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
             {t('babies.add')}
           </button>
+          {/* After a wipe, restoring first avoids adding the babies again as new ones. */}
+          <p className="muted small home-restore">{t('home.restoreHint')}</p>
+          <div className="backup-actions">
+            <RestoreButton onFile={onImportFile} />
+          </div>
         </div>
       ) : (
         <>

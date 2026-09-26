@@ -72,7 +72,7 @@ function BabyForm({ baby, usedColors, onDone }: { baby?: Baby; usedColors: reado
       </fieldset>
       <label className="field">
         {t('babies.birthDate')}
-        <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+        <input type="date" value={birthDate} min="1900-01-01" max="9999-12-31" onChange={(e) => setBirthDate(e.target.value)} />
       </label>
       {error && (
         <p role="alert" className="status-warn">

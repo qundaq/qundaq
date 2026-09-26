@@ -44,6 +44,7 @@ export const MAX_PUMP_ML = 500;
 export const GROWTH_RANGES = { weightG: [300, 30_000], heightMm: [200, 1300], headMm: [200, 700] } as const;
 export const TEMPERATURE_RANGE_C = [30, 45] as const;
 export const TEXT_LIMITS = { medicationName: 60, dose: 40, note: 500 } as const;
+export const BABY_NAME_MAX = 40;
 
 const GROWTH_METRICS = ['weightG', 'heightMm', 'headMm'] as const;
 
