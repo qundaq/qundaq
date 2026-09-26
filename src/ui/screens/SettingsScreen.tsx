@@ -1,21 +1,24 @@
 import { LOCALES } from '../../i18n';
 import type { Settings } from '../../db/settings';
 import { BabiesCard } from '../babies/BabiesCard';
+import { BackupCard, type BackupActions } from '../backup/BackupCard';
 import { useT } from '../I18nProvider';
 import { OfflineCard, StorageCard, UpdateCard } from './PlatformCards';
 
 interface Props {
   settings: Settings;
   onChange: (patch: Partial<Settings>) => Promise<void>;
+  backup: BackupActions;
 }
 
-export function SettingsScreen({ settings, onChange }: Props) {
+export function SettingsScreen({ settings, onChange, backup }: Props) {
   const t = useT();
   return (
     <section>
       <h1>{t('tab.settings')}</h1>
 
       <BabiesCard />
+      <BackupCard lastBackupAt={settings.lastBackupAt} actions={backup} />
 
       <div className="card">
         <h2>{t('settings.language')}</h2>
