@@ -364,7 +364,7 @@ class Engine {
 
   // ---- Controls ------------------------------------------------------------------------------------
 
-  /** A tile tap. While stopped it also starts playback; while paused it only changes the selection. */
+  /** A tile tap. While stopped it also starts playback, while interrupted it also resumes; while paused it only changes the selection. */
   toggleLayer(soundId: SoundId): ToggleResult {
     const layers = this.state.layers;
     if (layers.some((layer) => layer.soundId === soundId)) {
@@ -385,6 +385,16 @@ class Engine {
       this.update({ layers: [...layers, layer] });
       this.play(); // unlocks the context first, synchronously (R6)
       return 'added';
+    }
+    if (this.state.status === 'interrupted') {
+      // The tap doubles as "Devam et": the context resumes in it (R6). A timer that ran out meanwhile stays
+      // stopped (R2), checked first so the context is never resumed for it; the tile still joins the selection.
+      if (this.timerExpired()) {
+        this.finishTimer();
+        this.update({ layers: [...layers, layer] });
+        return 'added';
+      }
+      this.unlock();
     }
     this.update({ layers: [...layers, layer] });
     this.applyBus(0);
@@ -453,14 +463,20 @@ class Engine {
     }
     // The bus follows the layers as they are now: a mix loaded while paused must not play at the old scale.
     this.applyBus(0);
-    // Cut the transport to 0 before any new voice starts at full gain with no fade of its own: a pause's or
-    // a stop's own fade (0.3 s) may still be mid-ramp here, nowhere near 0 yet, if play() runs inside that
-    // window (R1) — a mix loaded right after pausing, or right after the last tile fades out.
-    const t = graph.context.currentTime;
-    graph.transport.hold(t);
-    graph.transport.set(0, t);
-    for (const layer of this.state.layers) if (!this.voices.has(layer.soundId)) this.startVoice(layer, 0);
-    graph.transport.ramp(1, t + START_FADE_SECONDS);
+    // A voice about to start at full gain with no fade of its own needs the transport at 0 first: a pause's
+    // or a stop's own fade (0.3 s) may still be mid-ramp here, nowhere near 0 yet, if play() runs inside
+    // that window (R1) — a mix loaded right after pausing, or right after the last tile fades out. Without
+    // one (a pause then play by a double tap), the transport turns back from where it is: a cut would be a
+    // click and a 2 s dropout next to a sleeping baby.
+    const layers = this.state.layers.filter((layer) => !this.voices.has(layer.soundId));
+    const rate = graph.context.sampleRate;
+    if (layers.some((layer) => this.loops.has(this.loopKey(layer.soundId, rate)))) {
+      const t = graph.context.currentTime;
+      graph.transport.hold(t);
+      graph.transport.set(0, t);
+    }
+    for (const layer of layers) this.startVoice(layer, 0);
+    this.fadeIn(graph);
     this.armTimer();
   }
 

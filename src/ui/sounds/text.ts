@@ -1,9 +1,8 @@
 import { soundById } from '../../audio/catalog';
 import type { EngineState, SavedSound } from '../../audio/engine';
 import { minutesLeft } from '../../audio/timer';
-import { DEFAULT_MASTER, masterAfterCapChange } from '../../audio/volume';
+import { DEFAULT_MASTER } from '../../audio/volume';
 import { DEFAULT_TIMER, isSoundId, type LastSound, type SoundId } from '../../domain/sounds';
-import type { Settings } from '../../db/settings';
 import type { MixLayer } from '../../domain/types';
 import type { TranslateFn } from '../I18nProvider';
 
@@ -39,14 +38,13 @@ export function toSavedSound(last: LastSound): SavedSound {
 }
 
 /**
- * A settings patch that carries a new cap together with the selection as the engine will have it once the
- * cap applies (the master lowered when the cap rises, R1), so that one write stores both: a launch after a
- * kill in the next second must not restore the old master under the new cap. Other patches pass through.
+ * What the persist timer writes when it fires: the selection as the engine holds it then, or null when
+ * storage already has it. Never a render's copy: that can predate a cap raise's rescale (the old, louder
+ * master under the new cap) or the launch's restore (the default selection over the stored one).
  */
-export function withCapRescale(patch: Partial<Settings>, state: Pick<EngineState, 'layers' | 'master' | 'timer'>, previousCap: number): Partial<Settings> {
-  if (patch.volumeCap === undefined) return patch;
-  const master = masterAfterCapChange(state.master, previousCap, patch.volumeCap);
-  return { ...patch, lastSound: { ...lastSoundOf(state), master } };
+export function lastSoundToPersist(snapshot: Pick<EngineState, 'layers' | 'master' | 'timer'>, stored: LastSound | undefined): LastSound | null {
+  const next = lastSoundOf(snapshot);
+  return sameLastSound(next, stored) ? null : next;
 }
 
 const NOTHING: LastSound = { layers: [], master: DEFAULT_MASTER, timerMin: DEFAULT_TIMER };

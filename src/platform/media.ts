@@ -68,8 +68,9 @@ export type CreateMetadata = (init: { title: string; artist: string }) => unknow
 
 /**
  * Publishes what plays to the Media Session (title, artist, no artwork: an image would be a fetch of
- * its own) with play, pause and stop handlers, and keeps `playbackState` in step. Whether the lock
- * screen shows controls for a page that only uses Web Audio is a device-checklist item.
+ * its own) with play, pause and stop handlers while playing or paused, none while stopped, and keeps
+ * `playbackState` in step. Whether the lock screen shows controls for a page that only uses Web Audio
+ * is a device-checklist item.
  */
 export function updateMediaSession(nav: MediaNavigator, info: MediaInfo, createMetadata: CreateMetadata): void {
   const session = nav.mediaSession;
@@ -77,9 +78,12 @@ export function updateMediaSession(nav: MediaNavigator, info: MediaInfo, createM
   try {
     session.metadata = info.playing === null ? null : createMetadata({ title: info.title, artist: MEDIA_ARTIST });
     session.playbackState = info.playing === null ? 'none' : info.playing ? 'playing' : 'paused';
-    session.setActionHandler('play', info.onPlay);
-    session.setActionHandler('pause', info.onPause);
-    session.setActionHandler('stop', info.onStop);
+    // While stopped (the sleep timer ran out, say) no handler stays: a lock-screen, Watch or Bluetooth
+    // "play" must not start the sound again with a fresh timer while the baby sleeps.
+    const stopped = info.playing === null;
+    session.setActionHandler('play', stopped ? null : info.onPlay);
+    session.setActionHandler('pause', stopped ? null : info.onPause);
+    session.setActionHandler('stop', stopped ? null : info.onStop);
   } catch (error) {
     console.error('Could not update the media session', error);
   }

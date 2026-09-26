@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { fakeAudio, fakeAudioRecord, soundStatus, tile } from './support/audio';
 import { clearAppData, pickBackupFile, stubShare, takeBackup } from './support/backup';
 import { addBabyInSettings, openTab } from './support/tracking';
@@ -18,6 +18,8 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   await tile(page, 'Beyaz gürültü').click();
   await expect(tile(page, 'Beyaz gürültü')).toHaveAttribute('aria-pressed', 'true');
   await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü · 60 dk kaldı');
+  // VoiceOver reads the state changes; the countdown stays out of the live region, or it is read every minute.
+  await expect(soundStatus(page).locator('[aria-live="polite"]')).toHaveText('Çalıyor · Beyaz gürültü');
   await expect(page.getByLabel('Beyaz gürültü seviyesi')).toHaveValue('0.7');
   await tile(page, 'Yağmur').click();
   await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Yağmur · 60 dk kaldı');
@@ -129,6 +131,34 @@ test('a mix is saved, plays after a reload from the list, and can be renamed and
   await expect(soundStatus(page)).toContainText('Çalıyor'); // deleting the mix leaves the sound alone
 });
 
+test('on a 320 px screen a mix row keeps its name readable and 16 px between rename and delete', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await fakeAudio(page);
+  await page.goto('./');
+  await openTab(page, 'Sesler');
+  await tile(page, 'Beyaz gürültü').click();
+  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
+  await sheet.getByLabel('Karışımın adı').fill('Gece');
+  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  const row = page.getByRole('listitem').filter({ hasText: 'Gece' });
+  const name = (await row.getByRole('button', { name: 'Gece karışımını çal', exact: true }).boundingBox())!;
+  const rename = (await row.getByRole('button', { name: 'Gece: Yeniden adlandır', exact: true }).boundingBox())!;
+  const remove = row.getByRole('button', { name: /^Gece: Sil/ });
+  const check = async () => {
+    const box = (await remove.boundingBox())!;
+    const apart = Math.max(box.x - (rename.x + rename.width), rename.x - (box.x + box.width), box.y - (rename.y + rename.height), rename.y - (box.y + box.height));
+    expect(apart).toBeGreaterThanOrEqual(16);
+  };
+  await check();
+  expect(name.width).toBeGreaterThanOrEqual(200);
+  await remove.click(); // armed: the longer "Silmek için tekrar dokunun" still keeps its distance
+  await expect(remove).toHaveAccessibleName('Gece: Silmek için tekrar dokunun');
+  await check();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});
+
 test('a saved mix travels in the backup and comes back in a restore', async ({ page }) => {
   await fakeAudio(page);
   await stubShare(page);
@@ -162,6 +192,9 @@ test('a saved mix travels in the backup and comes back in a restore', async ({ p
 });
 
 test('raising the cap warns and never makes the sound louder; the sound sources open in-app', async ({ page }) => {
+  // A paused clock: the selection's persist timer and the cap's save fire only when the test says so.
+  await page.clock.install({ time: NIGHT });
+  await page.clock.pauseAt(new Date(NIGHT.getTime() + 60_000));
   await fakeAudio(page);
   await page.goto('./');
   await openTab(page, 'Sesler');
@@ -174,29 +207,34 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
   const cap = page.getByLabel('Ses güvenlik sınırı');
   await expect(cap).toHaveValue('0.5');
   await expect(page.getByRole('alert')).toHaveCount(0);
+  // The cap's write waits behind another connection while the selection's persist timer (set by the tile
+  // tap, master 0.6) comes due: whatever that timer writes lands after the cap, so it must be the lowered master.
+  await holdSettingsWrites(page);
   await cap.fill('1');
   await expect(page.getByRole('alert')).toContainText('Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun');
+  await page.clock.runFor(1500);
+  await releaseSettingsWrites(page);
   // The master slider drops so that the sound stays as loud as it was (R1); the headroom is there to be used.
   await openTab(page, 'Sesler');
   await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.3');
   await expect(soundStatus(page)).toContainText('Çalıyor');
-  // The cap and the lowered master were written together: a launch right after restores them as a pair.
+  expect(await storedCapAndMaster(page)).toEqual({ volumeCap: 1, master: 0.3 });
+  // A launch right after restores them as a pair.
   await page.reload();
   await openTab(page, 'Sesler');
   await expect(page.getByLabel('Ses seviyesi', { exact: true })).toHaveValue('0.3');
   await openTab(page, 'Ayarlar');
-  await expect(page.getByLabel('Ses güvenlik sınırı')).toHaveValue('1');
+  await expect(cap).toHaveValue('1');
 
-  await openTab(page, 'Ayarlar');
   await expect(page.getByRole('alert')).toBeVisible();
   await cap.fill('0.5');
   await expect(page.getByRole('alert')).toHaveCount(0);
   await openTab(page, 'Ana'); // leaving the card saves a move that is still pending
   await openTab(page, 'Ayarlar');
-  await expect(page.getByLabel('Ses güvenlik sınırı')).toHaveValue('0.5');
+  await expect(cap).toHaveValue('0.5');
   await page.reload();
   await openTab(page, 'Ayarlar');
-  await expect(page.getByLabel('Ses güvenlik sınırı')).toHaveValue('0.5');
+  await expect(cap).toHaveValue('0.5');
 
   await page.getByRole('button', { name: 'Ses kaynakları', exact: true }).click();
   const sheet = page.getByRole('dialog', { name: 'Ses kaynakları' });
@@ -204,6 +242,26 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
   await expect(sheet).toContainText('Paul Kellet');
   await sheet.getByRole('button', { name: 'Kapat', exact: true }).click();
   await expect(sheet).toBeHidden();
+});
+
+test('a lower cap chosen while the previous move is still being saved is kept', async ({ page }) => {
+  await page.clock.install({ time: NIGHT });
+  await page.clock.pauseAt(new Date(NIGHT.getTime() + 60_000));
+  await page.goto('./');
+  await openTab(page, 'Ayarlar');
+  const cap = page.getByLabel('Ses güvenlik sınırı');
+  await expect(cap).toHaveValue('0.5');
+  // The first move's save starts and waits; the finger moves on before it lands.
+  await holdSettingsWrites(page);
+  await cap.fill('0.4');
+  await page.clock.runFor(300);
+  await cap.fill('0.3');
+  await releaseSettingsWrites(page);
+  await expect.poll(() => storedCapAndMaster(page)).toMatchObject({ volumeCap: 0.4 });
+  await expect(cap).toHaveValue('0.3');
+  await page.clock.runFor(300);
+  await expect.poll(() => storedCapAndMaster(page)).toMatchObject({ volumeCap: 0.3 });
+  await expect(cap).toHaveValue('0.3');
 });
 
 test('the real AudioContext builds the graph and plays without errors', async ({ page, browserName }) => {
@@ -228,3 +286,52 @@ test('the real AudioContext builds the graph and plays without errors', async ({
   expect(await page.evaluate(() => 'AudioContext' in window && !('__fakeAudio' in window))).toBe(true);
   expect(errors).toEqual([]);
 });
+
+/** A second connection holds a read-write transaction on the settings, so the app's writes queue behind it. */
+function holdSettingsWrites(page: Page): Promise<void> {
+  return page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('qundaq');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const store = open.result.transaction('settings', 'readwrite').objectStore('settings');
+          const hold = () => {
+            if (!(window as unknown as { __release?: boolean }).__release) store.get('none').onsuccess = hold;
+          };
+          hold();
+          resolve();
+        };
+      }),
+  );
+}
+
+function releaseSettingsWrites(page: Page): Promise<void> {
+  return page.evaluate(() => {
+    (window as unknown as { __release?: boolean }).__release = true;
+  });
+}
+
+/**
+ * The stored cap and master, read in a transaction opened after every write the app has queued, so it sees
+ * them all (IndexedDB runs overlapping transactions in the order they were created).
+ */
+function storedCapAndMaster(page: Page): Promise<{ volumeCap: unknown; master: unknown }> {
+  return page.evaluate(
+    () =>
+      new Promise<{ volumeCap: unknown; master: unknown }>((resolve, reject) => {
+        const open = indexedDB.open('qundaq');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const db = open.result;
+          const getAll = db.transaction('settings', 'readonly').objectStore('settings').getAll();
+          getAll.onsuccess = () => {
+            db.close();
+            const [row] = getAll.result as { volumeCap?: unknown; lastSound?: { master?: unknown } }[];
+            resolve({ volumeCap: row?.volumeCap, master: row?.lastSound?.master });
+          };
+          getAll.onerror = () => reject(getAll.error);
+        };
+      }),
+  );
+}
