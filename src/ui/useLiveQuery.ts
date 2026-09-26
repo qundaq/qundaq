@@ -59,6 +59,9 @@ export function useLiveQuery<T>(
       // before the new subscription for A has produced one.
       setState(undefined);
     };
+    // The caller's deps, folded into `key`, are the contract; the query closure itself is fresh every
+    // render and must not resubscribe on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   return valueFor(state, key);
 }

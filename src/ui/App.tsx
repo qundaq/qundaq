@@ -127,6 +127,8 @@ function Shell({
       settings.volumeCap ?? DEFAULT_CAP,
     );
     restored.current = true;
+    // The restore reads lastSound and volumeCap once, at launch; later settings must not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine]);
   // A no-op after updateSettings: the engine already holds the cap.
   useEffect(() => {
@@ -142,6 +144,9 @@ function Shell({
       if (next) void updateSettings({ lastSound: next });
     }, 1000);
     return () => window.clearTimeout(handle);
+    // Deliberate deps: only these sound fields restart the 1 s debounce, and updateSettings is a new
+    // function every render, so listing either would rearm the timer on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, sound.layers, sound.master, sound.timer, settings.lastSound]);
   useMediaSession(engine, sound, layerNames(t, sound.layers));
   // On the other tabs the now-playing bar sits above the tab bar; the screens make room through --nowplaying-h (R16).

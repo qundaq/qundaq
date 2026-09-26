@@ -17,8 +17,7 @@ const at = (day: number, hour: number, minute = 0) =>
   new Date(2026, 8, day, hour, minute).getTime();
 const dayStart = (day: number) => new Date(2026, 8, day).getTime();
 const NOW = at(25, 12);
-const ev = (draft: EventDraft): TrackerEvent =>
-  ({ ...draft, id: 'e', createdAt: 0, updatedAt: 0 }) as TrackerEvent;
+const ev = (draft: EventDraft): TrackerEvent => ({ ...draft, id: 'e', createdAt: 0, updatedAt: 0 });
 
 describe('describeEvent', () => {
   it('breastfeeding: time per side, or the current side while it runs', () => {

@@ -60,6 +60,7 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
     );
 
   // The tick can be up to 30 s old; data written since then must never look like it is in the future.
+  // eslint-disable-next-line react-hooks/purity
   const now = Math.max(tick, Date.now());
   const byId = new Map(events.map((event) => [event.id, event]));
 

@@ -99,7 +99,7 @@ function countDiapers(page: import('@playwright/test').Page): Promise<number> {
     () =>
       new Promise<number>((resolve, reject) => {
         const request = indexedDB.open('qundaq');
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onsuccess = () => {
           const db = request.result;
           const tx = db.transaction('events', 'readonly');
@@ -109,7 +109,7 @@ function countDiapers(page: import('@playwright/test').Page): Promise<number> {
             db.close();
             resolve(events.filter((event) => event.type === 'diaper').length);
           };
-          getAll.onerror = () => reject(getAll.error);
+          getAll.onerror = () => reject(getAll.error ?? new Error('indexedDB getAll failed'));
         };
       }),
   );

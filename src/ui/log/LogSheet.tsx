@@ -103,6 +103,9 @@ function LogForm({
   const submitting = useRef(false); // set synchronously, so a second submit before the next render is refused
   // Switching the "Diğer" chip resets the type's own fields; the time, the note and the babies stay.
   if (input.kind !== inputKind) setInput(initialInput(inputKind));
+  // A stale error is cleared the moment the form changes; moving this into every field handler would
+  // scatter the rule, so the cascading extra render is accepted.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setError(null), [input, selected, time, note]);
 
   const single = SINGLE_BABY.has(input.kind);

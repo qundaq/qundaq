@@ -19,6 +19,8 @@ export function SourcesSheet({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    // Reopening the sheet must not show the previous text or error while the file loads again.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded({ state: 'loading' });
     fetch(SOURCES_PATH)
       .then(async (response) => {

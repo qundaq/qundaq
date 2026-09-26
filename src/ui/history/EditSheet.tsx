@@ -63,6 +63,9 @@ function EditForm({
   const running = isOpen(event);
   const dirty = JSON.stringify(input) !== JSON.stringify(initial);
 
+  // A stale error is cleared the moment the form changes; moving this into every field handler would
+  // scatter the rule, so the cascading extra render is accepted.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setError(null), [input]);
   useEffect(() => {
     // Esc while a save, stop or delete is in flight would unmount the form and lose its outcome (a failure

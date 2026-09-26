@@ -18,11 +18,11 @@ export class FakeCache {
     return new URL(typeof key === 'string' ? key : key.url, this.base).href;
   }
 
-  async match(key: Key, _options?: unknown): Promise<Response | undefined> {
+  match(key: Key): Promise<Response | undefined> {
     const stored = this.entries.get(this.resolve(key));
-    return (
+    return Promise.resolve(
       stored &&
-      new Response(stored.body.slice(0), { status: stored.status, headers: stored.headers })
+        new Response(stored.body.slice(0), { status: stored.status, headers: stored.headers }),
     );
   }
 
@@ -36,12 +36,12 @@ export class FakeCache {
     });
   }
 
-  async delete(key: Key): Promise<boolean> {
-    return this.entries.delete(this.resolve(key));
+  delete(key: Key): Promise<boolean> {
+    return Promise.resolve(this.entries.delete(this.resolve(key)));
   }
 
-  async keys(): Promise<{ url: string }[]> {
-    return [...this.entries.keys()].map((url) => ({ url }));
+  keys(): Promise<{ url: string }[]> {
+    return Promise.resolve([...this.entries.keys()].map((url) => ({ url })));
   }
 }
 
@@ -52,25 +52,25 @@ export class FakeCacheStorage {
 
   constructor(private readonly base: string) {}
 
-  async open(name: string): Promise<FakeCache> {
+  open(name: string): Promise<FakeCache> {
     let cache = this.stores.get(name);
     if (!cache) {
       cache = new FakeCache(this.base);
       this.stores.set(name, cache);
       this.onCreate?.(name, cache);
     }
-    return cache;
+    return Promise.resolve(cache);
   }
 
-  async has(name: string): Promise<boolean> {
-    return this.stores.has(name);
+  has(name: string): Promise<boolean> {
+    return Promise.resolve(this.stores.has(name));
   }
 
-  async delete(name: string): Promise<boolean> {
-    return this.stores.delete(name);
+  delete(name: string): Promise<boolean> {
+    return Promise.resolve(this.stores.delete(name));
   }
 
-  async keys(): Promise<string[]> {
-    return [...this.stores.keys()];
+  keys(): Promise<string[]> {
+    return Promise.resolve([...this.stores.keys()]);
   }
 }

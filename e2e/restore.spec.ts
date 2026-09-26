@@ -113,8 +113,12 @@ test('entries logged on a baby that the other phone combined follow it to the ba
   await openTab(page, 'Ana');
   await logDiaper(page, { at: '2026-09-26T09:00' });
   // The other phone paired this Ada with its own, older Ada and deleted this one; its backup says so.
-  const file = JSON.parse(await takeBackup(page));
-  const mine = file.babies[0];
+  const file = JSON.parse(await takeBackup(page)) as {
+    exportedAt: number;
+    babies: { id: string; createdAt: number; updatedAt: number; deletedAt?: number }[];
+    events: unknown[];
+  };
+  const mine = file.babies[0]!;
   const older = {
     ...mine,
     id: 'older-ada',

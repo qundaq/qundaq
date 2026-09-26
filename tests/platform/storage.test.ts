@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { getPersistenceState, requestPersistentStorage } from '../../src/platform/storage';
 
 function fakeStorage(persisted: boolean, grant: boolean) {
-  return { persisted: vi.fn(async () => persisted), persist: vi.fn(async () => grant) };
+  return {
+    persisted: vi.fn(() => Promise.resolve(persisted)),
+    persist: vi.fn(() => Promise.resolve(grant)),
+  };
 }
 
 describe('getPersistenceState', () => {

@@ -15,8 +15,9 @@ export interface LocalData {
 
 /** The row without the storage-only `open` marker. Every other field stays, malformed or not. */
 export function withoutOpen(row: EventRow): TrackerEvent {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
   const { open: _open, ...event } = row;
-  return event as TrackerEvent;
+  return event;
 }
 
 export async function readSnapshot(db: TrackerDb, fallbackLocale: Locale): Promise<LocalData> {

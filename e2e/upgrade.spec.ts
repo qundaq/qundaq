@@ -15,7 +15,7 @@ function readStored(page: import('@playwright/test').Page) {
     () =>
       new Promise<{ version: number; sleep: Record<string, unknown> }>((resolve, reject) => {
         const request = indexedDB.open('qundaq');
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onsuccess = () => {
           const db = request.result;
           const get = db.transaction('events', 'readonly').objectStore('events').get('sleep-1');
@@ -23,7 +23,7 @@ function readStored(page: import('@playwright/test').Page) {
             db.close();
             resolve({ version: db.version, sleep: get.result as Record<string, unknown> });
           };
-          get.onerror = () => reject(get.error);
+          get.onerror = () => reject(get.error ?? new Error('indexedDB get failed'));
         };
       }),
   );
@@ -43,7 +43,7 @@ test('a v2 database with a running sleep opens in this version and the sleep can
     ({ now, minute }) =>
       new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('qundaq', 20);
-        request.onerror = () => reject(request.error);
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
         request.onupgradeneeded = () => {
           const db = request.result;
           db.createObjectStore('settings', { keyPath: 'id' });
@@ -92,7 +92,7 @@ test('a v2 database with a running sleep opens in this version and the sleep can
             db.close();
             resolve();
           };
-          tx.onerror = () => reject(tx.error);
+          tx.onerror = () => reject(tx.error ?? new Error('indexedDB transaction failed'));
         };
       }),
     { now: NOW, minute: MINUTE },

@@ -130,7 +130,9 @@ describe('checkForUpdate', () => {
         await update(registration);
       },
     };
-    vi.stubGlobal('navigator', { serviceWorker: { getRegistration: async () => registration } });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { getRegistration: () => Promise.resolve(registration) },
+    });
     return registration;
   }
 
@@ -176,18 +178,17 @@ describe('checkForUpdate', () => {
   });
 
   it("returns 'failed' and deletes the marker when the update check fails", async () => {
-    stubRegistration(async () => {
-      throw new TypeError('offline');
-    });
+    stubRegistration(() => Promise.reject(new TypeError('offline')));
     expect(await checkForUpdate()).toBe('failed');
     expect(await markerNow()).toBeUndefined();
   });
 
   it("returns 'failed' and deletes the marker when the new version fails to install", async () => {
-    stubRegistration(async (registration) => {
+    stubRegistration((registration) => {
       const worker = new FakeWorker('installing');
       registration.installing = worker;
       setTimeout(() => worker.moveTo('redundant'), 0);
+      return Promise.resolve();
     });
     expect(await checkForUpdate()).toBe('failed');
     expect(await markerNow()).toBeUndefined();
@@ -198,17 +199,20 @@ describe('checkForUpdate', () => {
     // This unit test never runs the real SW install handler, so it can observe whether the page also
     // clears the marker on its own after a 'ready' outcome: leaving it fresh would let a later
     // browser-initiated check within the TTL install a newer deploy without a tap.
-    stubRegistration(async (registration) => {
+    stubRegistration((registration) => {
       const worker = new FakeWorker('installing');
       registration.installing = worker;
       setTimeout(() => worker.moveTo('installed'), 0);
+      return Promise.resolve();
     });
     expect(await checkForUpdate()).toBe('ready');
     expect(await markerNow()).toBeUndefined();
   });
 
   it("returns 'failed' when there is no registration", async () => {
-    vi.stubGlobal('navigator', { serviceWorker: { getRegistration: async () => undefined } });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { getRegistration: () => Promise.resolve(undefined) },
+    });
     expect(await checkForUpdate()).toBe('failed');
   });
 });

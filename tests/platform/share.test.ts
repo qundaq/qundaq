@@ -61,6 +61,8 @@ describe('shareFiles', () => {
     };
     expect(await shareFiles([file()], throwing)).toBe('retry');
     expect(await shareFiles([file()], {})).toBe('failed');
+    // The non-Error rejection reason is the point: shareFiles must survive whatever the browser throws.
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
     expect(await shareFiles([file()], { share: () => Promise.reject('weird') })).toBe('failed');
   });
 });

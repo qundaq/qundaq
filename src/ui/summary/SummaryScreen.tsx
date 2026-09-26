@@ -119,6 +119,8 @@ export function SummaryScreen({ view, onViewChange, lastBabyIds }: Props) {
           to={to}
           metric={view.metric}
           onMetric={(metric) => set({ metric })}
+          // The tick can be up to 30 s old; data written since then must never look like the future.
+          // eslint-disable-next-line react-hooks/purity
           now={Math.max(tick, Date.now())}
         />
       )}

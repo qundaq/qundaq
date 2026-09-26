@@ -112,6 +112,8 @@ export function LogScreen({
           day={day}
           babyFilter={babyFilter}
           typeFilter={view.type}
+          // The tick can be up to 30 s old; data written since then must never look like the future.
+          // eslint-disable-next-line react-hooks/purity
           now={Math.max(tick, Date.now())}
           onOpen={setEditing}
         />

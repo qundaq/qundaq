@@ -41,12 +41,14 @@ function loadServiceWorker(options: Options = {}) {
       super(new URL(input, SW_URL), init);
     }
   }
-  const fetch = async (request: Request) => {
+  const fetch = (request: Request) => {
     fetched.push({ url: request.url, cache: request.cache });
     const body = served[new URL(request.url).pathname];
-    return body === undefined
-      ? new Response('missing', { status: 404 })
-      : new Response(body as BodyInit);
+    return Promise.resolve(
+      body === undefined
+        ? new Response('missing', { status: 404 })
+        : new Response(body as BodyInit),
+    );
   };
   const self = {
     addEventListener: (type: string, listener: Listener) => {
@@ -57,6 +59,8 @@ function loadServiceWorker(options: Options = {}) {
     clients: { claim: async () => {} },
     skipWaiting: () => {},
   };
+  // The built service worker source runs in this sandbox on purpose; there is no import to lint.
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call
   new Function('self', 'caches', 'fetch', 'Request', 'Response', 'crypto', source)(
     self,
     caches,
