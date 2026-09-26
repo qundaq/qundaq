@@ -1,7 +1,7 @@
 import type { EngineState } from '../../audio/engine';
 import { useT } from '../I18nProvider';
-import { useNow } from '../useNow';
-import { remainingText, statusText } from './text';
+import { statusText } from './text';
+import { useRemaining } from './useRemaining';
 
 interface Props {
   state: EngineState;
@@ -17,8 +17,7 @@ interface Props {
  */
 export function NowPlayingBar({ state, onOpen, onPlay, onPause }: Props) {
   const t = useT();
-  const now = useNow(10_000);
-  const remaining = remainingText(t, state.endsAt, Math.max(now, Date.now()));
+  const remaining = useRemaining(t, state.endsAt);
   return (
     <div className="nowplaying" role="region" aria-label={t('nowplaying.label')}>
       <button type="button" className="nowplaying-text" onClick={onOpen}>

@@ -2,22 +2,21 @@ import { useState } from 'react';
 import { SOUNDS } from '../../audio/catalog';
 import { percent } from '../../audio/volume';
 import { useT } from '../I18nProvider';
-import { useNow } from '../useNow';
 import { MixList } from './MixList';
 import { MixNameSheet, type MixNameRequest } from './MixNameSheet';
 import { SoundTile } from './SoundTile';
 import { TimerChips } from './TimerChips';
-import { remainingText, statusText } from './text';
+import { statusText } from './text';
+import { useRemaining } from './useRemaining';
 import { useSoundEngine } from './useSoundEngine';
 
 /** The Sesler tab: a view over the engine's snapshot. Every tap that can start sound calls the engine synchronously (R6). */
 export function SoundsScreen() {
   const t = useT();
   const { engine, state } = useSoundEngine();
-  const now = useNow(10_000);
   const [notice, setNotice] = useState<string | null>(null);
   const [mixRequest, setMixRequest] = useState<MixNameRequest | null>(null);
-  const remaining = remainingText(t, state.endsAt, Math.max(now, Date.now()));
+  const remaining = useRemaining(t, state.endsAt);
 
   const toggle = (soundId: (typeof SOUNDS)[number]['id']) => {
     const result = engine.toggleLayer(soundId);
