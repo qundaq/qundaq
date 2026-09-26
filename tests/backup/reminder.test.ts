@@ -36,7 +36,11 @@ describe('believable', () => {
 });
 
 describe('backupReminder', () => {
-  const NOW = at(26, 21);
+  // Built in beforeEach, after the time zone is set: a describe-time Date would use the machine's zone.
+  let NOW: number;
+  beforeEach(() => {
+    NOW = at(26, 21);
+  });
 
   it('shows with entries and no backup; never without entries', () => {
     expect(backupReminder({}, true, NOW)).toEqual({ show: true, daysSince: null });
