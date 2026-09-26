@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { believable, daysSinceBackup } from '../../src/backup/reminder';
+import { backupReminder, believable, daysSinceBackup, snoozeUntil } from '../../src/backup/reminder';
 
 let previousTz: string | undefined;
 beforeEach(() => {
@@ -32,5 +32,38 @@ describe('believable', () => {
     expect(believable(11, 10)).toBeUndefined();
     expect(believable(Number.NaN, 10)).toBeUndefined();
     expect(believable(undefined, 10)).toBeUndefined();
+  });
+});
+
+describe('backupReminder', () => {
+  const NOW = at(26, 21);
+
+  it('shows with entries and no backup; never without entries', () => {
+    expect(backupReminder({}, true, NOW)).toEqual({ show: true, daysSince: null });
+    expect(backupReminder({}, false, NOW)).toEqual({ show: false, daysSince: null });
+  });
+
+  it('shows once the last backup is more than seven days old', () => {
+    expect(backupReminder({ lastBackupAt: at(19, 21, 1) }, true, NOW)).toEqual({ show: false, daysSince: 7 });
+    expect(backupReminder({ lastBackupAt: at(19, 20, 59) }, true, NOW)).toEqual({ show: true, daysSince: 7 });
+    expect(backupReminder({ lastBackupAt: at(17, 9) }, true, NOW)).toEqual({ show: true, daysSince: 9 });
+  });
+
+  it('stays hidden while snoozed', () => {
+    expect(backupReminder({ backupReminderSnoozedUntil: NOW + 1 }, true, NOW).show).toBe(false);
+    expect(backupReminder({ backupReminderSnoozedUntil: NOW }, true, NOW).show).toBe(true);
+  });
+
+  it('ignores times from a clock that was far ahead', () => {
+    expect(backupReminder({ lastBackupAt: at(28, 22) }, true, NOW)).toEqual({ show: true, daysSince: null });
+    expect(backupReminder({ backupReminderSnoozedUntil: at(29, 22) }, true, NOW).show).toBe(true);
+  });
+});
+
+describe('snoozeUntil', () => {
+  it('is 09:00 the next day, or 12 hours from now when that is later', () => {
+    expect(snoozeUntil(at(26, 3))).toBe(at(27, 9));
+    expect(snoozeUntil(at(26, 20))).toBe(at(27, 9));
+    expect(snoozeUntil(at(26, 23))).toBe(at(27, 11));
   });
 });

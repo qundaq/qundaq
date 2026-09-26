@@ -3,7 +3,7 @@ import { browserDownloadDeps, canShareFiles, createDownloads, shareFiles } from 
 import { ErrorBoundary } from '../ErrorBoundary';
 import { useLocale, useT } from '../I18nProvider';
 import { Sheet, useSheetSession } from '../Sheet';
-import { prepareBackup, type Prepared } from './prepare';
+import { prepareBackup, prepareCsv, type Prepared } from './prepare';
 import { SheetMessage } from './SheetMessage';
 import type { ExportKind } from './text';
 
@@ -14,16 +14,23 @@ interface Props {
   onBackedUp: (at: number) => void;
 }
 
-/** Prepares the file when it opens; a second tap shares it (or downloads it when sharing is not possible). */
+/** The sheet's texts for each kind: a CSV export is not a backup and must not say so. */
+const TEXT = {
+  json: { title: 'export.title', preparing: 'export.preparing', warning: 'export.warning', failed: 'export.failed' },
+  csv: { title: 'csv.title', preparing: 'csv.preparing', warning: 'csv.warning', failed: 'csv.failed' },
+} as const;
+
+/** Prepares the files when it opens; a second tap shares them (or downloads them when sharing is not possible). */
 export function ExportSheet({ kind, onClose, onBackedUp }: Props) {
   const t = useT();
   const session = useSheetSession(kind);
+  const text = TEXT[session?.value ?? 'json'];
   return (
-    <Sheet open={kind !== null} title={t('export.title')} onClose={onClose}>
+    <Sheet open={kind !== null} title={t(text.title)} onClose={onClose}>
       {/* The sheet sits outside the screens' boundary: a render error here shows its failure, not a blank app. */}
       {session && (
-        <ErrorBoundary key={session.id} fallback={() => <SheetMessage message={t('export.failed')} onClose={onClose} />}>
-          <ExportForm onClose={onClose} onBackedUp={onBackedUp} />
+        <ErrorBoundary key={session.id} fallback={() => <SheetMessage message={t(text.failed)} onClose={onClose} />}>
+          <ExportForm kind={session.value} onClose={onClose} onBackedUp={onBackedUp} />
         </ErrorBoundary>
       )}
     </Sheet>
@@ -32,7 +39,7 @@ export function ExportSheet({ kind, onClose, onBackedUp }: Props) {
 
 type Done = 'shared' | 'saved';
 
-function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
+function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind: ExportKind }) {
   const t = useT();
   const locale = useLocale();
   const [prepared, setPrepared] = useState<Prepared | 'failed' | null>(null);
@@ -44,7 +51,7 @@ function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
 
   useEffect(() => {
     let cancelled = false;
-    prepareBackup(t, locale)
+    (kind === 'json' ? prepareBackup : prepareCsv)(t, locale)
       .then((next) => {
         if (!cancelled) setPrepared(next);
       })
@@ -55,11 +62,11 @@ function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
     return () => {
       cancelled = true;
     };
-  }, [t, locale]);
+  }, [kind, t, locale]);
   useEffect(() => () => downloads.revokeAll(), [downloads]);
 
-  if (prepared === null) return <p aria-busy="true">{t('export.preparing')}</p>;
-  if (prepared === 'failed') return <SheetMessage message={t('export.failed')} onClose={onClose} />;
+  if (prepared === null) return <p aria-busy="true">{t(TEXT[kind].preparing)}</p>;
+  if (prepared === 'failed') return <SheetMessage message={t(TEXT[kind].failed)} onClose={onClose} />;
 
   const finish = (how: Done) => {
     if (prepared.countsAsBackup) onBackedUp(Date.now());
@@ -70,7 +77,7 @@ function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
     return (
       <>
         <p role="status" className="status-ok">
-          {t(done === 'shared' ? 'export.shared' : 'export.saved')}
+          {t(kind === 'csv' ? 'csv.shared' : done === 'shared' ? 'export.shared' : 'export.saved')}
         </p>
         <div className="sheet-actions">
           <button type="button" className="btn btn-primary" onClick={onClose}>
@@ -102,7 +109,7 @@ function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
   return (
     <>
       <p>{prepared.summary}</p>
-      <p className="muted small">{t('export.warning')}</p>
+      <p className="muted small">{t(TEXT[kind].warning)}</p>
       {asking ? (
         <div className="export-actions">
           <p>{t('export.savedQuestion')}</p>
@@ -115,7 +122,7 @@ function ExportForm({ onClose, onBackedUp }: Omit<Props, 'kind'>) {
             </button>
           </div>
         </div>
-      ) : (
+      ) : files.length === 0 ? null : (
         <div className="export-actions">
           {shareable ? (
             <button type="button" className="btn btn-primary" onClick={share}>

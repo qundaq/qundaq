@@ -193,3 +193,4 @@ legend { margin-bottom: 6px; }
 .import-counts dd { margin: 0; }
 .import-timers ul { margin: 0 0 8px; padding-left: 20px; }
 .home-restore { margin-top: 12px; }
+.backup-banner { border-color: var(--danger); }

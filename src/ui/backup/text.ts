@@ -31,8 +31,8 @@ export function lastBackupText(t: TranslateFn, locale: Locale, lastBackupAt: num
   return t('backup.last', { ago, date: `${shortDate(locale, last)} ${clockTime(locale, last)}` });
 }
 
-/** What the export sheet makes. json: the backup. */
-export type ExportKind = 'json';
+/** What the export sheet makes. json: the backup. csv: spreadsheets for the pediatrician. */
+export type ExportKind = 'json' | 'csv';
 
 /** Only a JSON backup sets lastBackupAt (R6): a CSV cannot be restored. */
 export function countsAsBackup(kind: ExportKind): boolean {

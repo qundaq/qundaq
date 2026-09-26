@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { downloadedText, failNextShare, openExport, removeShare, shareCalls, sharedFiles, stubShare } from './support/backup';
-import { addBabyInSettings, logDiaper, openTab } from './support/tracking';
+import { addBabyInSettings, logDiaper, openOther, openTab, quick } from './support/tracking';
 
 test.describe('JSON backup', () => {
   test('shares one JSON file with every baby and entry; Ayarlar then shows the backup', async ({ page }) => {
@@ -90,5 +90,75 @@ test.describe('JSON backup', () => {
     await expect(sheet.getByRole('status')).toHaveText('Yedek kaydedildi.');
     await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
     await expect(page.getByText(/^Son yedek: bugün \(/)).toBeVisible();
+  });
+});
+
+test.describe('CSV', () => {
+  test.use({ timezoneId: 'Europe/Istanbul' });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-26T10:00:00+03:00') });
+  });
+
+  test('shares one file per baby with entries, plus pumping, as a Turkish spreadsheet; it is not a backup', async ({ page }) => {
+    await stubShare(page);
+    await page.goto('./');
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await quick(page, 'Biberon').click();
+    const bottle = page.getByRole('dialog', { name: 'Biberon' });
+    await bottle.getByLabel('Zaman').fill('2026-09-26T09:40');
+    await bottle.getByRole('button', { name: '90 ml', exact: true }).click();
+    await bottle.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(bottle).toBeHidden();
+    const pump = await openOther(page, 'Sağım');
+    await pump.getByLabel('Sol (ml)').fill('60');
+    await pump.getByLabel('Not (isteğe bağlı)').fill('=akşam; "sol"');
+    await pump.getByRole('button', { name: 'Kaydet', exact: true }).click();
+    await expect(pump).toBeHidden();
+
+    await openTab(page, 'Ayarlar');
+    await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
+    const sheet = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
+    // Can has no entries, so no file for Can.
+    await expect(sheet).toContainText('2 dosya: qundaq-Ada-2026-09-26.csv, qundaq-Sağım-2026-09-26.csv');
+    await sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
+    await expect(sheet.getByRole('status')).toHaveText('Dosyalar paylaşıldı.');
+
+    const files = await sharedFiles(page);
+    expect(files.map((file) => [file.name, file.type, file.bom])).toEqual([
+      ['qundaq-Ada-2026-09-26.csv', 'text/csv', true],
+      ['qundaq-Sağım-2026-09-26.csv', 'text/csv', true],
+    ]);
+    expect(files[0]!.text).toBe(
+      'Tarih;Başlangıç;Bitiş tarihi;Bitiş saati;Süre (dk);Tür;Ayrıntı;Not\r\n2026-09-26;09:40;;;;Biberon;90 ml · Anne sütü;\r\n',
+    );
+    // The note is quoted (it holds ";" and quotes) and cannot run as a formula.
+    expect(files[1]!.text).toContain(`;Sağım;Sol 60 ml;"'=akşam; ""sol"""\r\n`);
+
+    await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+    await expect(page.getByText('Henüz yedek alınmadı.')).toBeVisible();
+  });
+
+  test('without file sharing, each file has its own download button', async ({ page }) => {
+    await removeShare(page);
+    await page.goto('./');
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Can');
+    await openTab(page, 'Ana');
+    await logDiaper(page, { all: true });
+    await openTab(page, 'Ayarlar');
+    await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
+    const sheet = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
+    for (const name of ['qundaq-Ada-2026-09-26.csv', 'qundaq-Can-2026-09-26.csv']) {
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        sheet.getByRole('button', { name: `${name} dosyasını indir`, exact: true }).click(),
+      ]);
+      expect(download.suggestedFilename()).toBe(name);
+      expect(await downloadedText(download)).toContain('Tarih;Başlangıç;');
+    }
+    await expect(sheet).not.toContainText('Dosya kaydedildi mi?');
   });
 });

@@ -1,7 +1,16 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
-import { SWITCH_DEBOUNCE_MS, listRecentEvents, listRunningEvents, logEvents, stopEvent, switchBreastSide } from '../../src/db/events';
+import {
+  SWITCH_DEBOUNCE_MS,
+  deleteEvent,
+  hasLiveEvents,
+  listRecentEvents,
+  listRunningEvents,
+  logEvents,
+  stopEvent,
+  switchBreastSide,
+} from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
 
@@ -255,5 +264,16 @@ describe('running events', () => {
     const db = freshDb();
     const [diaper] = await logEvents(db, [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }], NOW);
     await expect(stopEvent(db, diaper!.id, NOW)).rejects.toThrow(`Event ${diaper!.id} is not a timer`);
+  });
+});
+
+describe('hasLiveEvents', () => {
+  it('is true only while an entry that is not deleted exists', async () => {
+    const db = freshDb();
+    expect(await hasLiveEvents(db)).toBe(false);
+    const [diaper] = await logEvents(db, [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }], NOW);
+    expect(await hasLiveEvents(db)).toBe(true);
+    await deleteEvent(db, diaper!.id, NOW);
+    expect(await hasLiveEvents(db)).toBe(false);
   });
 });

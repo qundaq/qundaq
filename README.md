@@ -13,7 +13,7 @@ Runs entirely on your phone as an installable web app. No accounts, no servers, 
 
 ## Status
 
-🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backup and sounds come next.
+🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. Sounds come next.
 
 ## Why
 
@@ -29,6 +29,15 @@ Parents of twins log a lot: feeds, sleeps, diapers — times two, often at 3 a.m
 6. **Verifiable.** Open source, built and deployed by CI straight from this repository. The principles above are enforced by automated tests, not just promised.
 
 The full commitments, how each is enforced, and the few things we cannot control are in [MANIFESTO.md](MANIFESTO.md).
+
+## Backups
+
+Your entries live only on your phone, and iOS may delete a home-screen app's storage. Back up regularly; Home reminds you when the last backup is more than 7 days old.
+
+- **Back up:** Settings → Backup → **Back up** → **Save to Files / share** → **Save to Files** → **On My iPhone**. This works in airplane mode. A file kept only in iCloud Drive cannot be opened in airplane mode.
+- **Restore:** Settings → Backup → **Restore from a backup** (on a phone without babies, also on Home), pick the file, read the preview, then **Restore**. This merges: entries only on this phone are kept; for an entry on both sides the newer change wins, deletions included. After a wipe (a new phone, or the app deleted and added again) this brings everything back. **Replace everything** is also offered; it shows what it would delete and asks you to confirm.
+- **CSV:** Settings → Backup → **Export as CSV** gives one spreadsheet per baby, for your pediatrician.
+- The backup file is plain JSON and is **not encrypted**. The app never sends it anywhere: it goes only where you send it with the share sheet. If you pick iCloud Drive, Mail or WhatsApp, that service receives it.
 
 ## Planned features (v1)
 
@@ -87,7 +96,13 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 
 "Qundaq", Türkçedeki *kundak* kelimesinin Azerbaycan Türkçesindeki yazılışıdır.
 
-**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Yedekleme ve sesler sırada.
+**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sırada sesler var.
+
+**Yedekler:** Kayıtlar yalnızca telefonda durur ve iOS ana ekrana eklenen uygulamaların verisini silebilir. Düzenli yedek alın; son yedek 7 günden eskiyse Ana ekran hatırlatır.
+- **Yedek al:** Ayarlar → Yedekleme → **Yedek al** → **Dosyalar'a kaydet / paylaş** → **Dosyalar'a Kaydet** → **iPhone'umda**. Uçak modunda çalışır. Yalnızca iCloud Drive'da duran bir dosya uçak modunda açılamaz.
+- **Geri yükle:** Ayarlar → Yedekleme → **Yedekten geri yükle** (bebek eklenmemiş bir telefonda Ana ekranda da), dosyayı seçin, önizlemeye bakın, **Geri yükle**'ye dokunun. Bu birleştirir: yalnızca bu telefonda olan kayıtlar korunur; iki tarafta da olan bir kayıtta, silme dahil, daha yeni değişiklik geçerli olur. Telefon silindikten sonra (yeni telefon ya da uygulama silinip yeniden eklendiğinde) her şeyi geri getirir. **Tamamen değiştir** seçeneği de var; neyi sileceğini gösterir ve onay ister.
+- **CSV:** Ayarlar → Yedekleme → **CSV olarak dışa aktar**, doktor için her bebeğe bir tablo verir.
+- Yedek dosyası düz JSON'dur ve **şifrelenmez**. Uygulama dosyayı hiçbir yere göndermez; dosya yalnızca paylaş menüsünde sizin seçtiğiniz yere gider. iCloud Drive, Mail ya da WhatsApp'ı seçerseniz dosya o hizmete gider.
 
 **İlkeler:**
 - Veri yalnızca telefonda tutulur.

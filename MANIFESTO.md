@@ -11,7 +11,10 @@ commitments, that is a bug — please report it as a security issue.
 ## Commitments
 
 1. **No data leaves the device.** There is no server, no account and no sync. Every record lives in your
-   browser's local database (IndexedDB) on your phone. Backups are files you export yourself.
+   browser's local database (IndexedDB) on your phone. Backups are files you export yourself: the app hands
+   the file to your phone's share sheet (or to a download you tap) and has no code that uploads it anywhere.
+   Where it goes is your choice there; if you pick iCloud Drive, Mail or WhatsApp, that service receives it.
+   The file is not encrypted.
 2. **No network activity after the first load.** Once the app shows "Ready for offline", the app itself never
    makes a network request unless you tap "Check for updates". The service worker serves every file from its
    cache and refuses anything else. While your phone is online, Safari may still fetch the app's `sw.js` file
@@ -36,6 +39,7 @@ Every push that changes code runs these checks, and the app is deployed only if 
 | Strict Content-Security-Policy in every production build (own origin only, no inline scripts) | `build/csp.ts`, `e2e/privacy.spec.ts` |
 | Zero network requests after the first load, while using the app (Chromium; iOS verified with docs/device-checklist.md) | `e2e/offline.spec.ts` |
 | Cold start with the network disabled (Chromium; iOS verified with docs/device-checklist.md) | `e2e/offline.spec.ts` |
+| Backing up, exporting CSV and restoring make no network request (Chromium) and cause no CSP violations | `e2e/offline.spec.ts`, `e2e/privacy.spec.ts` |
 | Update gate: a new version on the server is neither downloaded nor installed until you tap "Check for updates" — only `sw.js` is fetched (Chromium) | `e2e/update.spec.ts`, `tests/sw/service-worker.test.ts` |
 | Integrity check: every file of a new version must match the SHA-256 recorded at build time, or nothing is installed | `tests/scripts/sw-manifest.test.ts`, `tests/sw/service-worker.test.ts` (install behaviour) |
 | No CSP violations while using the app | `e2e/privacy.spec.ts` |
@@ -74,7 +78,10 @@ Qundaq yorgun ebeveynler için bir kayıt defteri. Tek bir söz üzerine kurulu:
 Kod bu sözlerden birini bozarsa bu bir hatadır; lütfen güvenlik sorunu olarak bildir.
 
 1. **Veri cihazdan çıkmaz.** Sunucu, hesap ya da senkronizasyon yok. Tüm kayıtlar telefonundaki yerel
-   veritabanında (IndexedDB). Yedekler senin dışa aktardığın dosyalar.
+   veritabanında (IndexedDB). Yedekler senin dışa aktardığın dosyalar: uygulama dosyayı telefonunun paylaş
+   menüsüne (ya da senin dokunduğun bir indirmeye) verir ve onu bir yere yükleyen hiçbir kod içermez. Nereye
+   gideceğini orada sen seçersin; iCloud Drive, Mail ya da WhatsApp'ı seçersen dosya o hizmete gider. Dosya
+   şifrelenmez.
 2. **İlk yüklemeden sonra ağ trafiği yok.** Uygulama "Çevrimdışı hazır" dedikten sonra uygulamanın kendisi,
    "Güncellemeleri kontrol et"e basmadıkça hiçbir ağ isteği yapmaz. Service worker her dosyayı önbellekten
    sunar, başka her şeyi reddeder. Telefon çevrimiçiyken Safari, uygulamanın `sw.js` dosyasını değişip

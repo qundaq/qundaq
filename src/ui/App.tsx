@@ -52,7 +52,7 @@ export function App() {
  * sheet for the export sheet, and closing the export sheet brings the import back while `pending` is set.
  */
 interface BackupUi {
-  sheet: 'export' | 'import' | null;
+  sheet: 'export' | 'csv' | 'import' | null;
   pending: { source: ImportSource; choices: ImportChoices } | null;
 }
 
@@ -78,8 +78,10 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
   };
 
   const openExport = () => setBackupUi((ui) => ({ ...ui, sheet: 'export' }));
+  const openCsv = () => setBackupUi((ui) => ({ ...ui, sheet: 'csv' }));
   // A dialog's close event also fires when Shell swaps sheets; each close only acts if its sheet is current.
-  const closeExport = () => setBackupUi((ui) => (ui.sheet === 'export' ? { ...ui, sheet: ui.pending ? 'import' : null } : ui));
+  const closeExport = () =>
+    setBackupUi((ui) => (ui.sheet === 'export' || ui.sheet === 'csv' ? { ...ui, sheet: ui.pending ? 'import' : null } : ui));
   const closeImport = () => setBackupUi((ui) => (ui.sheet === 'import' ? NO_BACKUP_UI : ui));
   // The sheet opens at once and says "Yedek okunuyor…": reading 20 MB takes seconds on an older iPhone.
   const pickImportFile = async (file: File) => {
@@ -89,7 +91,7 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
     setBackupUi((ui) => (ui.pending?.source === loading ? { ...ui, pending: { ...ui.pending, source: { fileName: file.name, result } } } : ui));
   };
   const onImportFile = (file: File) => void pickImportFile(file);
-  const backupActions = { onExport: openExport, onImportFile };
+  const backupActions = { onExport: openExport, onImportFile, onCsv: openCsv };
 
   return (
     <>
@@ -97,7 +99,7 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
         {/* Keyed by tab: a crash on one screen never blocks the others, and switching tabs starts over. */}
         <ErrorBoundary key={tab} fallback={(error) => <CrashScreen error={error} onBackup={openExport} onRestore={onImportFile} />}>
           {tab === 'home' ? (
-            <HomeScreen settings={settings} onSettingsChange={updateSettings} onImportFile={onImportFile} />
+            <HomeScreen settings={settings} onSettingsChange={updateSettings} onImportFile={onImportFile} onBackup={openExport} />
           ) : tab === 'log' ? (
             <LogScreen view={logView} onViewChange={setLogView} />
           ) : tab === 'summary' ? (
@@ -111,7 +113,7 @@ function Shell({ settings, onSettingsReplaced }: { settings: Settings; onSetting
       </main>
       <TabBar current={tab} onSelect={setTab} />
       <ExportSheet
-        kind={backupUi.sheet === 'export' ? 'json' : null}
+        kind={backupUi.sheet === 'export' ? 'json' : backupUi.sheet === 'csv' ? 'csv' : null}
         onClose={closeExport}
         onBackedUp={(at) => void updateSettings({ lastBackupAt: at })}
       />
