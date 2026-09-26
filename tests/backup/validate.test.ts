@@ -123,6 +123,13 @@ describe('rows that fail their checks are skipped and reported', () => {
     expect(backup.mixes).toEqual([]);
   });
 
+  it('trims a mix name like the app does: padding neither fails the 40-char rule nor survives into the store', () => {
+    const rows = [mix('m1', { name: ` ${'x'.repeat(40)} ` }), mix('m2', { name: ' Gece ' })];
+    const { skipped, backup } = ok(parseBackup(file({ mixes: rows }), NOW));
+    expect(skipped).toEqual([]);
+    expect(backup.mixes).toEqual([mix('m1', { name: 'x'.repeat(40) }), mix('m2', { name: 'Gece' })]);
+  });
+
   it('keeps a mix whose sound this version does not know: it comes from a newer version and is skipped only when played', () => {
     const newer = mix('m1', { layers: [{ soundId: 'train', gain: 0.5 }, { soundId: 'white', gain: 1 }] });
     const { skipped, backup } = ok(parseBackup(file({ mixes: [newer, mix('m2', { deletedAt: T + 1 })] }), NOW));
