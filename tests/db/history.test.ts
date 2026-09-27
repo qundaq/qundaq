@@ -157,19 +157,20 @@ describe('recentMedicationNames', () => {
 
   it('lists distinct names, newest first, each with its latest spelling and dose', async () => {
     const db = freshDb();
+    // \u0130 is the Turkish dotted capital I: "\u0130buprofen" and "ibuprofen" fold to the same name.
     await db.events.bulkAdd([
-      med('D vitamini', 2, '400 IU'),
-      med('d vitamini', 1, '2 damla'),
-      med('Parasetamol', 3),
-      med('İbuprofen', 4, '2,5 ml'),
+      med('Vitamin D', 2, '400 IU'),
+      med('vitamin d', 1, '2 drops'),
+      med('Paracetamol', 3),
+      med('\u0130buprofen', 4, '2,5 ml'),
       med('ibuprofen', 5),
-      med('Eski ilaç', 61),
-      med('Silinen', 1, undefined, { deletedAt: NOW }),
+      med('Old medicine', 61),
+      med('Deleted', 1, undefined, { deletedAt: NOW }),
     ]);
     expect(await recentMedicationNames(db, NOW)).toEqual([
-      { name: 'd vitamini', dose: '2 damla' },
-      { name: 'Parasetamol' },
-      { name: 'İbuprofen', dose: '2,5 ml' },
+      { name: 'vitamin d', dose: '2 drops', at: NOW - 1 * DAY },
+      { name: 'Paracetamol', at: NOW - 3 * DAY },
+      { name: '\u0130buprofen', dose: '2,5 ml', at: NOW - 4 * DAY },
     ]);
   });
 
@@ -232,7 +233,7 @@ describe('updateEvent', () => {
           dirty: true,
           stoolColor: 'green',
           consistency: 'soft',
-          note: 'yeşil',
+          note: 'green note',
         },
       ],
       NOW - HOUR,

@@ -15,8 +15,9 @@ export interface SameBabyPair {
 }
 
 /**
- * The name as pairing compares it (case folded, İ/ı included, trimmed), or null for a device row whose name
- * is not a string: device rows were never validated, and such a baby is never paired, only left as it is.
+ * The name as pairing compares it (case folded, including the Turkish dotted/dotless i, trimmed), or null
+ * for a device row whose name is not a string: device rows were never validated, and such a baby is never
+ * paired, only left as it is.
  */
 export function foldedName(baby: Baby): string | null {
   return typeof baby.name === 'string' ? foldCase(baby.name.trim()) : null;
@@ -40,10 +41,11 @@ export function groupByFoldedName(babies: readonly Baby[]): Map<string, Baby[]> 
 }
 
 /**
- * A live device baby and a live backup baby with the same name (ignoring case, İ/ı included) but different
- * ids: the same child, added again after a wipe. Pairs only when exactly one live baby on each side shares
- * that name — an ambiguous name (two babies on one side, or on both) is never guessed at, so it is left
- * unpaired. Babies whose id is on both sides are the same record already, not a same-name candidate.
+ * A live device baby and a live backup baby with the same name (ignoring case, including the Turkish
+ * dotted/dotless i) but different ids: the same child, added again after a wipe. Pairs only when exactly
+ * one live baby on each side shares that name — an ambiguous name (two babies on one side, or on both) is
+ * never guessed at, so it is left unpaired. Babies whose id is on both sides are the same record already,
+ * not a same-name candidate.
  */
 export function findSameBabies(local: readonly Baby[], incoming: readonly Baby[]): SameBabyPair[] {
   const localIds = new Set(local.map((baby) => baby.id));

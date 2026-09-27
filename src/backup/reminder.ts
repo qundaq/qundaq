@@ -13,7 +13,7 @@ export function daysSinceBackup(lastBackupAt: number, now: number): number {
 
 /** Home asks for a backup once the last one is older than this. */
 export const REMIND_AFTER_MS = 7 * DAY;
-/** "Yarın hatırlat" snoozes until this hour the next day… */
+/** The "remind me tomorrow" snooze (reminder.snooze) lasts until this hour the next day… */
 export const SNOOZE_HOUR = 9;
 /** …and for at least this long, so a tap at 23:00 does not come back at 09:00. */
 export const MIN_SNOOZE_MS = 12 * HOUR;
@@ -47,7 +47,7 @@ export function backupReminder(
   return { show: last === undefined || now - last > REMIND_AFTER_MS, daysSince };
 }
 
-/** "Yarın hatırlat": 09:00 local on the next calendar day, and at least 12 hours from now. */
+/** The "remind me tomorrow" snooze (reminder.snooze): 09:00 local on the next calendar day, and at least 12 hours from now. */
 export function snoozeUntil(now: number): number {
   const today = new Date(now);
   const nextMorning = new Date(

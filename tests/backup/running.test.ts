@@ -122,11 +122,27 @@ describe('repairRunning', () => {
     expect(changed).toEqual([stopTimerAt(a, T + 20 * MINUTE, NOW)]);
   });
 
-  it('different babies and different types do not collide; finished and deleted rows are left alone', () => {
+  it('a running sleep and a running feed for one baby: the later one runs on, the other ends at its start', () => {
+    const asleep = sleep('ada-sleep', T);
+    const feeding = feed('ada-feed', T + 30 * MINUTE, [{ side: 'L', start: T + 30 * MINUTE }]);
+    const { changed, stopped } = repairRunning([asleep, feeding], BABIES, context);
+    expect(changed).toEqual([stopTimerAt(asleep, T + 30 * MINUTE, NOW)]);
+    expect(stopped).toEqual([
+      {
+        id: 'ada-sleep',
+        babyId: 'a',
+        type: 'sleep',
+        startAt: T,
+        stopAt: T + 30 * MINUTE,
+        reason: 'collision',
+      },
+    ]);
+  });
+
+  it('different babies do not collide; finished and deleted rows are left alone', () => {
     const rows = [
       sleep('ada', T),
       sleep('can', T + 1, { babyId: 'c' }),
-      feed('ada-feed', T + 2, [{ side: 'L', start: T + 2 }]),
       sleep('done', T + 3, { endAt: T + 4 }),
       sleep('deleted', T + 5, { deletedAt: T + 6 }),
     ];

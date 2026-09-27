@@ -5,6 +5,7 @@ import { BABY_NAME_MAX, addBaby, deleteBaby, listBabies, updateBaby } from '../.
 import { logEvents } from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
 import { MINUTE } from '../../src/domain/time';
+import type { TrackerEvent } from '../../src/domain/types';
 
 const opened: TrackerDb[] = [];
 const freshDb = () => {
@@ -24,7 +25,7 @@ describe('babies repository', () => {
       { name: '  Ada ', color: '#7cb7ff', birthDate: '2026-09-01' },
       1000,
     );
-    await addBaby(db, { name: 'Can', color: '#ff9ecb' }, 2000);
+    await addBaby(db, { name: 'Cal', color: '#ff9ecb' }, 2000);
     expect(ada).toMatchObject({
       name: 'Ada',
       color: '#7cb7ff',
@@ -32,7 +33,7 @@ describe('babies repository', () => {
       archived: false,
       createdAt: 1000,
     });
-    expect((await listBabies(db)).map((b) => b.name)).toEqual(['Ada', 'Can']);
+    expect((await listBabies(db)).map((b) => b.name)).toEqual(['Ada', 'Cal']);
   });
 
   it('rejects a blank name and truncates long ones', async () => {
@@ -47,9 +48,9 @@ describe('babies repository', () => {
   it('renames with the same validation', async () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
-    await updateBaby(db, ada.id, { name: ' Ada Nur ', color: '#8fdc9a' }, 2000);
+    await updateBaby(db, ada.id, { name: ' Ada Nora ', color: '#8fdc9a' }, 2000);
     expect(await listBabies(db)).toMatchObject([
-      { name: 'Ada Nur', color: '#8fdc9a', updatedAt: 2000 },
+      { name: 'Ada Nora', color: '#8fdc9a', updatedAt: 2000 },
     ]);
     await expect(updateBaby(db, ada.id, { name: '' })).rejects.toBeInstanceOf(ValidationError);
   });
@@ -74,32 +75,46 @@ describe('babies repository', () => {
   it('deleting a baby ends its running timers at that moment', async () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
-    const can = await addBaby(db, { name: 'Can', color: '#ff9ecb' }, 1000);
+    const cal = await addBaby(db, { name: 'Cal', color: '#ff9ecb' }, 1000);
     const now = 100 * MINUTE;
     const start = now - 20 * MINUTE;
     const switched = now - 5 * MINUTE;
-    const [sleep, feed, doneSleep, canSleep, gone] = await logEvents(
+    // recordEvents now refuses a second running timer for the same baby (Plan 8 §6.3), so Ada's running
+    // sleep and running feed are seeded directly, as they would be from data older than the rule.
+    // deleteBaby doesn't validate; it must still end every running row it finds for the baby, however many.
+    const sleep: TrackerEvent = {
+      type: 'sleep',
+      babyId: ada.id,
+      startAt: start,
+      id: 'ada-sleep',
+      createdAt: start,
+      updatedAt: start,
+    };
+    const feed: TrackerEvent = {
+      type: 'breastfeed',
+      babyId: ada.id,
+      startAt: start,
+      segments: [
+        { side: 'L', start, end: switched },
+        { side: 'R', start: switched },
+      ],
+      id: 'ada-feed',
+      createdAt: start,
+      updatedAt: start,
+    };
+    await db.events.bulkAdd([sleep, feed]);
+    const [doneSleep, canSleep, gone] = await logEvents(
       db,
       [
-        { type: 'sleep', babyId: ada.id, startAt: start },
-        {
-          type: 'breastfeed',
-          babyId: ada.id,
-          startAt: start,
-          segments: [
-            { side: 'L', start, end: switched },
-            { side: 'R', start: switched },
-          ],
-        },
         { type: 'sleep', babyId: ada.id, startAt: start - 60 * MINUTE, endAt: start - 30 * MINUTE },
-        { type: 'sleep', babyId: can.id, startAt: start },
+        { type: 'sleep', babyId: cal.id, startAt: start },
         { type: 'diaper', babyId: ada.id, startAt: start, wet: true, dirty: false },
       ],
       start,
     );
     // A deleted running entry is left alone.
     const deletedFeed = {
-      ...feed!,
+      ...feed,
       id: 'deleted-feed',
       deletedAt: start,
       segments: [{ side: 'L' as const, start }],
@@ -108,8 +123,8 @@ describe('babies repository', () => {
 
     await deleteBaby(db, ada.id, now);
 
-    expect(await db.events.get(sleep!.id)).toMatchObject({ endAt: now, updatedAt: now });
-    expect(await db.events.get(feed!.id)).toMatchObject({
+    expect(await db.events.get(sleep.id)).toMatchObject({ endAt: now, updatedAt: now });
+    expect(await db.events.get(feed.id)).toMatchObject({
       endAt: now,
       updatedAt: now,
       segments: [
@@ -142,7 +157,7 @@ describe('babies repository', () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, 1000);
     await deleteBaby(db, ada.id, 5000);
-    await expect(updateBaby(db, ada.id, { name: 'Ada Nur' }, 6000)).rejects.toThrow(
+    await expect(updateBaby(db, ada.id, { name: 'Ada Nora' }, 6000)).rejects.toThrow(
       `Baby ${ada.id} not found`,
     );
     expect(await db.babies.get(ada.id)).toMatchObject({ name: 'Ada', updatedAt: 5000 });

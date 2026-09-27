@@ -4,7 +4,7 @@ import type { Baby, Id, TrackerEvent } from '../domain/types';
 
 export type TimerType = 'sleep' | 'breastfeed';
 
-/** collision: another timer of the type runs for the baby. stale: the user chose to stop it. deleted-baby: its baby is deleted. */
+/** collision: another running timer for the baby. stale: the user chose to stop it. deleted-baby: its baby is deleted. */
 export type StopReason = 'collision' | 'stale' | 'deleted-baby';
 
 export interface StoppedTimer {
@@ -105,13 +105,13 @@ export interface RepairContext {
 }
 
 /**
- * Makes the merged rows obey "at most one running sleep and one running breastfeed per baby", and stops
+ * Makes the merged rows obey "at most one running timer per baby", and stops
  * what must not run on:
  * 1. stale timers the user chose to stop end at the backup's time, or when their baby was deleted if
  *    that came first;
  * 2. timers of a deleted baby end when the baby was deleted (as deleteBaby does), unless that time is
  *    unreadable;
- * 3. of two or more running timers of one type for one baby, the one that started last keeps running (a
+ * 3. of two or more running timers for one baby (a sleep and a breastfeed count together), the one that started last keeps running (a
  *    tie goes to the larger id, so both phones agree) and every other one ends at the newest one's start.
  * No timer ever ends before its own start or its current side's start (see stopTimerAt), nor after now.
  * Returns the rows it changed and what it stopped, for the preview.
@@ -173,7 +173,7 @@ export function repairRunning(
   const groups = new Map<string, Extract<TrackerEvent, { type: TimerType }>[]>();
   for (const event of current.values()) {
     if (!isRunning(event)) continue;
-    const key = `${event.babyId}\u0000${event.type}`;
+    const key = String(event.babyId);
     groups.set(key, [...(groups.get(key) ?? []), event]);
   }
   for (const group of groups.values()) {

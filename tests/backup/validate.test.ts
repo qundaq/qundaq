@@ -50,7 +50,7 @@ const sleep = (id = 'e1', extra: Partial<TrackerEvent> = {}) =>
   event({ type: 'sleep', babyId: 'b1', startAt: T, endAt: T + HOUR }, id, extra);
 const mix = (id = 'm1', extra: Partial<Mix> = {}): Mix => ({
   id,
-  name: 'Gece',
+  name: 'Night',
   layers: [{ soundId: 'white', gain: 0.7 }],
   createdAt: T,
   updatedAt: T,
@@ -168,7 +168,7 @@ describe('rows that fail their checks are skipped and reported', () => {
       parseBackup(file({ mixes: [mix('m1', parts as Partial<Mix>)] }), NOW),
     );
     expect(skipped.map((row) => [row.list, row.code, row.name])).toEqual([
-      ['mixes', 'bad-mix', 'Gece'],
+      ['mixes', 'bad-mix', 'Night'],
     ]);
     expect(backup.mixes).toEqual([]);
   });
@@ -181,18 +181,18 @@ describe('rows that fail their checks are skipped and reported', () => {
     const { skipped, backup } = ok(parseBackup(file({ mixes: rows }), NOW));
     expect(skipped.map((row) => [row.code, row.name])).toEqual([
       ['bad-mix', 'x'.repeat(40)],
-      ['bad-time', 'Gece'],
+      ['bad-time', 'Night'],
     ]);
     expect(backup.mixes).toEqual([]);
   });
 
   it('trims a mix name like the app does: padding neither fails the 40-char rule nor survives into the store', () => {
-    const rows = [mix('m1', { name: ` ${'x'.repeat(40)} ` }), mix('m2', { name: ' Gece ' })];
+    const rows = [mix('m1', { name: ` ${'x'.repeat(40)} ` }), mix('m2', { name: ' Night ' })];
     const { skipped, backup } = ok(parseBackup(file({ mixes: rows }), NOW));
     expect(skipped).toEqual([]);
     expect(backup.mixes).toEqual([
       mix('m1', { name: 'x'.repeat(40) }),
-      mix('m2', { name: 'Gece' }),
+      mix('m2', { name: 'Night' }),
     ]);
   });
 
@@ -470,14 +470,14 @@ describe('whitelisting', () => {
         id: 'med',
         type: 'medication',
         endAt: T,
-        name: 'D vitamini',
+        name: 'Vitamin D',
         dose: '400 IU',
       } satisfies Full<'medication'>,
       { ...common, id: 'health', type: 'healthNote', endAt: T } satisfies Full<'healthNote'>,
     ];
     const m: Required<Mix> = {
       id: 'm1',
-      name: 'Gece',
+      name: 'Night',
       layers: [{ soundId: 'white', gain: 0.7 } satisfies Required<MixLayer>],
       createdAt: T,
       updatedAt: T,
@@ -528,7 +528,7 @@ describe('normalisation touches only what the app never writes', () => {
         type: 'medication',
         babyId: 'b1',
         startAt: T,
-        name: '  D vitamini ',
+        name: '  Vitamin D ',
         dose: '   ',
         createdAt: T,
         updatedAt: T,
@@ -545,7 +545,7 @@ describe('normalisation touches only what the app never writes', () => {
     ];
     const { backup } = ok(parseBackup(file({ events: rows }), NOW));
     expect(backup.events[0]).not.toHaveProperty('note');
-    expect(backup.events[1]).toMatchObject({ name: 'D vitamini' });
+    expect(backup.events[1]).toMatchObject({ name: 'Vitamin D' });
     expect(backup.events[1]).not.toHaveProperty('dose');
     expect(backup.events[2]).toMatchObject({ celsius: 38 });
   });
@@ -563,13 +563,13 @@ describe('normalisation touches only what the app never writes', () => {
         },
         '',
       ],
-      [{ kind: 'pump', value: { mlLeft: '60', mlRight: '' } }, 'sağ taraf ağrıyor '],
+      [{ kind: 'pump', value: { mlLeft: '60', mlRight: '' } }, 'right side hurts '],
       [{ kind: 'growth', value: { weightKg: '3,45', heightCm: '52,5', headCm: '' } }, ''],
-      [{ kind: 'temperature', value: { celsius: '37,95' } }, '\nateş düştü\n'],
+      [{ kind: 'temperature', value: { celsius: '37,95' } }, '\nfever broke\n'],
       [{ kind: 'temperature', value: { celsius: '36.6' } }, ''],
-      [{ kind: 'medication', value: { name: ' D vitamini ', dose: ' 400 IU ' } }, ''],
+      [{ kind: 'medication', value: { name: ' Vitamin D ', dose: ' 400 IU ' } }, ''],
       [{ kind: 'medication', value: { name: 'Parol', dose: ' ' } }, ''],
-      [{ kind: 'healthNote', value: {} }, '  öksürük var  '],
+      [{ kind: 'healthNote', value: {} }, '  coughing at night  '],
     ];
     const events: TrackerEvent[] = [];
     inputs.forEach(([input, note], i) => {

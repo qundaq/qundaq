@@ -29,26 +29,26 @@ describe('readSnapshot', () => {
   it('reads every baby and event, deleted ones and their entries included, without the open marker', async () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff' }, T);
-    const can = await addBaby(db, { name: 'Can', color: '#ff9ecb' }, T);
+    const cal = await addBaby(db, { name: 'Cal', color: '#ff9ecb' }, T);
     await logEvents(db, [{ type: 'sleep', babyId: ada.id, startAt: T }], T);
     await logEvents(
       db,
-      [{ type: 'diaper', babyId: can.id, startAt: T, wet: true, dirty: false }],
+      [{ type: 'diaper', babyId: cal.id, startAt: T, wet: true, dirty: false }],
       T,
     );
-    await deleteBaby(db, can.id, T + 1);
+    await deleteBaby(db, cal.id, T + 1);
     const gone = await saveMix(db, 'Eski', [{ soundId: 'pink', gain: 1 }], T - 1);
     await deleteMix(db, gone.id, T);
-    await saveMix(db, 'Gece', [{ soundId: 'white', gain: 0.7 }], T);
+    await saveMix(db, 'Night', [{ soundId: 'white', gain: 0.7 }], T);
     await saveSettings(db, { nightMode: true, lastBackupAt: T }, 'tr');
 
     const snapshot = await readSnapshot(db, 'en');
-    expect(snapshot.babies.map((baby) => baby.name).sort()).toEqual(['Ada', 'Can']);
+    expect(snapshot.babies.map((baby) => baby.name).sort()).toEqual(['Ada', 'Cal']);
     expect(snapshot.events).toHaveLength(2);
     expect(snapshot.events.some((event) => 'open' in event)).toBe(false);
     expect(snapshot.mixes.map((mix) => [mix.name, mix.deletedAt])).toEqual([
       ['Eski', T],
-      ['Gece', undefined],
+      ['Night', undefined],
     ]);
     expect(snapshot.settings).toMatchObject({ locale: 'tr', nightMode: true, lastBackupAt: T });
   });
@@ -87,7 +87,7 @@ describe('export, then read back', () => {
   it('round-trips babies, events (without open) and settings exactly, notes with trailing spaces included', async () => {
     const db = freshDb();
     const ada = await addBaby(db, { name: 'Ada', color: '#7cb7ff', birthDate: '2026-09-01' }, T);
-    const can = await addBaby(db, { name: 'Can', color: '#ff9ecb' }, T);
+    const cal = await addBaby(db, { name: 'Cal', color: '#ff9ecb' }, T);
     await logEvents(
       db,
       [{ type: 'breastfeed', babyId: ada.id, startAt: T, segments: [{ side: 'L', start: T }] }],
@@ -103,17 +103,17 @@ describe('export, then read back', () => {
           wet: true,
           dirty: true,
           stoolColor: 'green',
-          note: 'yeşil ',
+          note: 'green note ',
         },
-        { type: 'diaper', babyId: can.id, startAt: T - MINUTE, wet: true, dirty: false },
+        { type: 'diaper', babyId: cal.id, startAt: T - MINUTE, wet: true, dirty: false },
       ],
       T,
     );
     await logEvents(db, [{ type: 'pump', babyId: null, startAt: T - 2 * MINUTE, mlLeft: 60 }], T);
-    await deleteBaby(db, can.id, T + 1);
+    await deleteBaby(db, cal.id, T + 1);
     await saveMix(
       db,
-      'Gece',
+      'Night',
       [
         { soundId: 'white', gain: 0.7 },
         { soundId: 'rain', gain: 0.4 },
@@ -231,7 +231,7 @@ describe('applyImport', () => {
     schemaVersion: 2,
     exportedAt: T + 1,
     appVersion: '0.1.0',
-    babies: [baby('b-file', 'Bora')],
+    babies: [baby('b-file', 'Ben')],
     events: [
       sleep('file-running', 'b-file', T),
       sleep('file-done', 'b-file', T - DAY, { endAt: T - DAY + 1 }),
@@ -239,7 +239,7 @@ describe('applyImport', () => {
     mixes: [
       {
         id: 'm-file',
-        name: 'Gece',
+        name: 'Night',
         layers: [{ soundId: 'white', gain: 0.7 }],
         createdAt: T + 1,
         updatedAt: T + 1,
@@ -257,7 +257,7 @@ describe('applyImport', () => {
   async function seedDevice(db: TrackerDb) {
     const ada = await addBaby(db, { name: 'Ada', color: '#ff9ecb' }, T);
     await logEvents(db, [{ type: 'sleep', babyId: ada.id, startAt: T }], T);
-    await saveMix(db, 'Öğlen', [{ soundId: 'pink', gain: 0.5 }], T);
+    await saveMix(db, 'Afternoon', [{ soundId: 'pink', gain: 0.5 }], T);
     await saveSettings(db, { lastBabyIds: [ada.id], lastBackupAt: T - DAY }, 'tr');
     return ada;
   }
@@ -274,9 +274,9 @@ describe('applyImport', () => {
       now: T + 2,
     });
     expect(result.applied).toBe(true);
-    expect((await db.babies.toArray()).map((row) => row.name).sort()).toEqual(['Ada', 'Bora']);
+    expect((await db.babies.toArray()).map((row) => row.name).sort()).toEqual(['Ada', 'Ben']);
     expect(await db.events.count()).toBe(3);
-    expect((await listMixes(db)).map((row) => row.name)).toEqual(['Öğlen', 'Gece']);
+    expect((await listMixes(db)).map((row) => row.name)).toEqual(['Afternoon', 'Night']);
     expect((await listRunningEvents(db)).map((row) => row.babyId).sort()).toEqual(
       [ada.id, 'b-file'].sort(),
     );
@@ -319,7 +319,7 @@ describe('applyImport', () => {
 
   it('writes the repaired timers: a stopped collision leaves the running index', async () => {
     const db = freshDb();
-    await db.babies.put(baby('b-file', 'Bora'));
+    await db.babies.put(baby('b-file', 'Ben'));
     await logEvents(db, [{ type: 'sleep', babyId: 'b-file', startAt: T + 1 }], T + 1);
     const backup = file();
     const result = await applyImport(db, {
@@ -441,7 +441,7 @@ describe('applyImport', () => {
     ).rejects.toThrow('disk full');
     failing.mockRestore();
     expect(await readSnapshot(db, 'tr')).toEqual(before);
-    expect((await listMixes(db)).map((row) => row.name)).toEqual(['Öğlen']);
+    expect((await listMixes(db)).map((row) => row.name)).toEqual(['Afternoon']);
     expect(await listRunningEvents(db)).toHaveLength(1);
   });
 });
