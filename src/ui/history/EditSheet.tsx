@@ -23,7 +23,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** Edits or deletes one stored entry. Opened from a Günlük row, or from Home's "forgot to stop?" hint. */
+/** Edits or deletes one stored entry. Opened from a log (history) row, or from Home's "forgot to stop?" hint. */
 export function EditSheet({ event, babies, onClose }: Props) {
   const t = useT();
   const session = useSheetSession(event);
@@ -151,7 +151,12 @@ function EditForm({
         />
       )}
       {input.type === 'bottle' && (
-        <BottleForm value={input.value} onChange={(value) => setInput({ ...input, value })} />
+        // Editing an existing bottle: no "last time" caption (this record is that last time).
+        <BottleForm
+          value={input.value}
+          last={null}
+          onChange={(value) => setInput({ ...input, value })}
+        />
       )}
       {input.type === 'diaper' && (
         <DiaperForm value={input.value} onChange={(value) => setInput({ ...input, value })} />

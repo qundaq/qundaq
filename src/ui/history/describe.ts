@@ -41,7 +41,7 @@ export function weekdayShort(locale: Locale, ms: number): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric' }).format(ms);
 }
 
-/** "Bugün", "Dün", otherwise the weekday with the date. */
+/** day.today ("Today"), day.yesterday ("Yesterday"), otherwise the weekday with the date. */
 export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: number): string {
   const daysAgo = dayOffset(dayStart, now);
   if (daysAgo === 0) return t('day.today');
@@ -61,7 +61,7 @@ export function timeOnDay(t: TranslateFn, locale: Locale, ms: number, shownDay: 
   return `${time} (${shortDate(locale, ms)})`;
 }
 
-/** "14:05"; for a timer "22:10 – 06:30" or "22:10 – devam ediyor", each end marked if on another day. */
+/** "14:05"; for a timer "22:10 – 06:30" or a running one with log.ongoing at the end, each end marked if on another day. */
 export function timeRange(
   t: TranslateFn,
   locale: Locale,
@@ -126,7 +126,7 @@ function sideTotals(
     .join(' · ');
 }
 
-/** One line of detail per entry for the Günlük list. Tolerates rows with missing optional fields. */
+/** One line of detail per entry for the log (history) list. Tolerates rows with missing optional fields. */
 export function describeEvent(
   t: TranslateFn,
   locale: Locale,

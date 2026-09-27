@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MINUTE } from '../../src/domain/time';
-import {
-  DEFAULT_INPUTS,
-  buildDrafts,
-  initialInput,
-  resolveEntryTime,
-} from '../../src/ui/log/drafts';
+import { DEFAULT_INPUTS, buildDrafts, initialInput } from '../../src/ui/log/drafts';
 
 const AT = new Date(2026, 8, 25, 8, 0).getTime();
 
@@ -90,7 +85,7 @@ describe('buildDrafts', () => {
   });
 });
 
-describe('buildDrafts — the "Diğer" types', () => {
+describe('buildDrafts — the "Other" types (quick.other)', () => {
   it('pumping is one entry for the parent, whichever babies are selected', () => {
     expect(
       buildDrafts({ kind: 'pump', value: { mlLeft: '60', mlRight: '' } }, ['a', 'b'], AT),
@@ -139,16 +134,16 @@ describe('buildDrafts — the "Diğer" types', () => {
 
   it('medication trims the name and leaves an empty dose out', () => {
     expect(
-      buildDrafts({ kind: 'medication', value: { name: '  D vitamini ', dose: ' ' } }, ['a'], AT),
-    ).toStrictEqual([{ type: 'medication', babyId: 'a', startAt: AT, name: 'D vitamini' }]);
+      buildDrafts({ kind: 'medication', value: { name: '  Vitamin D ', dose: ' ' } }, ['a'], AT),
+    ).toStrictEqual([{ type: 'medication', babyId: 'a', startAt: AT, name: 'Vitamin D' }]);
   });
 
   it('a note goes on every entry, and a blank one is left out', () => {
     expect(
-      buildDrafts({ kind: 'healthNote', value: {} }, ['a', 'b'], AT, 'Aşı günü'),
+      buildDrafts({ kind: 'healthNote', value: {} }, ['a', 'b'], AT, 'Vaccine day'),
     ).toStrictEqual([
-      { type: 'healthNote', babyId: 'a', startAt: AT, note: 'Aşı günü' },
-      { type: 'healthNote', babyId: 'b', startAt: AT, note: 'Aşı günü' },
+      { type: 'healthNote', babyId: 'a', startAt: AT, note: 'Vaccine day' },
+      { type: 'healthNote', babyId: 'b', startAt: AT, note: 'Vaccine day' },
     ]);
     expect(
       buildDrafts({ kind: 'diaper', value: DEFAULT_INPUTS.diaper }, ['a'], AT, '   '),
@@ -165,17 +160,5 @@ describe('buildDrafts — the "Diğer" types', () => {
       value: { name: '', dose: '' },
     });
     expect(initialInput('pump')).toEqual({ kind: 'pump', value: { mlLeft: '', mlRight: '' } });
-  });
-});
-
-describe('resolveEntryTime', () => {
-  const NOW = new Date(2026, 8, 25, 8, 17, 42, 123).getTime();
-
-  it('null means "now": the exact current instant, seconds and all, never a parsed minute', () => {
-    expect(resolveEntryTime(null, NOW)).toBe(NOW);
-  });
-
-  it('a time the user picked is used as is', () => {
-    expect(resolveEntryTime(AT, NOW)).toBe(AT);
   });
 });

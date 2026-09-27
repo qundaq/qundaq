@@ -20,6 +20,7 @@ describe('icons', () => {
       'triangle-alert',
       'pencil',
       'undo-2',
+      'arrow-left-right',
     ] as const)
       expect(ICON_NAMES).toContain(name);
     for (const name of ICON_NAMES) {
@@ -33,10 +34,10 @@ describe('icons', () => {
       /<svg[^>]*aria-hidden="true"/,
     );
     const labelled = renderToStaticMarkup(
-      createElement(Icon, { name: 'triangle-alert', label: 'Uyarı' }),
+      createElement(Icon, { name: 'triangle-alert', label: 'Warning' }),
     );
     expect(labelled).toMatch(/role="img"/);
-    expect(labelled).toMatch(/aria-label="Uyarı"/);
+    expect(labelled).toMatch(/aria-label="Warning"/);
     expect(labelled).toMatch(/width="20"/);
   });
 });

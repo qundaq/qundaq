@@ -80,7 +80,7 @@ const EVERY_TYPE: [string, TrackerEvent][] = [
       babyId: 'a',
       startAt: T0,
       endAt: T0 + 95 * MINUTE + 17 * SECOND,
-      note: 'Huzursuz uyudu',
+      note: 'Slept restlessly',
     }),
   ],
   ['a running breastfeed', RUNNING_FEED],
@@ -113,11 +113,11 @@ const EVERY_TYPE: [string, TrackerEvent][] = [
   ['a temperature', saved({ type: 'temperature', babyId: 'a', startAt: T0, celsius: 38.2 })],
   [
     'a medicine with a dose',
-    saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'D vitamini', dose: '400 IU' }),
+    saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'Vitamin D', dose: '400 IU' }),
   ],
   [
     'a medicine without a dose',
-    saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'Parasetamol' }),
+    saved({ type: 'medication', babyId: 'a', startAt: T0, name: 'Paracetamol' }),
   ],
   [
     'a health note',
@@ -125,7 +125,7 @@ const EVERY_TYPE: [string, TrackerEvent][] = [
       type: 'healthNote',
       babyId: 'a',
       startAt: T0,
-      note: 'Aşı yapıldı\nKolunda hafif kızarıklık',
+      note: 'Vaccine given\nMild redness on the arm',
     }),
   ],
 ];

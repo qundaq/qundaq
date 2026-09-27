@@ -7,10 +7,15 @@ import {
   describeEvent,
   firstLine,
   formatMeasurement,
+  formatNumber,
   hasAlert,
+  shortDate,
+  clockTime,
   timeRange,
   typeIcon,
 } from '../../src/ui/history/describe';
+import { formatDuration } from '../../src/ui/shared/format';
+import { segmentMinutes } from '../../src/ui/log/edits';
 
 const tr = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
 const en = (key: MessageKey, vars?: Record<string, string | number>) => translate('en', key, vars);
@@ -19,6 +24,8 @@ const at = (day: number, hour: number, minute = 0) =>
 const dayStart = (day: number) => new Date(2026, 8, day).getTime();
 const NOW = at(25, 12);
 const ev = (draft: EventDraft): TrackerEvent => ({ ...draft, id: 'e', createdAt: 0, updatedAt: 0 });
+const ml = (locale: 'tr' | 'en', t: typeof tr, value: number) =>
+  t('unit.ml', { ml: formatNumber(locale, value) });
 
 describe('describeEvent', () => {
   it('breastfeeding: time per side, or the current side while it runs', () => {
@@ -33,7 +40,9 @@ describe('describeEvent', () => {
         { side: 'R', start: start + 12 * MINUTE, end: start + 20 * MINUTE },
       ],
     });
-    expect(describeEvent(tr, 'tr', finished, NOW)).toBe('Sol 12 dk · Sağ 8 dk');
+    expect(describeEvent(tr, 'tr', finished, NOW)).toBe(
+      `${tr('side.L.button')} ${tr('time.minutes', { m: 12 })} · ${tr('side.R.button')} ${tr('time.minutes', { m: 8 })}`,
+    );
     const running = ev({
       type: 'breastfeed',
       babyId: 'a',
@@ -43,19 +52,24 @@ describe('describeEvent', () => {
         { side: 'R', start: start + 5 * MINUTE },
       ],
     });
-    expect(describeEvent(tr, 'tr', running, NOW)).toBe('Sağ · devam ediyor');
+    expect(describeEvent(tr, 'tr', running, NOW)).toBe(
+      `${tr('side.R.button')} · ${tr('log.ongoing')}`,
+    );
   });
 
   it('rounds a side to whole minutes the way the edit sheet does', () => {
     const start = at(25, 8);
+    const durationMs = 7 * MINUTE + 40_000;
     const feed = ev({
       type: 'breastfeed',
       babyId: 'a',
       startAt: start,
-      endAt: start + 7 * MINUTE + 40_000,
-      segments: [{ side: 'L', start, end: start + 7 * MINUTE + 40_000 }],
+      endAt: start + durationMs,
+      segments: [{ side: 'L', start, end: start + durationMs }],
     });
-    expect(describeEvent(tr, 'tr', feed, NOW)).toBe('Sol 8 dk');
+    expect(describeEvent(tr, 'tr', feed, NOW)).toBe(
+      `${tr('side.L.button')} ${tr('time.minutes', { m: segmentMinutes(durationMs) })}`,
+    );
   });
 
   it('sleep: its length, a running one up to now', () => {
@@ -66,10 +80,10 @@ describe('describeEvent', () => {
         ev({ type: 'sleep', babyId: 'a', startAt: at(25, 9), endAt: at(25, 10, 30) }),
         NOW,
       ),
-    ).toBe('1 sa 30 dk');
+    ).toBe(formatDuration(tr, 90 * MINUTE));
     expect(
       describeEvent(tr, 'tr', ev({ type: 'sleep', babyId: 'a', startAt: at(25, 11, 15) }), NOW),
-    ).toBe('45 dk');
+    ).toBe(formatDuration(tr, 45 * MINUTE));
   });
 
   it('bottle and diaper', () => {
@@ -80,7 +94,7 @@ describe('describeEvent', () => {
         ev({ type: 'bottle', babyId: 'a', startAt: NOW, ml: 90, contents: 'breastmilk' }),
         NOW,
       ),
-    ).toBe('90 ml · Anne sütü');
+    ).toBe(`${ml('tr', tr, 90)} · ${tr('bottle.breastmilk')}`);
     expect(
       describeEvent(
         tr,
@@ -96,7 +110,9 @@ describe('describeEvent', () => {
         }),
         NOW,
       ),
-    ).toBe('Islak + kirli · Hardal · Yumuşak');
+    ).toBe(
+      `${tr('describe.diaper.both')} · ${tr('stool.color.mustard')} · ${tr('consistency.soft')}`,
+    );
     expect(
       describeEvent(
         tr,
@@ -104,7 +120,7 @@ describe('describeEvent', () => {
         ev({ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }),
         NOW,
       ),
-    ).toBe('Islak');
+    ).toBe(tr('diaper.wet.button'));
     expect(
       describeEvent(
         en,
@@ -123,7 +139,9 @@ describe('describeEvent', () => {
         ev({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60, mlRight: 40 }),
         NOW,
       ),
-    ).toBe('Sol 60 ml · Sağ 40 ml');
+    ).toBe(
+      `${tr('side.L.button')} ${ml('tr', tr, 60)} · ${tr('side.R.button')} ${ml('tr', tr, 40)}`,
+    );
     const growth = ev({
       type: 'growth',
       babyId: 'a',
@@ -132,8 +150,20 @@ describe('describeEvent', () => {
       heightMm: 525,
       headMm: 350,
     });
-    expect(describeEvent(tr, 'tr', growth, NOW)).toBe('3,45 kg · Boy 52,5 cm · Baş 35 cm');
-    expect(describeEvent(en, 'en', growth, NOW)).toBe('3.45 kg · Length 52.5 cm · Head 35 cm');
+    expect(describeEvent(tr, 'tr', growth, NOW)).toBe(
+      [
+        formatMeasurement('tr', 'weightG', 3450),
+        tr('describe.height', { value: '52,5' }),
+        tr('describe.head', { value: '35' }),
+      ].join(' · '),
+    );
+    expect(describeEvent(en, 'en', growth, NOW)).toBe(
+      [
+        formatMeasurement('en', 'weightG', 3450),
+        en('describe.height', { value: '52.5' }),
+        en('describe.head', { value: '35' }),
+      ].join(' · '),
+    );
     expect(
       describeEvent(
         tr,
@@ -141,7 +171,7 @@ describe('describeEvent', () => {
         ev({ type: 'temperature', babyId: 'a', startAt: NOW, celsius: 38.2 }),
         NOW,
       ),
-    ).toBe('38,2 °C');
+    ).toBe(tr('describe.temperature', { value: '38,2' }));
   });
 
   it('medication and health notes', () => {
@@ -149,18 +179,18 @@ describe('describeEvent', () => {
       describeEvent(
         tr,
         'tr',
-        ev({ type: 'medication', babyId: 'a', startAt: NOW, name: 'D vitamini', dose: '400 IU' }),
+        ev({ type: 'medication', babyId: 'a', startAt: NOW, name: 'Vitamin D', dose: '400 IU' }),
         NOW,
       ),
-    ).toBe('D vitamini · 400 IU');
+    ).toBe('Vitamin D · 400 IU');
     expect(
       describeEvent(
         tr,
         'tr',
-        ev({ type: 'medication', babyId: 'a', startAt: NOW, name: 'Parasetamol' }),
+        ev({ type: 'medication', babyId: 'a', startAt: NOW, name: 'Paracetamol' }),
         NOW,
       ),
-    ).toBe('Parasetamol');
+    ).toBe('Paracetamol');
     expect(
       describeEvent(
         tr,
@@ -169,11 +199,11 @@ describe('describeEvent', () => {
           type: 'healthNote',
           babyId: 'a',
           startAt: NOW,
-          note: 'Aşı yapıldı\nKolunda kızarıklık',
+          note: 'Vaccine given\nRedness on arm',
         }),
         NOW,
       ),
-    ).toBe('Aşı yapıldı');
+    ).toBe('Vaccine given');
   });
 
   it('survives a growth row without measurements', () => {
@@ -185,7 +215,7 @@ describe('describeEvent', () => {
 
 describe('firstLine', () => {
   it('keeps the first line and cuts it at 80 characters', () => {
-    expect(firstLine('  Birinci satır \nİkinci')).toBe('Birinci satır');
+    expect(firstLine('  First line \nSecond')).toBe('First line');
     const cut = firstLine('x'.repeat(100));
     expect(cut).toHaveLength(80);
     expect(cut.endsWith('…')).toBe(true);
@@ -195,60 +225,71 @@ describe('firstLine', () => {
 
 describe('timeRange', () => {
   it('an instant entry shows its time', () => {
+    const when = at(25, 14, 5);
     expect(
       timeRange(
         tr,
         'tr',
-        ev({ type: 'diaper', babyId: 'a', startAt: at(25, 14, 5), wet: true, dirty: false }),
+        ev({ type: 'diaper', babyId: 'a', startAt: when, wet: true, dirty: false }),
         dayStart(25),
       ),
-    ).toBe('14:05');
+    ).toBe(clockTime('tr', when));
   });
 
   it('marks the end that falls on another day than the one shown', () => {
-    const sleep = ev({ type: 'sleep', babyId: 'a', startAt: at(24, 22, 10), endAt: at(25, 6, 30) });
-    expect(timeRange(tr, 'tr', sleep, dayStart(25))).toBe('22:10 (önceki gün) – 06:30');
-    expect(timeRange(tr, 'tr', sleep, dayStart(24))).toBe('22:10 – 06:30 (ertesi gün)');
+    const start = at(24, 22, 10);
+    const end = at(25, 6, 30);
+    const sleep = ev({ type: 'sleep', babyId: 'a', startAt: start, endAt: end });
+    expect(timeRange(tr, 'tr', sleep, dayStart(25))).toBe(
+      `${clockTime('tr', start)} ${tr('log.suffix.previousDay')} – ${clockTime('tr', end)}`,
+    );
+    expect(timeRange(tr, 'tr', sleep, dayStart(24))).toBe(
+      `${clockTime('tr', start)} – ${clockTime('tr', end)} ${tr('log.suffix.nextDay')}`,
+    );
+    const twoDaysStart = at(23, 22, 10);
     const twoDays = ev({
       type: 'sleep',
       babyId: 'a',
-      startAt: at(23, 22, 10),
-      endAt: at(25, 6, 30),
+      startAt: twoDaysStart,
+      endAt: end,
     });
-    expect(timeRange(tr, 'tr', twoDays, dayStart(25))).toMatch(/^22:10 \(23 Eyl\S*\) – 06:30$/);
+    expect(timeRange(tr, 'tr', twoDays, dayStart(25))).toBe(
+      `${clockTime('tr', twoDaysStart)} (${shortDate('tr', twoDaysStart)}) – ${clockTime('tr', end)}`,
+    );
   });
 
   it('a running timer', () => {
+    const start = at(25, 22, 10);
     expect(
-      timeRange(
-        tr,
-        'tr',
-        ev({ type: 'sleep', babyId: 'a', startAt: at(25, 22, 10) }),
-        dayStart(25),
-      ),
-    ).toBe('22:10 – devam ediyor');
+      timeRange(tr, 'tr', ev({ type: 'sleep', babyId: 'a', startAt: start }), dayStart(25)),
+    ).toBe(tr('log.range.running', { start: clockTime('tr', start) }));
   });
 });
 
 describe('dayLabel', () => {
   it('today, yesterday, otherwise the weekday and the date', () => {
-    expect(dayLabel(tr, 'tr', dayStart(25), NOW)).toBe('Bugün');
-    expect(dayLabel(tr, 'tr', dayStart(24), NOW)).toBe('Dün');
+    expect(dayLabel(tr, 'tr', dayStart(25), NOW)).toBe(tr('day.today'));
+    expect(dayLabel(tr, 'tr', dayStart(24), NOW)).toBe(tr('day.yesterday'));
     expect(dayLabel(en, 'en', dayStart(24), NOW)).toBe('Yesterday');
     const sunday = dayStart(20);
-    expect(dayLabel(tr, 'tr', sunday, NOW)).toBe(
-      new Intl.DateTimeFormat('tr', { weekday: 'long', day: 'numeric', month: 'long' }).format(
-        sunday,
-      ),
+    const longWeekday = new Intl.DateTimeFormat('tr', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(sunday);
+    expect(dayLabel(tr, 'tr', sunday, NOW)).toBe(longWeekday);
+    const dayAndMonth = new Intl.DateTimeFormat('tr', { day: 'numeric', month: 'long' }).format(
+      sunday,
     );
-    expect(dayLabel(tr, 'tr', sunday, NOW)).toContain('20 Eylül');
+    expect(dayLabel(tr, 'tr', sunday, NOW)).toContain(dayAndMonth);
   });
 });
 
 describe('formatMeasurement and hasAlert', () => {
   it('shows grams as kg and millimetres as cm', () => {
     expect(formatMeasurement('tr', 'weightG', 3100)).toBe('3,1 kg');
-    expect(formatMeasurement('tr', 'weightG', 3453)).toBe('3,453 kg'); // stored in whole grams, shown exactly
+    // stored in whole grams, shown exactly
+    expect(formatMeasurement('tr', 'weightG', 3453)).toBe('3,453 kg');
     expect(formatMeasurement('en', 'heightMm', 525)).toBe('52.5 cm');
   });
 

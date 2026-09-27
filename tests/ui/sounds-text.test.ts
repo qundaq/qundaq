@@ -17,28 +17,30 @@ const NOW = 1_790_000_000_000;
 describe('names and status', () => {
   it('joins the layer names in order, and names a mix by the sounds this version knows', () => {
     expect(layerNames(t, [{ soundId: 'white' }, { soundId: 'rain' }])).toBe(
-      'Beyaz gürültü + Yağmur',
+      `${t('sound.white')} + ${t('sound.rain')}`,
     );
     expect(
       mixLayerNames(t, [
         { soundId: 'train', gain: 1 },
         { soundId: 'shush', gain: 0.5 },
       ]),
-    ).toBe('Şşş');
-    expect(mixLayerNames(t, [{ soundId: 'train', gain: 1 }])).toBe('(bilinmeyen ses)');
+    ).toBe(t('sound.shush'));
+    expect(mixLayerNames(t, [{ soundId: 'train', gain: 1 }])).toBe(t('sounds.mix.unknown'));
   });
 
   it('describes each status, naming the layers only while playing', () => {
     const layers = [{ soundId: 'white' as const, level: 0.7 }];
-    expect(statusText(t, { status: 'playing', layers })).toBe('Çalıyor · Beyaz gürültü');
-    expect(statusText(t, { status: 'paused', layers })).toBe('Duraklatıldı');
-    expect(statusText(t, { status: 'stopped', layers })).toBe('Durdu');
-    expect(statusText(t, { status: 'interrupted', layers })).toBe('Ses kesildi');
+    expect(statusText(t, { status: 'playing', layers })).toBe(
+      t('sounds.status.playing', { names: t('sound.white') }),
+    );
+    expect(statusText(t, { status: 'paused', layers })).toBe(t('sounds.status.paused'));
+    expect(statusText(t, { status: 'stopped', layers })).toBe(t('sounds.status.stopped'));
+    expect(statusText(t, { status: 'interrupted', layers })).toBe(t('sounds.status.interrupted'));
     expect(translate('en', 'sounds.status.interrupted')).toBe('Sound interrupted');
   });
 
   it('counts the minutes left, rounded up, and nothing without a timer', () => {
-    expect(remainingText(t, NOW + 23 * 60_000 + 1, NOW)).toBe('24 dk kaldı');
+    expect(remainingText(t, NOW + 23 * 60_000 + 1, NOW)).toBe(t('sounds.remaining', { m: 24 }));
     expect(remainingText(t, null, NOW)).toBeNull();
   });
 });
