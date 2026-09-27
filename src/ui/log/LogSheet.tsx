@@ -10,7 +10,6 @@ import { Sheet, SheetFooter, useSheetSession } from '../shared/Sheet';
 import { Button } from '../shared/Button';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useMounted } from '../shared/useMounted';
-import { BabyChips } from './BabyChips';
 import { TimeChips } from './TimeChips';
 import { useUndoToast } from './useUndoToast';
 import {
@@ -44,9 +43,6 @@ interface Props {
   onClose: () => void;
 }
 
-/** A measurement belongs to one child: these types take exactly one baby. */
-const SINGLE_BABY: ReadonlySet<InputKind> = new Set<InputKind>(['growth', 'temperature']);
-
 export function LogSheet({ request, babies, events, onClose }: Props) {
   const t = useT();
   const session = useSheetSession(request);
@@ -73,21 +69,19 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
     session && !otherPending
       ? runningTimer(events, session.value.kind, session.value.babyId)
       : null;
-  // With one baby, or a stop (one baby's timer), the title names them too (sheet.diaper.title · their
-  // name); with more, the chips below say who. Pumping is the parent's record: no name. The "Other"
-  // sheet's own title (other.title) is always just its list title or the type's name (its form) — never a baby's.
-  const named = running !== null || (babies.length === 1 && inputKind !== 'pump');
+  // A sheet opened from a card is always that baby's: the title names them (sheet.diaper.title · their
+  // name), for every care type, the "Other" list (other.title · their name) and each Other form. Pumping
+  // is the parent's record, never a baby's, so its title carries no name.
+  const babyName = session ? nameOf(session.value.babyId) : '';
   const title = !session
     ? ''
     : otherPending
-      ? t('other.title')
+      ? `${t('other.title')} · ${babyName}`
       : inputKind === null
         ? ''
-        : session.value.kind === 'other'
-          ? t(`sheet.${inputKind}.title`)
-          : named
-            ? `${t(`sheet.${inputKind}.title`)} · ${nameOf(session.value.babyId)}`
-            : t(`sheet.${inputKind}.title`);
+        : inputKind === 'pump'
+          ? t('sheet.pump.title')
+          : `${t(`sheet.${inputKind}.title`)} · ${babyName}`;
   const onBack =
     session && session.value.kind === 'other' && !otherPending ? () => setPicked(null) : undefined;
 
@@ -170,7 +164,6 @@ function LogForm({
   undoToast,
 }: FormArgs) {
   const t = useT();
-  const [selected, setSelected] = useState<Id[]>([babyId]);
   const [time, setTime] = useState<TimeChoice>(NOW_CHOICE);
   // The side due next, and the baby's last bottle, are the opening baby's, taken once, so neither moves
   // while the sheet is open.
@@ -194,9 +187,8 @@ function LogForm({
   // A stale error is cleared the moment the form changes; moving this into every field handler would
   // scatter the rule, so the cascading extra render is accepted.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setError(null), [input, selected, time, note, mode]);
+  useEffect(() => setError(null), [input, time, note, mode]);
 
-  const single = SINGLE_BABY.has(input.kind);
   const timer = input.kind === 'breastfeed' || input.kind === 'sleep' ? input : null;
   const starting = timer !== null && mode === 'start';
 
@@ -213,11 +205,10 @@ function LogForm({
     submitting.current = true;
     setPending(true);
     const now = Date.now();
-    const babyIds = single ? selected.slice(0, 1) : selected;
     try {
       const changes = await recordEvents(
         db,
-        buildDrafts(next, babyIds, resolveTimeChoice(time, now), kind === 'other' ? note : ''),
+        buildDrafts(next, [babyId], resolveTimeChoice(time, now), kind === 'other' ? note : ''),
         now,
         // A started timer ends each baby's other running timer at its start (the one-timer note says so).
         { endRunning: starting },
@@ -246,14 +237,11 @@ function LogForm({
 
   return (
     <form onSubmit={submit} noValidate>
-      {input.kind !== 'pump' && (
-        <BabyChips babies={babies} selected={selected} single={single} onChange={setSelected} />
-      )}
       {timer && (
         <TimerFields input={timer} mode={mode} onModeChange={setMode} onChange={setInput} />
       )}
       {timer && starting && (
-        <OneTimerNote kind={timer.kind} babyIds={selected} events={events} nameOf={nameOf} />
+        <OneTimerNote kind={timer.kind} babyIds={[babyId]} events={events} nameOf={nameOf} />
       )}
       {input.kind === 'bottle' && (
         <BottleForm

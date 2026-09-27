@@ -8,7 +8,6 @@ import {
   logRows,
   openTab,
   cardAction,
-  pickTime,
 } from './support/tracking';
 import { clockTime, shortDate } from '../src/ui/history/describe';
 
@@ -32,7 +31,8 @@ test('a backup restores into an emptied app', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
   await addBabyInSettings(page, 'Cal');
   await openTab(page, t('tab.home'));
-  await logDiaper(page, { also: ['Cal'], at: '2026-09-26T09:00' });
+  await logDiaper(page, { baby: 'Ada', at: '2026-09-26T09:00' });
+  await logDiaper(page, { baby: 'Cal', at: '2026-09-26T09:00' });
   const backup = await takeBackup(page);
 
   await clearAppData(page);
@@ -82,12 +82,8 @@ test('merging into a phone with other data: the preview counts match, and the sa
   await addBabyInSettings(page, 'ada');
   await addBabyInSettings(page, 'Ben');
   await openTab(page, t('tab.home'));
-  await cardAction(page, 'diaper').click();
-  const diaper = page.getByRole('dialog', { name: t('sheet.diaper.title') });
-  await diaper.getByRole('button', { name: 'Ben', exact: true }).click(); // only Ada stays selected
-  await pickTime(diaper, '2026-09-26T09:30');
-  await diaper.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(diaper).toBeHidden();
+  // From "ada"'s own card, so only "ada" gets this extra entry, not Ben.
+  await logDiaper(page, { baby: 'ada', at: '2026-09-26T09:30' });
 
   const sheet = await pickBackupFile(page, backup);
   await expect(

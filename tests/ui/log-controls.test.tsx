@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { translate } from '../../src/i18n';
-import type { Baby } from '../../src/domain/types';
 import { I18nProvider } from '../../src/ui/app/I18nProvider';
 import { STOOL_GROUPS } from '../../src/domain/stool';
-import { BabyChips } from '../../src/ui/log/BabyChips';
 import { DEFAULT_INPUTS } from '../../src/ui/log/drafts';
 import { BottleForm, DiaperForm, diaperKind, withDiaperKind } from '../../src/ui/log/forms/care';
 import { TimeChips, chooseTime } from '../../src/ui/log/TimeChips';
@@ -18,14 +16,6 @@ const tt = (key: Parameters<typeof translate>[1], vars?: Record<string, string |
 
 const render = (node: React.ReactNode) =>
   renderToStaticMarkup(<I18nProvider locale="tr">{node}</I18nProvider>);
-const baby = (id: string, name: string): Baby => ({
-  id,
-  name,
-  color: '#5cc0d2',
-  archived: false,
-  createdAt: 0,
-  updatedAt: 0,
-});
 
 describe('TimeChips', () => {
   it('offers "now", three "ago" chips and "pick a time" as one radio group', () => {
@@ -99,54 +89,6 @@ describe('DurationChips', () => {
     const custom = render(<DurationChips kind="breastfeed" value={17} onChange={() => {}} />);
     expect(custom).toContain(tt('sheet.durationMinutes'));
     expect(custom).toContain('value="17"');
-  });
-});
-
-describe('BabyChips', () => {
-  it('is absent for one baby', () => {
-    expect(
-      render(
-        <BabyChips
-          babies={[baby('a', 'Ada')]}
-          selected={['a']}
-          single={false}
-          onChange={() => {}}
-        />,
-      ),
-    ).toBe('');
-  });
-  it('toggles babies for care entries; "all" only from three babies', () => {
-    const two = render(
-      <BabyChips
-        babies={[baby('a', 'Ada'), baby('b', 'Cal')]}
-        selected={['a']}
-        single={false}
-        onChange={() => {}}
-      />,
-    );
-    expect(two).toMatch(/aria-pressed="true"[^>]*>.*Ada/);
-    expect(two).not.toContain(tt('sheet.all'));
-    const three = render(
-      <BabyChips
-        babies={[baby('a', 'Ada'), baby('b', 'Cal'), baby('c', 'Ben')]}
-        selected={['a']}
-        single={false}
-        onChange={() => {}}
-      />,
-    );
-    expect(three).toContain(tt('sheet.all'));
-  });
-  it('is a radio group for a one-baby measurement', () => {
-    const html = render(
-      <BabyChips
-        babies={[baby('a', 'Ada'), baby('b', 'Cal')]}
-        selected={['b']}
-        single
-        onChange={() => {}}
-      />,
-    );
-    expect(html).toMatch(/role="radiogroup"/);
-    expect(html.match(/role="radio"/g)).toHaveLength(2);
   });
 });
 

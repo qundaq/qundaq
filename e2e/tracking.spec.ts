@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { t } from './support/i18n';
+import { escapeRegExp, t } from './support/i18n';
 import {
   addBabyInSettings,
   babyCard,
   cardAction,
   enterDuration,
-  feedTile,
+  logRows,
   openTab,
   pickTime,
   readEvents,
@@ -192,21 +192,6 @@ test.describe('diapers', () => {
     await expect(babyCard(page, 'Ada')).toContainText(t('diaper.wet'));
   });
 
-  test('"All" logs the same diaper for every baby', async ({ page }) => {
-    await addBabyInSettings(page, 'Ada');
-    await addBabyInSettings(page, 'Cal');
-    await openTab(page, t('tab.home'));
-    await cardAction(page, 'diaper').click();
-    const sheet = page.getByRole('dialog', { name: t('sheet.diaper.title') });
-    // Two babies: no "all" chip, so the twin is added with their own chip (sheet.all only leads from three).
-    await sheet.getByRole('button', { name: 'Cal', exact: true }).click();
-    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-    await expect(babyCard(page, 'Ada')).toContainText(justNowWet);
-    await expect(babyCard(page, 'Ada')).toContainText(t('diaper.wet'));
-    await expect(babyCard(page, 'Cal')).toContainText(justNowWet);
-    await expect(babyCard(page, 'Cal')).toContainText(t('diaper.wet'));
-  });
-
   test('colored swatches and cards cause no CSP violations', async ({ page }) => {
     await page.addInitScript(() => {
       const store: string[] = [];
@@ -333,10 +318,10 @@ test.describe('timers and feeds', () => {
       .getByRole('button', { name: t('sheet.startSleep'), exact: true })
       .click(); // Ada, the default
 
-    await cardAction(page, 'breastfeed').click();
-    const feedSheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-    await feedSheet.getByRole('button', { name: 'Cal', exact: true }).click();
-    await feedSheet.getByRole('button', { name: 'Ada', exact: true }).click(); // leave only Cal selected
+    await cardAction(page, 'breastfeed', 'Cal').click();
+    const feedSheet = page.getByRole('dialog', {
+      name: new RegExp(`${escapeRegExp(t('sheet.breastfeed.title'))} · Cal$`),
+    });
     await feedSheet.getByRole('button', { name: t('side.L.button'), exact: true }).click();
 
     const adaCard = babyCard(page, 'Ada');
@@ -577,22 +562,6 @@ test.describe('timers and feeds', () => {
     expect(events[2]).not.toHaveProperty('endAt');
   });
 
-  test('a bottle for all babies at once', async ({ page }) => {
-    await addBabyInSettings(page, 'Ada');
-    await addBabyInSettings(page, 'Cal');
-    await openTab(page, t('tab.home'));
-    await cardAction(page, 'bottle').click();
-    const sheet = page.getByRole('dialog', { name: t('sheet.bottle.title') });
-    await sheet.getByRole('button', { name: 'Cal', exact: true }).click();
-    await sheet.getByRole('radio', { name: t('unit.ml', { ml: 90 }), exact: true }).click();
-    await sheet.getByRole('radio', { name: t('bottle.formula'), exact: true }).click();
-    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-    await expect(babyCard(page, 'Ada')).toContainText(justNowWet);
-    await expect(feedTile(page, 'Ada')).toContainText('90 ml');
-    await expect(babyCard(page, 'Cal')).toContainText(justNowWet);
-    await expect(feedTile(page, 'Cal')).toContainText('90 ml');
-  });
-
   test('a feed with a duration is saved as finished, ending at the chosen time', async ({
     page,
   }) => {
@@ -622,25 +591,6 @@ test.describe('timers and feeds', () => {
     await expect(sheet.getByRole('alert')).toHaveText(t('rule.amount-invalid'));
   });
 
-  test('"All" names the baby that is already asleep', async ({ page }) => {
-    await addBabyInSettings(page, 'Ada');
-    await addBabyInSettings(page, 'Cal');
-    await openTab(page, t('tab.home'));
-    await cardAction(page, 'sleep', 'Ada').click();
-    let sheet = page.getByRole('dialog', { name: t('sheet.sleep.title') });
-    await sheet.getByRole('button', { name: t('sheet.startSleep'), exact: true }).click();
-    await expect(sheet).toBeHidden();
-
-    // From Cal's card (Ada's would stop her sleep), with Ada added.
-    await cardAction(page, 'sleep', 'Cal').click();
-    sheet = page.getByRole('dialog', { name: t('sheet.sleep.title') });
-    await sheet.getByRole('button', { name: 'Ada', exact: true }).click();
-    await sheet.getByRole('button', { name: t('sheet.startSleep'), exact: true }).click();
-    await expect(sheet.getByRole('alert')).toHaveText(
-      t('rule.already-running.named', { names: 'Ada' }),
-    );
-  });
-
   test('a feed longer than 4 hours is refused', async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, t('tab.home'));
@@ -653,38 +603,41 @@ test.describe('timers and feeds', () => {
 });
 
 test.describe('sheet defaults and saved fields', () => {
-  test("the sheet opens with the card's own baby selected, never a memory of the last one used", async ({
+  test("a card's sheet has no baby picker: it is always that card's own baby, even after a reload", async ({
     page,
   }) => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Cal');
     await openTab(page, t('tab.home'));
+    const titled = (name: string) =>
+      page.getByRole('dialog', {
+        name: new RegExp(`${escapeRegExp(t('sheet.diaper.title'))} · ${name}$`),
+      });
+
     await cardAction(page, 'diaper', 'Ada').click();
-    let sheet = page.getByRole('dialog', { name: t('sheet.diaper.title') });
-    const chip = (name: string) => sheet.getByRole('button', { name, exact: true });
-    await expect(chip('Ada')).toHaveAttribute('aria-pressed', 'true');
-    await expect(chip('Cal')).toHaveAttribute('aria-pressed', 'false');
-    await chip('Cal').click();
-    await chip('Ada').click();
+    let sheet = titled('Ada');
+    await expect(sheet.getByRole('group', { name: t('sheet.babies') })).toHaveCount(0);
+    await expect(sheet.getByRole('button', { name: 'Cal', exact: true })).toHaveCount(0);
     await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(sheet).toBeHidden();
 
-    // Opening from Cal's card selects Cal, not the "Cal" left picked on the sheet a moment ago.
+    // Opening from Cal's card is Cal's sheet, never a memory of the one just used.
     await cardAction(page, 'diaper', 'Cal').click();
-    sheet = page.getByRole('dialog', { name: t('sheet.diaper.title') });
-    await expect(chip('Cal')).toHaveAttribute('aria-pressed', 'true');
-    await expect(chip('Ada')).toHaveAttribute('aria-pressed', 'false');
-    await sheet.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
+    sheet = titled('Cal');
+    await expect(sheet.getByRole('button', { name: 'Ada', exact: true })).toHaveCount(0);
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(sheet).toBeHidden();
 
     // And it survives a reload too: still the card's own baby, not whatever was open before.
     await page.reload();
     await cardAction(page, 'diaper', 'Ada').click();
-    sheet = page.getByRole('dialog', { name: t('sheet.diaper.title') });
-    await expect(chip('Ada')).toHaveAttribute('aria-pressed', 'true');
-    await expect(chip('Cal')).toHaveAttribute('aria-pressed', 'false');
-    await sheet.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
+    sheet = titled('Ada');
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(sheet).toBeHidden();
+
+    await openTab(page, t('tab.log'));
+    await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(2);
+    await expect(logRows(page).filter({ hasText: 'Cal' })).toHaveCount(1);
   });
 
   test('turning "Dirty" off again saves no stool details', async ({ page }) => {

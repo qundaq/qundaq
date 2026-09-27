@@ -197,7 +197,7 @@ export const tr = {
   'diaper.dirty.button': 'Kirli',
   'diaper.both.button': 'İkisi',
   'card.actions': '{name}: kayıt ekle',
-  'quick.breastfeed': 'Emzir',
+  'quick.breastfeed': 'Emzirme',
   'quick.bottle': 'Biberon',
   'quick.sleep': 'Uyku',
   'quick.diaper': 'Bez',

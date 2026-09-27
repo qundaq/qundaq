@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { t } from './support/i18n';
+import { escapeRegExp, t } from './support/i18n';
 import { babyIdOf, putRawEvent } from './support/backup';
 import {
   addBabyInSettings,
@@ -22,18 +22,28 @@ async function twoBabies(page: Page) {
   await openTab(page, t('tab.home'));
 }
 
-test("a card action opens its own sheet, with that card's baby selected", async ({ page }) => {
+test('a card action opens its own sheet, titled for that baby, with no baby picker: a care type and an Other type', async ({
+  page,
+}) => {
   await twoBabies(page);
-  await cardAction(page, 'bottle', 'Cal').click();
-  const sheet = page.getByRole('dialog', { name: t('sheet.bottle.title') });
-  await expect(sheet.getByRole('button', { name: 'Cal', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(sheet.getByRole('button', { name: 'Ada', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  );
+
+  await cardAction(page, 'diaper', 'Cal').click();
+  const diaper = page.getByRole('dialog', {
+    name: new RegExp(`${escapeRegExp(t('sheet.diaper.title'))} · Cal$`),
+  });
+  await expect(diaper.getByRole('group', { name: t('sheet.babies') })).toHaveCount(0);
+  await expect(diaper.getByRole('button', { name: 'Ada', exact: true })).toHaveCount(0);
+  await diaper.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
+  await expect(diaper).toBeHidden();
+
+  const medication = await openOther(page, 'medication', 'Ada');
+  await expect(
+    page.getByRole('dialog', {
+      name: new RegExp(`${escapeRegExp(t('sheet.medication.title'))} · Ada$`),
+    }),
+  ).toBeVisible();
+  await expect(medication.getByRole('group', { name: t('sheet.babies') })).toHaveCount(0);
+  await expect(medication.getByRole('button', { name: 'Cal', exact: true })).toHaveCount(0);
 });
 
 test('a bottle is logged in two taps and remembers the last amount', async ({ page }) => {
