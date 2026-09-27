@@ -17,6 +17,8 @@
     "preview": "vite preview",
     "e2e": "npm run e2e:build-versions && playwright test",
     "e2e:build-versions": "GITHUB_SHA=1111111aaaaaaa vite build --outDir dist-e2e/v1 --emptyOutDir && node scripts/build-sw.mjs dist-e2e/v1 && node scripts/check-no-external-urls.mjs dist-e2e/v1 && GITHUB_SHA=2222222bbbbbbb vite build --outDir dist-e2e/v2 --emptyOutDir && node scripts/build-sw.mjs dist-e2e/v2 && node scripts/check-no-external-urls.mjs dist-e2e/v2",
+    "e2e:visual": "QUNDAQ_SCREENSHOTS=1 playwright test e2e/visual.spec.ts",
+    "e2e:visual:update": "QUNDAQ_SCREENSHOTS=1 playwright test e2e/visual.spec.ts --update-snapshots",
     "check:licenses": "node scripts/check-licenses.mjs",
     "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
