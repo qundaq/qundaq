@@ -121,8 +121,9 @@ test.describe('the log (history) list', () => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Cal');
     await openTab(page, t('tab.home'));
-    await logDiaper(page, { also: ['Cal'] });
-    await cardAction(page, 'bottle', 'Ada').click(); // the sheet starts with only Ada, the card it opened from
+    await logDiaper(page, { baby: 'Ada' });
+    await logDiaper(page, { baby: 'Cal' });
+    await cardAction(page, 'bottle', 'Ada').click();
     const bottle = page.getByRole('dialog', { name: t('sheet.bottle.title') });
     await bottle.getByRole('radio', { name: t('unit.ml', { ml: 90 }), exact: true }).click();
     await bottle.getByRole('button', { name: t('common.save'), exact: true }).click();

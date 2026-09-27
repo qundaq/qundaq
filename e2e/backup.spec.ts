@@ -205,7 +205,8 @@ test.describe('CSV', () => {
     await addBabyInSettings(page, 'Ada');
     await addBabyInSettings(page, 'Cal');
     await openTab(page, t('tab.home'));
-    await logDiaper(page, { also: ['Cal'] });
+    await logDiaper(page, { baby: 'Ada' });
+    await logDiaper(page, { baby: 'Cal' });
     await openTab(page, t('tab.settings'));
     await page.getByRole('button', { name: t('csv.title'), exact: true }).click();
     const sheet = page.getByRole('dialog', { name: t('csv.title') });

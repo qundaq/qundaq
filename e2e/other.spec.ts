@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { t } from './support/i18n';
+import { escapeRegExp, t } from './support/i18n';
 import {
   addBabyInSettings,
   filterGroup,
@@ -45,24 +45,19 @@ test('the list shows every type with its caption; the back button returns to it 
   await expect(sheet.getByLabel(t('temperature.value'))).toHaveValue('');
 });
 
-test('a medicine for "all babies" makes one row per baby, and is offered again with its dose', async ({
-  page,
-}) => {
+test('a medicine is logged for that baby, and offered again with its dose', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
-  await addBabyInSettings(page, 'Cal');
   await openTab(page, t('tab.home'));
   let sheet = await openOther(page, 'medication');
   await expect(page.getByRole('dialog', { name: t('sheet.medication.title') })).toBeVisible();
-  // Two babies: no "all" chip, so the twin is added with their own chip (sheet.all only leads from three).
-  await sheet.getByRole('button', { name: 'Cal', exact: true }).click();
   await sheet.getByLabel(t('medication.name')).fill('Vitamin D');
   await sheet.getByLabel(t('medication.dose')).fill('400 IU');
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
-  await expect(logRows(page)).toHaveCount(2);
-  await expect(logRows(page).filter({ hasText: 'Vitamin D · 400 IU' })).toHaveCount(2);
+  await expect(logRows(page)).toHaveCount(1);
+  await expect(logRows(page).filter({ hasText: 'Vitamin D · 400 IU' })).toHaveCount(1);
 
   await openTab(page, t('tab.home'));
   sheet = await openOther(page, 'medication');
@@ -78,11 +73,12 @@ test('weight and height for one baby, typed with a comma', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
   await addBabyInSettings(page, 'Cal');
   await openTab(page, t('tab.home'));
-  const sheet = await openOther(page, 'growth');
-  await expect(page.getByRole('dialog', { name: t('sheet.growth.title') })).toBeVisible();
-  await expect(sheet.getByRole('button', { name: t('sheet.all'), exact: true })).toHaveCount(0);
-  // Growth is a one-baby measurement: its chips are a radio group, not toggle buttons.
-  await sheet.getByRole('radio', { name: 'Cal', exact: true }).click();
+  const sheet = await openOther(page, 'growth', 'Cal');
+  await expect(
+    page.getByRole('dialog', {
+      name: new RegExp(`${escapeRegExp(t('sheet.growth.title'))} · Cal$`),
+    }),
+  ).toBeVisible();
   await sheet.getByLabel(t('growth.weight')).fill('3,45');
   await sheet.getByLabel(t('growth.height')).fill('52,5');
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();

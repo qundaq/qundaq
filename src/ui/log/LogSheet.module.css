@@ -123,11 +123,6 @@
   font: var(--font-caption);
   color: var(--muted);
 }
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
 .sides {
   display: grid;
   grid-template-columns: 1fr 1fr;

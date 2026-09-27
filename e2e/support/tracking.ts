@@ -69,15 +69,10 @@ export async function enterDuration(sheet: Locator, minutes: number) {
   }
 }
 
-/** Logs a wet diaper from a card (the first card by default), now or at a picked time; `also` adds babies. */
-export async function logDiaper(
-  page: Page,
-  options: { at?: string; baby?: string; also?: string[] } = {},
-) {
+/** Logs a wet diaper from a card (the first card by default), now or at a picked time. */
+export async function logDiaper(page: Page, options: { at?: string; baby?: string } = {}) {
   await cardAction(page, 'diaper', options.baby).click();
   const sheet = page.getByRole('dialog', { name: t('quick.diaper') });
-  for (const name of options.also ?? [])
-    await sheet.getByRole('button', { name, exact: true }).click();
   if (options.at) await pickTime(sheet, options.at);
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
