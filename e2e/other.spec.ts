@@ -163,9 +163,11 @@ test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English'
         ).toBe(true);
         if (width >= 360) {
           // overflow-wrap would hide a mid-word break from the check above: each label must be one line.
+          // The icon sits above the label as its own element, so measure the label span, not the button.
           const lines = await button.evaluate((el) => {
+            const label = el.querySelector('span:last-child') ?? el;
             const range = document.createRange();
-            range.selectNodeContents(el);
+            range.selectNodeContents(label);
             return range.getClientRects().length;
           });
           expect(lines, `label wraps at ${width}px`).toBe(1);

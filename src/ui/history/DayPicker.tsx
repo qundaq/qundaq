@@ -6,7 +6,9 @@ import {
   toDateInputValue,
 } from '../../domain/days';
 import { useLocale, useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
 import { dayLabel } from './describe';
+import styles from './Log.module.css';
 
 interface Props {
   day: number | null; // null: today, which follows midnight
@@ -31,16 +33,13 @@ export function DayPicker({ day, now, onChange }: Props) {
   };
 
   return (
-    <div className="day-picker" role="group" aria-label={t('day.label')}>
-      <button
-        type="button"
-        className="btn day-step"
+    <div className={styles.dayPicker} role="group" aria-label={t('day.label')}>
+      <Button
+        icon="chevron-left"
         aria-label={t('day.previous')}
         onClick={() => onChange(stepDay(day, now, -1))}
-      >
-        ‹
-      </button>
-      <label className="day-current">
+      />
+      <label className={styles.dayCurrent} data-testid="day-current">
         <span>{dayLabel(t, locale, shown, now)}</span>
         <input
           type="date"
@@ -50,15 +49,12 @@ export function DayPicker({ day, now, onChange }: Props) {
           onChange={(event) => pick(event.target.value)}
         />
       </label>
-      <button
-        type="button"
-        className="btn day-step"
+      <Button
+        icon="chevron-right"
         aria-label={t('day.next')}
         disabled={shown >= today}
         onClick={() => onChange(stepDay(day, now, 1))}
-      >
-        ›
-      </button>
+      />
     </div>
   );
 }

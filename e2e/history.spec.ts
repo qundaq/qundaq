@@ -61,9 +61,9 @@ test.describe('Günlük list', () => {
       const seen: string[] = [];
       (window as unknown as { __logStates: string[] }).__logStates = seen;
       new MutationObserver(() => {
-        const day = document.querySelector('.day-current')?.textContent ?? '';
+        const day = document.querySelector('[data-testid="day-current"]')?.textContent ?? '';
         const rows = Array.from(
-          document.querySelectorAll('.log-list li'),
+          document.querySelectorAll('[data-testid="log-list"] li'),
           (li) => li.textContent ?? '',
         );
         seen.push(`${day}|${rows.join('#')}`);
@@ -80,6 +80,8 @@ test.describe('Günlük list', () => {
     const states = await page.evaluate(
       () => (window as unknown as { __logStates: string[] }).__logStates,
     );
+    // The observer really saw the new day's row (not just an empty selector match).
+    expect(states.some((state) => state.startsWith('Dün') && state.includes('21:00'))).toBe(true);
     expect(states.filter((state) => state.startsWith('Dün') && state.includes('09:00'))).toEqual(
       [],
     );

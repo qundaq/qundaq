@@ -4,16 +4,18 @@ import { parseDecimal, scaleToInt } from '../../../domain/decimal';
 import { temperatureAlert } from '../../../domain/health';
 import { TEXT_LIMITS } from '../../../domain/rules';
 import { useT } from '../../app/I18nProvider';
+import { Button } from '../../shared/Button';
+import { Field } from '../../shared/Field';
 import type { GrowthInput, MedicationInput, PumpInput, TemperatureInput } from '../drafts';
+import styles from '../LogSheet.module.css';
 import { DecimalField, type FormProps } from './fields';
 
 /** Text fields with the numeric keypad: the typed text is kept, and "60.5" is reported on save, not truncated. */
 export function PumpForm({ value, onChange }: FormProps<PumpInput>) {
   const t = useT();
   return (
-    <div className="field-row">
-      <label className="field">
-        {t('pump.left')}
+    <div className={styles.fieldRow}>
+      <Field label={t('pump.left')}>
         <input
           type="text"
           inputMode="numeric"
@@ -21,9 +23,8 @@ export function PumpForm({ value, onChange }: FormProps<PumpInput>) {
           value={value.mlLeft}
           onChange={(e) => onChange({ ...value, mlLeft: e.target.value })}
         />
-      </label>
-      <label className="field">
-        {t('pump.right')}
+      </Field>
+      <Field label={t('pump.right')}>
         <input
           type="text"
           inputMode="numeric"
@@ -31,7 +32,7 @@ export function PumpForm({ value, onChange }: FormProps<PumpInput>) {
           value={value.mlRight}
           onChange={(e) => onChange({ ...value, mlRight: e.target.value })}
         />
-      </label>
+      </Field>
     </div>
   );
 }
@@ -75,7 +76,7 @@ export function TemperatureForm({ value, onChange }: FormProps<TemperatureInput>
         value={value.celsius}
         onChange={(celsius) => onChange({ celsius })}
       />
-      <p className="stool-alert" aria-live="polite" hidden={shown === null}>
+      <p className={styles.stoolAlert} aria-live="polite" hidden={shown === null}>
         {shown === null ? '' : t(`temperature.alert.${shown}`)}
       </p>
     </>
@@ -90,8 +91,7 @@ export function MedicationForm({
   const t = useT();
   return (
     <>
-      <label className="field">
-        {t('medication.name')}
+      <Field label={t('medication.name')}>
         <input
           type="text"
           autoComplete="off"
@@ -99,23 +99,25 @@ export function MedicationForm({
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
         />
-      </label>
+      </Field>
       {recent.length > 0 && (
-        <div className="chips recent" role="group" aria-label={t('medication.recent')}>
+        <div
+          className={[styles.chips, styles.recent].filter(Boolean).join(' ')}
+          role="group"
+          aria-label={t('medication.recent')}
+        >
           {recent.map((medication) => (
-            <button
+            <Button
               key={medication.name}
-              type="button"
-              className="chip"
+              variant="secondary"
               onClick={() => onChange({ name: medication.name, dose: medication.dose ?? '' })}
             >
               {medication.name}
-            </button>
+            </Button>
           ))}
         </div>
       )}
-      <label className="field">
-        {t('medication.dose')}
+      <Field label={t('medication.dose')}>
         <input
           type="text"
           autoComplete="off"
@@ -123,7 +125,7 @@ export function MedicationForm({
           value={value.dose}
           onChange={(e) => onChange({ ...value, dose: e.target.value })}
         />
-      </label>
+      </Field>
     </>
   );
 }

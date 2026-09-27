@@ -11,6 +11,9 @@ import type { Id, TrackerEvent } from '../../domain/types';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
 import { BackupBanner } from '../backup/BackupBanner';
 import { RestoreButton } from '../backup/RestoreButton';
+import { Button } from '../shared/Button';
+import { Card } from '../shared/Card';
+import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { EditSheet } from '../history/EditSheet';
 import { BabyCard } from './BabyCard';
@@ -20,6 +23,7 @@ import type { SheetKind } from '../log/drafts';
 import { LogSheet } from '../log/LogSheet';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
+import styles from './Home.module.css';
 
 /** How far back Home looks for "last feed / diaper / wake-up". Running timers are always included. */
 const RECENT_WINDOW = 7 * DAY;
@@ -55,7 +59,7 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   if (babies === undefined || events === undefined || hasEvents === undefined)
     return (
       <section aria-busy="true">
-        <h1>{t('tab.home')}</h1>
+        <VisuallyHidden as="h1">{t('tab.home')}</VisuallyHidden>
       </section>
     );
 
@@ -77,14 +81,13 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
     const event = byId.get(eventId);
     if (!event || !forgottenTimer(event, now)) return null;
     return (
-      <button
-        type="button"
-        className="btn btn-link"
+      <Button
+        variant="tertiary"
         aria-label={`${babyName}: ${t('timer.forgot')}`}
         onClick={() => setEditing(event)}
       >
         {t('timer.forgot')}
-      </button>
+      </Button>
     );
   };
 
@@ -92,7 +95,7 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
 
   return (
     <section>
-      <h1>{t('tab.home')}</h1>
+      <VisuallyHidden as="h1">{t('tab.home')}</VisuallyHidden>
       {reminder.show && (
         <BackupBanner
           daysSince={reminder.daysSince}
@@ -103,17 +106,15 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
         />
       )}
       {babies.length === 0 ? (
-        <div className="card">
+        <Card className={styles.empty}>
           <p>{t('home.empty')}</p>
-          <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
+          <Button variant="primary" onClick={() => setAdding(true)}>
             {t('babies.add')}
-          </button>
+          </Button>
           {/* After a wipe, restoring first avoids adding the babies again as new ones. */}
-          <p className="muted small home-restore">{t('home.restoreHint')}</p>
-          <div className="backup-actions">
-            <RestoreButton onFile={onImportFile} />
-          </div>
-        </div>
+          <p className={styles.restoreHint}>{t('home.restoreHint')}</p>
+          <RestoreButton onFile={onImportFile} />
+        </Card>
       ) : (
         <>
           {babies.map((baby) => {
@@ -123,45 +124,41 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
             return (
               <BabyCard key={baby.id} baby={baby} status={status} now={now}>
                 {(running || asleep) && (
-                  <div className="timer-actions">
+                  <div className={styles.timerActions}>
                     {running && (
                       <>
-                        <div className="timer-row">
-                          <button
-                            type="button"
-                            className="btn"
+                        <div className={styles.timerRow} data-testid="timer-row">
+                          <Button
                             aria-label={`${baby.name}: ${t('timer.switchSide')}`}
                             onClick={() =>
                               act(running.eventId, () => switchBreastSide(db, running.eventId))
                             }
                           >
                             {t('timer.switchSide')}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-primary"
+                          </Button>
+                          <Button
+                            variant="primary"
                             aria-label={`${baby.name}: ${t('timer.stopFeed')}`}
                             onClick={() =>
                               act(running.eventId, () => stopEvent(db, running.eventId))
                             }
                           >
                             {t('timer.stopFeed')}
-                          </button>
+                          </Button>
                         </div>
                         {forgotHint(baby.name, running.eventId)}
                       </>
                     )}
                     {asleep && (
                       <>
-                        <div className="timer-row">
-                          <button
-                            type="button"
-                            className="btn btn-primary"
+                        <div className={styles.timerRow} data-testid="timer-row">
+                          <Button
+                            variant="primary"
                             aria-label={`${baby.name}: ${t('timer.wakeUp')}`}
                             onClick={() => act(asleep.eventId, () => stopEvent(db, asleep.eventId))}
                           >
                             {t('timer.wakeUp')}
-                          </button>
+                          </Button>
                         </div>
                         {forgotHint(baby.name, asleep.eventId)}
                       </>

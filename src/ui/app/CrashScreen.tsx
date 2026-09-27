@@ -1,4 +1,7 @@
 import { RestoreButton } from '../backup/RestoreButton';
+import { Button } from '../shared/Button';
+import { Card } from '../shared/Card';
+import styles from './CrashScreen.module.css';
 import { useT } from './I18nProvider';
 
 interface Props {
@@ -13,18 +16,18 @@ export function CrashScreen({ error, onBackup, onRestore }: Props) {
   const t = useT();
   return (
     <section>
-      <h1>{t('crash.title')}</h1>
-      <p>{t('crash.otherTabs')}</p>
-      <p className="muted small crash-message">{error.message}</p>
-      <div className="backup-actions">
-        <button type="button" className="btn btn-primary" onClick={onBackup}>
-          {t('backup.export')}
-        </button>
-        <RestoreButton onFile={onRestore} />
-        <button type="button" className="btn" onClick={() => window.location.reload()}>
-          {t('crash.reload')}
-        </button>
-      </div>
+      <Card tone="danger">
+        <h1>{t('crash.title')}</h1>
+        <p>{t('crash.otherTabs')}</p>
+        <p className={styles.message}>{error.message}</p>
+        <div className={styles.actions}>
+          <Button variant="primary" onClick={onBackup}>
+            {t('backup.export')}
+          </Button>
+          <RestoreButton onFile={onRestore} />
+          <Button onClick={() => window.location.reload()}>{t('crash.reload')}</Button>
+        </div>
+      </Card>
     </section>
   );
 }

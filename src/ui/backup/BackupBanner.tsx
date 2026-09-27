@@ -1,5 +1,8 @@
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Card } from '../shared/Card';
 import { backupAgo } from './text';
+import styles from './Backup.module.css';
 
 interface Props {
   daysSince: number | null; // null: never backed up
@@ -11,20 +14,24 @@ interface Props {
 export function BackupBanner({ daysSince, onBackup, onSnooze }: Props) {
   const t = useT();
   return (
-    <section className="card backup-banner" aria-label={t('reminder.label')}>
+    <Card
+      as="section"
+      tone={daysSince !== null && daysSince >= 14 ? 'danger' : 'info'}
+      aria-label={t('reminder.label')}
+    >
       <p>
         {daysSince === null
           ? t('reminder.never')
           : t('reminder.since', { ago: backupAgo(t, daysSince) })}
       </p>
-      <div className="timer-row">
-        <button type="button" className="btn" onClick={onSnooze}>
+      <div className={styles.row}>
+        <Button variant="tertiary" onClick={onSnooze}>
           {t('reminder.snooze')}
-        </button>
-        <button type="button" className="btn btn-primary" onClick={onBackup}>
+        </Button>
+        <Button variant="primary" onClick={onBackup}>
           {t('backup.export')}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Card>
   );
 }

@@ -3,6 +3,8 @@ import { ValidationError } from '../../domain/rules';
 import type { Baby } from '../../domain/types';
 import type { MessageKey } from '../../i18n';
 import { useT, type TranslateFn } from '../app/I18nProvider';
+import { Button } from './Button';
+import styles from './ErrorBanner.module.css';
 
 export interface ReportOptions {
   /** Show this message instead of the one derived from the error (which assumes a failed write). */
@@ -47,11 +49,9 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
   return (
     <ErrorContext.Provider value={report}>
       {message && (
-        <div className="alert" role="alert">
+        <div className={styles.alert} role="alert">
           <span>{message}</span>
-          <button type="button" className="btn" onClick={() => setMessage(null)}>
-            {t('common.dismiss')}
-          </button>
+          <Button onClick={() => setMessage(null)}>{t('common.dismiss')}</Button>
         </div>
       )}
       {children}

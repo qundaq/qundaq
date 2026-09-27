@@ -21,7 +21,11 @@ import { dayLabel, formatNumber, weekdayShort } from '../history/describe';
 import { useLocale, useT, type TranslateFn } from '../app/I18nProvider';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
+import { Card } from '../shared/Card';
+import { Chip } from '../shared/Chip';
+import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { GrowthChart } from './GrowthChart';
+import styles from './Summary.module.css';
 
 /** Özet's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
 export interface SummaryView {
@@ -81,8 +85,8 @@ export function SummaryScreen({ view, onViewChange, lastBabyIds }: Props) {
   if (data?.babyId === null || (data === undefined && babies.length === 0)) {
     return (
       <section aria-busy={data === undefined}>
-        <h1>{t('tab.summary')}</h1>
-        {data !== undefined && <p className="muted">{t('summary.noBabies')}</p>}
+        <VisuallyHidden as="h1">{t('tab.summary')}</VisuallyHidden>
+        {data !== undefined && <p className={styles.muted}>{t('summary.noBabies')}</p>}
       </section>
     );
   }
@@ -90,28 +94,26 @@ export function SummaryScreen({ view, onViewChange, lastBabyIds }: Props) {
 
   return (
     <section>
-      <h1>{t('tab.summary')}</h1>
+      <VisuallyHidden as="h1">{t('tab.summary')}</VisuallyHidden>
       {babies.length > 1 && (
-        <fieldset className="filter">
+        <fieldset className={styles.filter}>
           <legend>{t('summary.baby')}</legend>
-          <div className="chips">
+          <div className={styles.chips}>
             {babies.map((baby) => (
-              <button
+              <Chip
                 key={baby.id}
-                type="button"
-                className="chip"
-                aria-pressed={shownBabyId === baby.id}
+                selected={shownBabyId === baby.id}
                 onClick={() => set({ babyId: baby.id })}
               >
                 {baby.name}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>
       )}
       <DayPicker day={view.day} now={tick} onChange={(next) => set({ day: next })} />
       {data === undefined ? (
-        <p className="muted" aria-busy="true" />
+        <p className={styles.muted} aria-busy="true" />
       ) : (
         <SummaryBody
           data={data}
@@ -153,9 +155,9 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
   );
   return (
     <>
-      <div className="card summary-day">
+      <Card className={styles.day} data-testid="summary-day">
         <h2>{t('summary.dayTitle', { name: baby.name, day: dayLabel(t, locale, day, now) })}</h2>
-        <dl className="status">
+        <dl className={styles.status}>
           <Row label={t('summary.feeds')} value={String(totals.feeds)} />
           <Row label={t('summary.breast')} value={breastText(t, totals)} />
           <Row
@@ -185,34 +187,28 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
             })}
           />
         </dl>
-      </div>
+      </Card>
       {pumpedToday && (
-        <div className="card summary-pump">
+        <Card data-testid="summary-pump">
           <h2>{t('summary.pump')}</h2>
           <p>
             {t('summary.pumpTotal', { ml: formatNumber(locale, pumpTotalMl(events, day, to)) })}
           </p>
-        </div>
+        </Card>
       )}
-      <div className="card">
+      <Card>
         <h2>{t('summary.week')}</h2>
         <WeekTable week={weekTotals(events, baby.id, day, now)} />
-      </div>
-      <div className="card">
+      </Card>
+      <Card>
         <h2>{t('growth.title')}</h2>
-        <fieldset className="filter">
+        <fieldset className={styles.filter}>
           <legend>{t('growth.metric')}</legend>
-          <div className="chips">
+          <div className={styles.chips}>
             {GROWTH_METRICS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                className="chip"
-                aria-pressed={metric === option}
-                onClick={() => onMetric(option)}
-              >
+              <Chip key={option} selected={metric === option} onClick={() => onMetric(option)}>
                 {t(`growth.metric.${option}`)}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>
@@ -221,7 +217,7 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
           metric={metric}
           color={baby.color}
         />
-      </div>
+      </Card>
     </>
   );
 }
@@ -251,7 +247,7 @@ function WeekTable({ week }: { week: readonly { dayStart: number; totals: DailyT
   const t = useT();
   const locale = useLocale();
   return (
-    <table className="week" aria-label={t('summary.week')}>
+    <table className={styles.week} aria-label={t('summary.week')}>
       <thead>
         <tr>
           <th scope="col">{t('summary.col.day')}</th>
@@ -267,7 +263,7 @@ function WeekTable({ week }: { week: readonly { dayStart: number; totals: DailyT
             <td>
               {totals.feeds}
               {(totals.breastMs > 0 || totals.bottleMl > 0) && (
-                <span className="muted small week-detail">
+                <span className={styles.weekDetail}>
                   {t('summary.weekFeedDetail', {
                     breast: formatDuration(t, totals.breastMs),
                     ml: formatNumber(locale, totals.bottleMl),

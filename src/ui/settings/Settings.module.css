@@ -1,0 +1,50 @@
+.segmented {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+}
+.toggle input {
+  width: 28px;
+  height: 28px;
+  accent-color: var(--primary);
+  flex: none;
+}
+.hint {
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.ok {
+  color: var(--ok);
+}
+.warn {
+  color: var(--danger);
+}
+.sources {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: var(--font-caption);
+  color: var(--text);
+}
+.capSlider {
+  width: 100%;
+  height: var(--tap);
+  margin: 0;
+  accent-color: var(--primary);
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

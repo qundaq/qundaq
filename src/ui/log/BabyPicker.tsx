@@ -1,5 +1,7 @@
 import type { Baby, Id } from '../../domain/types';
 import { useT } from '../app/I18nProvider';
+import { Chip } from '../shared/Chip';
+import styles from './LogSheet.module.css';
 
 interface Props {
   babies: readonly Baby[];
@@ -18,27 +20,16 @@ export function BabyPicker({ babies, selected, onChange }: Props) {
   return (
     <fieldset>
       <legend>{t('sheet.babies')}</legend>
-      <div className="chips">
+      <div className={styles.chips}>
         {babies.length > 1 && (
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={allSelected}
-            onClick={() => onChange(babies.map((b) => b.id))}
-          >
+          <Chip selected={allSelected} onClick={() => onChange(babies.map((b) => b.id))}>
             {t('sheet.all')}
-          </button>
+          </Chip>
         )}
         {babies.map((baby) => (
-          <button
-            key={baby.id}
-            type="button"
-            className="chip"
-            aria-pressed={selected.includes(baby.id)}
-            onClick={() => toggle(baby.id)}
-          >
+          <Chip key={baby.id} selected={selected.includes(baby.id)} onClick={() => toggle(baby.id)}>
             {baby.name}
-          </button>
+          </Chip>
         ))}
       </div>
     </fieldset>
@@ -59,17 +50,11 @@ export function SingleBabyPicker({
   return (
     <fieldset>
       <legend>{t('sheet.babies')}</legend>
-      <div className="chips">
+      <div className={styles.chips}>
         {babies.map((baby) => (
-          <button
-            key={baby.id}
-            type="button"
-            className="chip"
-            aria-pressed={selected === baby.id}
-            onClick={() => onChange(baby.id)}
-          >
+          <Chip key={baby.id} selected={selected === baby.id} onClick={() => onChange(baby.id)}>
             {baby.name}
-          </button>
+          </Chip>
         ))}
       </div>
     </fieldset>

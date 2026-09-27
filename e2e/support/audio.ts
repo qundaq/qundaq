@@ -176,5 +176,5 @@ export function tile(page: Page, name: string) {
 
 /** The status line under the play button ("Çalıyor · …", "Durdu", …). */
 export function soundStatus(page: Page) {
-  return page.locator('.sound-status');
+  return page.getByTestId('sound-status');
 }

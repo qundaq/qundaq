@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { db } from '../../db/instance';
 import { deleteMix, listMixes } from '../../db/mixes';
 import type { Id, Mix } from '../../domain/types';
-import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
-import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../history/confirm';
 import { useT } from '../app/I18nProvider';
+import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../history/confirm';
+import { Button } from '../shared/Button';
+import { Card } from '../shared/Card';
+import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { useLiveQuery } from '../shared/useLiveQuery';
+import styles from './Sounds.module.css';
 import { mixLayerNames } from './text';
 
 interface Props {
@@ -37,40 +40,39 @@ export function MixList({ onPlay, onRename }: Props) {
   };
 
   return (
-    <div className="card">
+    <Card>
       <h2>{t('sounds.mixes')}</h2>
-      <ul className="mix-list">
+      <ul className={styles.mixList}>
         {mixes.map((mix) => (
-          <li key={mix.id}>
+          <li key={mix.id} className={styles.mixRow}>
             <button
               type="button"
-              className="mix-play"
+              className={styles.mixPlay}
               aria-label={t('sounds.mix.play', { name: mix.name })}
               onClick={() => onPlay(mix)}
             >
-              <span className="mix-name">{mix.name}</span>
-              <span className="muted small">{mixLayerNames(t, mix.layers)}</span>
+              <span className={styles.mixName}>{mix.name}</span>
+              <span className={styles.mixLayers}>{mixLayerNames(t, mix.layers)}</span>
             </button>
-            <button
-              type="button"
-              className="btn"
+            <Button
+              className={styles.mixAction}
               aria-label={`${mix.name}: ${t('sounds.mix.rename')}`}
               onClick={() => onRename(mix)}
             >
               {t('sounds.mix.rename')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-danger"
-              data-armed={armed?.id === mix.id}
+            </Button>
+            <Button
+              variant="danger"
+              className={styles.mixAction}
+              armed={armed?.id === mix.id}
               aria-label={`${mix.name}: ${t(armed?.id === mix.id ? 'edit.deleteConfirm' : 'edit.delete')}`}
               onClick={() => tapDelete(mix)}
             >
               {t(armed?.id === mix.id ? 'edit.deleteConfirm' : 'edit.delete')}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
-    </div>
+    </Card>
   );
 }

@@ -1,6 +1,10 @@
 import { TEXT_LIMITS } from '../../../domain/rules';
 import { useT } from '../../app/I18nProvider';
+import { typeIcon } from '../../history/describe';
+import { Chip } from '../../shared/Chip';
+import { Field } from '../../shared/Field';
 import { OTHER_TYPES, type OtherType } from '../drafts';
+import styles from '../LogSheet.module.css';
 
 export interface FormProps<T> {
   value: T;
@@ -21,8 +25,7 @@ export function DurationField({
 }) {
   const t = useT();
   return (
-    <label className="field">
-      {t('sheet.durationOptional')}
+    <Field label={t('sheet.durationOptional')}>
       <input
         type="number"
         inputMode="numeric"
@@ -31,7 +34,7 @@ export function DurationField({
         value={value ?? ''}
         onChange={(e) => onChange(parsePositiveInt(e.target.value))}
       />
-    </label>
+    </Field>
   );
 }
 
@@ -49,8 +52,7 @@ export function DecimalField({
   onChange: (next: string) => void;
 }) {
   return (
-    <label className="field">
-      {label}
+    <Field label={label}>
       <input
         type="text"
         inputMode="decimal"
@@ -58,7 +60,7 @@ export function DecimalField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-    </label>
+    </Field>
   );
 }
 
@@ -74,8 +76,7 @@ export function NoteField({
 }) {
   const t = useT();
   return (
-    <label className="field">
-      {t(required ? 'note.required' : 'note.optional')}
+    <Field label={t(required ? 'note.required' : 'note.optional')}>
       <textarea
         rows={3}
         maxLength={TEXT_LIMITS.note}
@@ -83,7 +84,7 @@ export function NoteField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-    </label>
+    </Field>
   );
 }
 
@@ -93,17 +94,16 @@ export function OtherTypeChips({ value, onChange }: FormProps<OtherType>) {
   return (
     <fieldset>
       <legend>{t('other.type')}</legend>
-      <div className="chips">
+      <div className={styles.chips}>
         {OTHER_TYPES.map((type) => (
-          <button
+          <Chip
             key={type}
-            type="button"
-            className="chip"
-            aria-pressed={value === type}
+            icon={typeIcon(type)}
+            selected={value === type}
             onClick={() => onChange(type)}
           >
             {t(`other.chip.${type}`)}
-          </button>
+          </Chip>
         ))}
       </div>
     </fieldset>

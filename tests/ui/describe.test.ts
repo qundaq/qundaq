@@ -9,6 +9,7 @@ import {
   formatMeasurement,
   hasAlert,
   timeRange,
+  typeIcon,
 } from '../../src/ui/history/describe';
 
 const tr = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
@@ -286,4 +287,29 @@ describe('formatMeasurement and hasAlert', () => {
       false,
     );
   });
+});
+
+it('typeIcon covers every event type', () => {
+  const types = [
+    'sleep',
+    'breastfeed',
+    'bottle',
+    'diaper',
+    'pump',
+    'growth',
+    'temperature',
+    'medication',
+    'healthNote',
+  ] as const;
+  expect(types.map(typeIcon)).toEqual([
+    'moon',
+    'heart',
+    'milk',
+    'baby',
+    'droplets',
+    'ruler',
+    'thermometer',
+    'pill',
+    'notebook-pen',
+  ]);
 });

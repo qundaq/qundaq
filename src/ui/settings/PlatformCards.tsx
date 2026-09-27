@@ -1,28 +1,49 @@
 import { useEffect, useState } from 'react';
 import { applyUpdate, checkForUpdate, hasWaitingUpdate } from '../../platform/sw-client';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Card } from '../shared/Card';
+import { Icon } from '../shared/Icon';
 import { useOfflineStatus, usePersistenceState } from '../shared/usePlatformStatus';
+import styles from './Settings.module.css';
 
 export function OfflineCard() {
   const t = useT();
   const status = useOfflineStatus();
   return (
-    <div className="card">
+    <Card>
       <h2>{t('settings.offline.title')}</h2>
       {status?.state === 'ready' && (
-        <p className="status-ok">{t('settings.offline.ready', { version: status.version })}</p>
+        <p className={styles.status}>
+          <Icon name="check" size={16} className={styles.ok} />
+          {t('settings.offline.ready', { version: status.version })}
+        </p>
       )}
       {(status === null || status.state === 'not-ready') && (
-        <p className="status-warn">{t('settings.offline.notReady')}</p>
+        <p className={[styles.status, styles.hint].filter(Boolean).join(' ')}>
+          <Icon name="info" size={16} />
+          {t('settings.offline.notReady')}
+        </p>
       )}
       {status?.state === 'unsupported' && (
-        <p className="status-warn">{t('settings.offline.unsupported')}</p>
+        <p className={[styles.status, styles.warn].filter(Boolean).join(' ')}>
+          <Icon name="triangle-alert" size={16} />
+          {t('settings.offline.unsupported')}
+        </p>
       )}
       {status?.state === 'insecure' && (
-        <p className="status-warn">{t('settings.offline.insecure')}</p>
+        <p className={[styles.status, styles.warn].filter(Boolean).join(' ')}>
+          <Icon name="triangle-alert" size={16} />
+          {t('settings.offline.insecure')}
+        </p>
       )}
-      {status?.state === 'dev' && <p className="muted">{t('settings.offline.dev')}</p>}
-    </div>
+      {status?.state === 'dev' && (
+        <p className={[styles.status, styles.hint].filter(Boolean).join(' ')}>
+          <Icon name="info" size={16} />
+          {t('settings.offline.dev')}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -31,12 +52,20 @@ export function StorageCard() {
   const state = usePersistenceState();
   if (state === null) return null;
   return (
-    <div className="card">
+    <Card>
       <h2>{t('settings.storage.title')}</h2>
-      <p className={state === 'persisted' ? 'status-ok' : 'status-warn'}>
-        {t(`settings.storage.${state}`)}
-      </p>
-    </div>
+      {state === 'persisted' ? (
+        <p className={styles.status}>
+          <Icon name="check" size={16} className={styles.ok} />
+          {t('settings.storage.persisted')}
+        </p>
+      ) : (
+        <p className={[styles.status, styles.hint].filter(Boolean).join(' ')}>
+          <Icon name="info" size={16} />
+          {t(`settings.storage.${state}`)}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -58,34 +87,30 @@ export function UpdateCard() {
   };
 
   return (
-    <div className="card">
+    <Card>
       <h2>{t('settings.update.title')}</h2>
-      <p className="muted small">{t('settings.update.hint')}</p>
+      <p className={styles.hint}>{t('settings.update.hint')}</p>
       {state === 'ready' ? (
         <>
           <p role="status">{t('settings.update.ready')}</p>
-          <button type="button" className="btn btn-primary" onClick={() => void applyUpdate()}>
+          <Button variant="primary" onClick={() => void applyUpdate()}>
             {t('settings.update.apply')}
-          </button>
+          </Button>
         </>
       ) : (
         <>
-          <button
-            type="button"
-            className="btn"
-            disabled={state === 'checking'}
-            onClick={() => void check()}
-          >
+          <Button variant="secondary" disabled={state === 'checking'} onClick={() => void check()}>
             {t(state === 'checking' ? 'settings.update.checking' : 'settings.update.check')}
-          </button>
+          </Button>
           {state === 'none' && <p role="status">{t('settings.update.none')}</p>}
           {state === 'failed' && (
-            <p role="status" className="status-warn">
+            <p role="status" className={[styles.status, styles.warn].filter(Boolean).join(' ')}>
+              <Icon name="triangle-alert" size={16} />
               {t('settings.update.failed')}
             </p>
           )}
         </>
       )}
-    </div>
+    </Card>
   );
 }

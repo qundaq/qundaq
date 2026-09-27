@@ -1,7 +1,10 @@
 import { fromLocalInputValue, toLocalInputValue } from '../../domain/time';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Field } from '../shared/Field';
 import { useNow } from '../shared/useNow';
 import { editedOptionalTime, editedTime } from './edits';
+import styles from './LogSheet.module.css';
 
 /**
  * `null` means "now": the field shows the current time, and the entry is stamped with the moment it is
@@ -17,9 +20,8 @@ export function TimeField({
   const t = useT();
   useNow(); // keeps the displayed "now" current while the sheet stays open
   return (
-    <div className="time-field">
-      <label className="field">
-        {t('sheet.time')}
+    <div className={styles.timeField}>
+      <Field label={t('sheet.time')}>
         <input
           type="datetime-local"
           // An unset time means "now", read at render; useNow above re-renders to keep it current.
@@ -27,10 +29,8 @@ export function TimeField({
           value={toLocalInputValue(value ?? Date.now())}
           onChange={(e) => onChange(fromLocalInputValue(e.target.value))}
         />
-      </label>
-      <button type="button" className="btn" onClick={() => onChange(null)}>
-        {t('sheet.now')}
-      </button>
+      </Field>
+      <Button onClick={() => onChange(null)}>{t('sheet.now')}</Button>
     </div>
   );
 }
@@ -53,18 +53,15 @@ export function EditTimeField({
 }) {
   const t = useT();
   return (
-    <div className="time-field">
-      <label className="field">
-        {label}
+    <div className={styles.timeField}>
+      <Field label={label}>
         <input
           type="datetime-local"
           value={toLocalInputValue(value)}
           onChange={(e) => onChange(editedTime(e.target.value, value, stored))}
         />
-      </label>
-      <button type="button" className="btn" onClick={() => onChange(Date.now())}>
-        {t('sheet.now')}
-      </button>
+      </Field>
+      <Button onClick={() => onChange(Date.now())}>{t('sheet.now')}</Button>
     </div>
   );
 }
@@ -81,18 +78,15 @@ export function OptionalTimeField({
 }) {
   const t = useT();
   return (
-    <div className="time-field">
-      <label className="field">
-        {label}
+    <div className={styles.timeField}>
+      <Field label={label}>
         <input
           type="datetime-local"
           value={value === null ? '' : toLocalInputValue(value)}
           onChange={(e) => onChange(editedOptionalTime(e.target.value, value))}
         />
-      </label>
-      <button type="button" className="btn" onClick={() => onChange(Date.now())}>
-        {t('sheet.now')}
-      </button>
+      </Field>
+      <Button onClick={() => onChange(Date.now())}>{t('sheet.now')}</Button>
     </div>
   );
 }

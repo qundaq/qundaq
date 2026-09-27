@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { SOUNDS } from '../../audio/catalog';
 import { percent } from '../../audio/volume';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Field } from '../shared/Field';
+import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { MixList } from './MixList';
 import { MixNameSheet, type MixNameRequest } from './MixNameSheet';
 import { SoundTile } from './SoundTile';
+import styles from './Sounds.module.css';
 import { TimerChips } from './TimerChips';
 import { statusText } from './text';
 import { useRemaining } from './useRemaining';
@@ -25,10 +29,13 @@ export function SoundsScreen() {
 
   return (
     <section>
-      <h1>{t('tab.sounds')}</h1>
-      <button
-        type="button"
-        className="btn btn-primary play-button"
+      <VisuallyHidden as="h1">{t('tab.sounds')}</VisuallyHidden>
+      <Button
+        variant="primary"
+        size="lg"
+        block
+        className={styles.playButton}
+        icon={state.status === 'playing' ? 'pause' : 'play'}
         disabled={state.layers.length === 0}
         onClick={() => (state.status === 'playing' ? engine.pause() : engine.play())}
       >
@@ -39,15 +46,15 @@ export function SoundsScreen() {
               ? 'sounds.resume'
               : 'sounds.play',
         )}
-      </button>
+      </Button>
       {/* Only the state is announced: inside the live region the countdown would be read out every minute. */}
-      <p className="sound-status">
+      <p className={styles.status} data-testid="sound-status">
         <span aria-live="polite">{statusText(t, state)}</span>
         {remaining ? ` · ${remaining}` : ''}
       </p>
       <TimerChips value={state.timer} onChange={(choice) => engine.setTimer(choice)} />
 
-      <div className="sound-tiles" role="group" aria-label={t('sounds.tiles')}>
+      <div className={styles.tiles} role="group" aria-label={t('sounds.tiles')}>
         {SOUNDS.map((sound) => (
           <SoundTile
             key={sound.id}
@@ -59,15 +66,14 @@ export function SoundsScreen() {
           />
         ))}
       </div>
-      <p role="status" className="sound-notice">
+      <p role="status" className={styles.notice}>
         {notice}
       </p>
 
-      <label className="field master">
-        {t('sounds.master')}
+      <Field label={t('sounds.master')} className={styles.master}>
         <input
           type="range"
-          className="level"
+          className={styles.level}
           min={0}
           max={1}
           step={0.01}
@@ -75,24 +81,21 @@ export function SoundsScreen() {
           aria-valuetext={percent(state.master)}
           onChange={(event) => engine.setMaster(Number(event.target.value))}
         />
-      </label>
-      <p className="muted small">{t('sounds.safety')}</p>
+      </Field>
+      <p className={styles.safety}>{t('sounds.safety')}</p>
 
-      <div className="backup-actions">
-        <button
-          type="button"
-          className="btn"
-          disabled={state.layers.length === 0}
-          onClick={() =>
-            setMixRequest({
-              kind: 'save',
-              layers: state.layers.map((layer) => ({ soundId: layer.soundId, gain: layer.level })),
-            })
-          }
-        >
-          {t('sounds.saveMix')}
-        </button>
-      </div>
+      <Button
+        block
+        disabled={state.layers.length === 0}
+        onClick={() =>
+          setMixRequest({
+            kind: 'save',
+            layers: state.layers.map((layer) => ({ soundId: layer.soundId, gain: layer.level })),
+          })
+        }
+      >
+        {t('sounds.saveMix')}
+      </Button>
       <MixList
         onPlay={(mix) =>
           setNotice(engine.loadMix(mix.layers) === 'empty' ? t('sounds.mix.empty') : null)
