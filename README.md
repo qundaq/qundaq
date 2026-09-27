@@ -50,7 +50,7 @@ Your entries live only on your phone, and iOS may delete a home-screen app's sto
 - **Stool color card** with a warning for pale/white/clay colors, an early sign of biliary atresia, one of the few things this app will ever nudge you about
 - **Sleep sounds:** generated white/pink/brown noise, rain, waves, wind, heartbeat, shushing and more, mixed as layers, with a sleep timer and a volume safety cap
 - **Backup & export:** JSON backup to the Files app, CSV export for your pediatrician
-- **Night mode** with a dim red/amber palette
+- **Dark, light and system themes**, and a night mode with a dim red/amber palette
 - **Turkish and English**
 
 ## How it will work on your phone
@@ -85,6 +85,10 @@ The Sounds tab plays white, pink and brown noise, rain, waves, wind, a heartbeat
 - **Locked screen:** the sound keeps playing with the screen locked and in airplane mode. It plays through the ring/silent switch, and it pauses other audio (a podcast) when it starts. After a call or an alarm while the phone is locked, iOS may keep the sound off until you open the app again; the app then shows "Resume".
 - **Safety:** keep the phone out of the crib, at least 2 metres (about 7 feet) away, keep the volume as low as works, and prefer the timer to playing all night (Hugh et al., _Pediatrics_ 2014). Settings → **Volume safety cap** limits how loud the Sounds tab can go (default 50 %); raising it shows this advice, and raising it never makes a playing sound louder by itself. The phone's own volume buttons apply on top, and the app cannot read them.
 - **Sources:** every sound is listed with its origin and licence in [`public/sounds/SOURCES.md`](public/sounds/SOURCES.md), also shown in the app under Settings → About → Sound sources. Recordings, when they come, will be CC0 or clearly labelled as AI-generated with the tool and date.
+
+## Themes
+
+Qundaq ships dark by default. Settings → Theme also offers light and a system option that follows iOS. Night mode is a separate switch that overrides either theme with a deliberately low-contrast red/amber palette on black, for feeds in the dark. Themes need iOS 16.2 or later (for `color-mix`); every currently supported browser meets that.
 
 ## Contributing
 
@@ -123,6 +127,8 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 - **Güvenlik:** Telefonu bebeğin yatağına koymayın; en az 2 metre uzakta tutun, sesi olabildiğince kısık tutun ve bütün gece çalmak yerine zamanlayıcıyı kullanın (Hugh ve ark., _Pediatrics_ 2014). Ayarlar → **Ses güvenlik sınırı**, Sesler sekmesinin en fazla ne kadar yükselebileceğini belirler (varsayılan %50); sınırı yükseltmek bu uyarıyı gösterir ve çalan sesi kendiliğinden yükseltmez. Telefonun kendi ses tuşları bunun üstüne eklenir; uygulama onları okuyamaz.
 - **Kaynaklar:** Her sesin kaynağı ve lisansı [`public/sounds/SOURCES.md`](public/sounds/SOURCES.md) dosyasında listelenir; uygulamada Ayarlar → Hakkında → Ses kaynakları altında da görünür. Kayıt dosyaları eklendiğinde CC0 lisanslı olacak ya da hangi araçla ve ne zaman üretildiği belirtilerek yapay zekâyla üretildiği açıkça yazılacak.
 
+**Temalar:** Qundaq varsayılan olarak koyu temayla açılır. Ayarlar → Tema, açık temayı ve iOS'u izleyen sistem seçeneğini de sunar. Gece modu ayrı bir anahtardır; hangi tema seçili olursa olsun, karanlıkta besleme için siyah zemin üzerinde bilerek düşük kontrastlı bir kırmızı/kehribar palete geçer. Temalar için iOS 16.2 ya da üzeri gerekir (`color-mix` nedeniyle); şu an desteklenen her tarayıcı bu koşulu karşılar.
+
 **İlkeler:**
 
 - Veri yalnızca telefonda tutulur.
@@ -141,7 +147,7 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 - Uyarılı kaka renk kartı
 - Katmanlı uyku sesleri ve zamanlayıcı
 - JSON yedek ve CSV çıktısı
-- Gece modu
+- Koyu, açık ve sistem temaları; kırmızı/kehribar tonlu gece modu
 - Türkçe ve İngilizce
 
 **Tıbbi uyarı:** Bu uygulama bir kayıt defteridir, tıbbi tavsiye değildir. Endişen varsa çocuk doktoruna danış.

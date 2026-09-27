@@ -45,6 +45,15 @@ A repository-wide formatting commit is listed in `.git-blame-ignore-revs`. GitHu
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
+## Styling
+
+- **Tokens only.** Every colour, space, radius and font lives in `src/ui/styles/tokens.css`; components never hold a hex. Base element defaults (fieldset, legend, paragraph, etc.) live in `base.css`.
+- **CSS Modules only.** Each component is styled by its own `*.module.css`. `className` string literals are forbidden in screen files (`src/ui/**/*.tsx`, outside `src/ui/shared/` and `src/ui/app/`); ESLint's `no-restricted-syntax` enforces it. Compose a shared component or use the screen's module instead.
+- **Compose `src/ui/shared`.** `Button`, `Chip`, `Card`, `Field`, `Sheet`, `ToastBanner`, `Icon` and `VisuallyHidden` are the shared building blocks; reach for one before styling something new.
+- **At most one primary button per region** — a screen, a sheet, or a card that owns an action (a baby card with a running timer). Every other action is secondary.
+- **Icons come from `src/ui/shared/icons.ts`.** They are copied inline from a single Lucide release (see `src/ui/shared/ICONS.md`); do not mix releases and do not fetch an icon at runtime.
+- **Screenshot baselines.** `e2e/visual.spec.ts` renders every screen and compares it against `e2e/__screenshots__/<platform>/`. To refresh it after a styling change, push your branch and run the "Screenshots" workflow (Actions → Screenshots → Run workflow → pick your branch; it refuses `main`); it commits the Linux baselines under `e2e/__screenshots__/linux/`. In CI, the comparison step is guarded by the existence of that directory, so a branch without baselines simply skips it. Locally, `npm run e2e:visual` compares against `e2e/__screenshots__/darwin/`, which is gitignored and never committed, so the first local run must be `QUNDAQ_SCREENSHOTS=1 npm run e2e:visual:update` to render those macOS baselines; `npm run e2e:visual` then compares against them. Note that a push made by the Screenshots workflow (it uses `GITHUB_TOKEN`) does not trigger CI on its own, so re-run the CI workflow (or push once more) after the baselines land.
+
 ## Hard rules
 
 These are project principles, not preferences. CI enforces each one, and a pull request that breaks one will not be merged.
