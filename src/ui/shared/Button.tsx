@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { cx } from './cx';
 import { Icon } from './Icon';
 import type { IconName } from './icons';
 import styles from './Button.module.css';
@@ -26,15 +27,13 @@ export function Button({
   type = 'button',
   ...rest
 }: ButtonProps) {
-  const classes = [
+  const classes = cx(
     styles.button,
     styles[variant],
     size === 'lg' ? styles.lg : '',
     block ? styles.block : '',
     className ?? '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  );
   return (
     <button type={type} className={classes} data-armed={armed ? 'true' : undefined} {...rest}>
       {icon && <Icon name={icon} />}
