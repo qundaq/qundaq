@@ -1,0 +1,51 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  color: var(--text);
+  font: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 120ms,
+    opacity 120ms;
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.secondary {
+  background: transparent;
+  border-color: var(--border);
+}
+.tertiary {
+  background: transparent;
+  color: var(--info);
+  padding: 0 var(--space-2);
+  font-weight: 600;
+}
+.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.danger[data-armed='true'] {
+  border-width: 3px;
+}
+.lg {
+  min-height: 56px;
+  font-size: 16px;
+}
+.block {
+  width: 100%;
+}
