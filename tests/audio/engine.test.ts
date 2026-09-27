@@ -174,7 +174,7 @@ describe('the first tap (R6)', () => {
   });
 });
 
-describe('cancelling "Hazırlanıyor…"', () => {
+describe('cancelling a "preparing" sound', () => {
   it('toggling a preparing sound off takes it out of the queue: no stale label, no generation for it', () => {
     const { engine, deps } = setup();
     engine.toggleLayer('white');
@@ -227,7 +227,7 @@ describe('sliders, the bus and the cap (R1)', () => {
   it('the master slider moves the master gain only; the cap and the sleep gain stay', () => {
     const { engine, context } = playing();
     const { master, sleep, cap } = context.graph;
-    const sleepCalls = sleep.gain.calls.length; // the default 60 dk timer was scheduled on play
+    const sleepCalls = sleep.gain.calls.length; // the default 60-minute timer was scheduled on play
     engine.setMaster(0.5);
     expect(engine.getSnapshot().master).toBe(0.5);
     expect(master.gain.valueAt(10)).toBeCloseTo(0.25, 6);
@@ -333,7 +333,7 @@ describe('sliders, the bus and the cap (R1)', () => {
 });
 
 describe('the sleep timer (R1, R2)', () => {
-  it('starts with 60 dk selected; choosing a chip while stopped schedules nothing', () => {
+  it('starts with 60 minutes selected; choosing a chip while stopped schedules nothing', () => {
     const { engine, deps } = setup();
     expect(engine.getSnapshot().timer).toBe(60);
     engine.setTimer(15);
@@ -397,7 +397,7 @@ describe('the sleep timer (R1, R2)', () => {
 
   it('rescheduling replaces the sentinel and ignores the stale one', () => {
     const { engine, deps, context } = playing();
-    const before = context.sentinels.length; // one for the default 60 dk timer
+    const before = context.sentinels.length; // one for the default 60-minute timer
     engine.setTimer(15);
     const first = context.sentinels.at(-1)!;
     engine.setTimer(30);
@@ -644,7 +644,7 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(engine.getSnapshot().status).toBe('playing');
   });
 
-  it('"Devam et" (play while interrupted) resumes in the tap itself', async () => {
+  it('the resume action (sounds.resume, play while interrupted) resumes in the tap itself', async () => {
     const { engine, deps, context } = playing();
     context.interrupt();
     await flush();
@@ -654,7 +654,7 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(engine.getSnapshot().status).toBe('playing');
   });
 
-  it('a tile tap while interrupted resumes in the tap itself, like "Devam et" (R6)', async () => {
+  it('a tile tap while interrupted resumes in the tap itself, like the resume action (R6)', async () => {
     const { engine, deps, context } = playing();
     context.interrupt();
     await flush();

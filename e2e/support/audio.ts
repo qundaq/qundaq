@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { t } from './i18n';
 
 interface FakeAudioRecord {
   contexts: number;
@@ -167,14 +168,14 @@ export function fakeAudioRecord(page: Page): Promise<FakeAudioRecord> {
   return page.evaluate(() => (window as unknown as { __fakeAudio: FakeAudioRecord }).__fakeAudio);
 }
 
-/** The Sesler tab's tile for a sound, by its name. */
+/** The Sounds tab's tile for a sound, by its name. */
 export function tile(page: Page, name: string) {
   return page
-    .getByRole('group', { name: 'Sesler', exact: true })
+    .getByRole('group', { name: t('sounds.tiles'), exact: true })
     .getByRole('button', { name, exact: true });
 }
 
-/** The status line under the play button ("Çalıyor · …", "Durdu", …). */
+/** The status line under the play button (sounds.status.playing/.stopped/…). */
 export function soundStatus(page: Page) {
   return page.getByTestId('sound-status');
 }

@@ -1,18 +1,19 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
+import { escapeRegExp, t } from './i18n';
 
 export async function openTab(page: Page, name: string) {
   await page
-    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('navigation', { name: t('nav.label') })
     .getByRole('button', { name, exact: true })
     .click();
 }
 
 export async function addBabyInSettings(page: Page, name: string) {
-  await openTab(page, 'Ayarlar');
-  await page.getByRole('button', { name: 'Bebek ekle', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Bebek ekle' });
-  await dialog.getByLabel('İsim').fill(name);
-  await dialog.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await openTab(page, t('tab.settings'));
+  await page.getByRole('button', { name: t('babies.add'), exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: t('babies.formTitle.add') });
+  await dialog.getByLabel(t('babies.name')).fill(name);
+  await dialog.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('listitem').filter({ hasText: name })).toBeVisible();
 }
@@ -21,58 +22,93 @@ export function babyCard(page: Page, name: string) {
   return page.getByRole('article', { name });
 }
 
-export function quick(page: Page, name: string) {
-  return page
-    .getByRole('group', { name: 'Hızlı kayıt' })
-    .getByRole('button', { name, exact: true });
+export type CardActionKind = 'breastfeed' | 'bottle' | 'sleep' | 'diaper' | 'other';
+
+/** A baby card's action button; without `baby`, the first card's (the only card in single-baby specs). */
+export function cardAction(page: Page, kind: CardActionKind, baby?: string) {
+  const card = baby ? babyCard(page, baby) : page.getByRole('article').first();
+  return card.getByRole('button', { name: new RegExp(`: ${t(`quick.${kind}`)}$`) });
 }
 
-/** The rows of the Günlük list. */
+/** The rows of the log (history) list. */
 export function logRows(page: Page) {
-  return page.getByRole('list', { name: 'Kayıtlar', exact: true }).getByRole('listitem');
+  return page.getByRole('list', { name: t('log.list'), exact: true }).getByRole('listitem');
 }
 
-/** Opens the edit sheet of the first Günlük row that contains `text`. */
+/** Opens the edit sheet of the first log row that contains `text`. */
 export async function openRow(page: Page, text: string) {
   await logRows(page).filter({ hasText: text }).first().getByRole('button').click();
 }
 
 export function dayPicker(page: Page) {
-  return page.getByRole('group', { name: 'Gün', exact: true });
+  return page.getByRole('group', { name: t('day.label'), exact: true });
 }
 
-export function filterGroup(page: Page, name: 'Bebek' | 'Tür') {
-  return page.getByRole('group', { name, exact: true });
+export function filterGroup(page: Page, kind: 'baby' | 'type') {
+  return page.getByRole('group', { name: t(`log.filter.${kind}`), exact: true });
 }
 
-/** Logs a wet diaper from Home, for the default baby or for everyone, now or at a picked time. */
-export async function logDiaper(page: Page, options: { at?: string; all?: boolean } = {}) {
-  await quick(page, 'Bez').click();
-  const sheet = page.getByRole('dialog', { name: 'Bez' });
-  if (options.all) await sheet.getByRole('button', { name: 'Hepsi', exact: true }).click();
-  if (options.at) await sheet.getByLabel('Zaman').fill(options.at);
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+/** Chooses "Pick a time…" in a log sheet and types a date and time ("2026-09-25T09:40"). */
+export async function pickTime(sheet: Locator, at: string) {
+  await sheet.getByRole('radio', { name: t('time.pick') }).click();
+  await sheet.getByLabel(t('time.picked')).fill(at);
+}
+
+/** Switches a feed or sleep sheet to its "finished" mode (sheet.mode.done*) and enters a duration in minutes. */
+export async function enterDuration(sheet: Locator, minutes: number) {
+  const finished = [t('sheet.mode.doneFeed'), t('sheet.mode.doneSleep')].map(escapeRegExp);
+  await sheet.getByRole('radio', { name: new RegExp(`^(${finished.join('|')})$`) }).click();
+  const hours = new Intl.NumberFormat('tr', { maximumFractionDigits: 1 }).format(minutes / 60);
+  const name =
+    minutes < 60 ? t('duration.minutes', { m: minutes }) : t('duration.hours', { h: hours });
+  const chip = sheet.getByRole('radio', { name, exact: true });
+  if ((await chip.count()) > 0) await chip.click();
+  else {
+    await sheet.getByRole('radio', { name: t('sheet.durationOther'), exact: true }).click();
+    await sheet.getByLabel(t('sheet.durationMinutes')).fill(String(minutes));
+  }
+}
+
+/** Logs a wet diaper from a card (the first card by default), now or at a picked time; `also` adds babies. */
+export async function logDiaper(
+  page: Page,
+  options: { at?: string; baby?: string; also?: string[] } = {},
+) {
+  await cardAction(page, 'diaper', options.baby).click();
+  const sheet = page.getByRole('dialog', { name: t('quick.diaper') });
+  for (const name of options.also ?? [])
+    await sheet.getByRole('button', { name, exact: true }).click();
+  if (options.at) await pickTime(sheet, options.at);
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 }
 
-/** Opens Ana → Diğer, picks the entry type and returns the open sheet (its title follows the chip). */
-export async function openOther(page: Page, chip: 'İlaç' | 'Büyüme' | 'Ateş' | 'Sağım' | 'Not') {
-  await quick(page, 'Diğer').click();
+export type OtherEntry = 'medication' | 'growth' | 'temperature' | 'pump' | 'healthNote';
+
+/** Opens a card's "Other" sheet (other.title), picks the entry type and returns the sheet (its title is then the type's). */
+export async function openOther(page: Page, type: OtherEntry, baby?: string) {
+  await cardAction(page, 'other', baby).click();
   const sheet = page.getByRole('dialog');
-  await sheet
-    .getByRole('group', { name: 'Kayıt türü', exact: true })
-    .getByRole('button', { name: chip, exact: true })
-    .click();
+  // The row's accessible name is the type's name followed by its caption, so a substring match finds it.
+  await sheet.getByRole('button', { name: t(`other.chip.${type}`) }).click();
   return sheet;
 }
 
-/** The value next to `label` in Özet's day card. */
+/** The value next to `label` in the summary tab's day card. */
 export function summaryValue(page: Page, label: string) {
   return page
     .getByTestId('summary-day')
     .locator('dl > div')
     .filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) })
     .locator('dd');
+}
+
+/** A baby card's feed tile (status.feed): scopes a bottle amount to it, so it is not confused with the today line, which shows the same ml total. */
+export function feedTile(page: Page, baby?: string) {
+  const card = baby ? babyCard(page, baby) : page.getByRole('article').first();
+  return card.locator('dl > div').filter({
+    has: page.locator('dt', { hasText: new RegExp(`^${escapeRegExp(t('status.feed'))}$`) }),
+  });
 }
 
 /** Every row of the events store, read straight from IndexedDB (deleted rows included). */

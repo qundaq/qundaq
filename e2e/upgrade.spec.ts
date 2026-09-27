@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { t } from './support/i18n';
 import { babyCard, logRows, openTab } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -99,23 +100,26 @@ test('a v2 database with a running sleep opens in this version and the sleep can
   );
 
   await page.goto('./');
-  await openTab(page, 'Ana');
+  await openTab(page, t('tab.home'));
   const card = babyCard(page, 'Ada');
-  await expect(card).toContainText('Uyuyor · 1 sa');
+  const asleepHeadline = t('strip.asleep', { time: '' }).split(' \u00b7')[0]!;
+  await expect(card).toContainText(asleepHeadline);
+  const oneHour = t('time.hoursMinutes', { h: 1, m: 0 }).split(' ').slice(0, 2).join(' ');
+  await expect(card.getByTestId('live-text')).toContainText(oneHour);
 
   const upgraded = await readStored(page);
   expect(upgraded.version).toBe(40);
   expect(upgraded.sleep.open).toBe(1);
 
-  await card.getByRole('button', { name: 'Ada: Uyandı', exact: true }).click();
-  await expect(card).toContainText('Uyanık');
+  await card.getByRole('button', { name: `Ada: ${t('timer.wakeUp')}`, exact: true }).click();
+  await expect(card).toContainText(t('tile.awake'));
   expect((await readStored(page)).sleep.open).toBeUndefined();
 
-  await openTab(page, 'Günlük');
+  await openTab(page, t('tab.log'));
   const rows = logRows(page);
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toContainText('Uyku');
+  await expect(rows.nth(0)).toContainText(t('sheet.sleep.title'));
   await expect(rows.nth(0)).toContainText('09:00 – 10:00');
   await expect(rows.nth(1)).toContainText('08:30');
-  await expect(rows.nth(1)).toContainText('Islak');
+  await expect(rows.nth(1)).toContainText(t('diaper.wet.button'));
 });

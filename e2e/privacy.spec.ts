@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { t } from './support/i18n';
 import { fakeAudio, soundStatus, tile } from './support/audio';
 import {
   downloadedText,
@@ -29,28 +30,33 @@ test('using the app triggers no CSP violations', async ({ page }) => {
   });
   await fakeAudio(page);
   await page.goto('./');
-  const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
-  for (const name of ['Günlük', 'Özet', 'Sesler', 'Ayarlar']) {
+  const nav = page.getByRole('navigation', { name: t('nav.label') });
+  for (const name of [t('tab.log'), t('tab.summary'), t('tab.sounds'), t('tab.settings')]) {
     await nav.getByRole('button', { name, exact: true }).click();
   }
   // Playing a sound, saving a mix, playing it from the list and opening the source list stay inside the
   // policy (no inline styles, same-origin fetch).
-  await nav.getByRole('button', { name: 'Sesler', exact: true }).click();
-  await tile(page, 'Yağmur').click();
-  await expect(soundStatus(page)).toContainText('Çalıyor');
-  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
-  const mixSheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
-  await mixSheet.getByLabel('Karışımın adı').fill('Gece');
-  await mixSheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await nav.getByRole('button', { name: t('tab.sounds'), exact: true }).click();
+  await tile(page, t('sound.rain')).click();
+  const playingWord = t('sounds.status.playing', { names: '' }).split(' ·')[0]!;
+  await expect(soundStatus(page)).toContainText(playingWord);
+  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
+  const mixSheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
+  await mixSheet.getByLabel(t('sounds.mix.name')).fill('Night');
+  await mixSheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(mixSheet).toBeHidden();
-  const mixRow = page.getByRole('listitem').filter({ hasText: 'Gece' });
-  await mixRow.getByRole('button', { name: 'Gece karışımını çal', exact: true }).click();
-  await expect(soundStatus(page)).toContainText('Çalıyor · Yağmur');
-  await nav.getByRole('button', { name: 'Ayarlar', exact: true }).click();
-  await page.getByRole('button', { name: 'Ses kaynakları', exact: true }).click();
-  const sources = page.getByRole('dialog', { name: 'Ses kaynakları' });
+  const mixRow = page.getByRole('listitem').filter({ hasText: 'Night' });
+  await mixRow
+    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
+    .click();
+  await expect(soundStatus(page)).toContainText(
+    t('sounds.status.playing', { names: t('sound.rain') }),
+  );
+  await nav.getByRole('button', { name: t('tab.settings'), exact: true }).click();
+  await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
+  const sources = page.getByRole('dialog', { name: t('settings.sources') });
   await expect(sources).toContainText('Paul Kellet');
-  await sources.getByRole('button', { name: 'Kapat', exact: true }).click();
+  await sources.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   const nightSwitch = page.getByRole('switch');
   await nightSwitch.click();
   await expect(nightSwitch).toBeChecked();
@@ -73,22 +79,24 @@ test('backing up, exporting CSV and restoring trigger no CSP violations', async 
   await stubShare(page);
   await page.goto('./');
   await addBabyInSettings(page, 'Ada');
-  await openTab(page, 'Ana');
+  await openTab(page, t('tab.home'));
   await logDiaper(page);
   const backup = await takeBackup(page);
-  await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
-  const csv = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
-  await csv.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
-  await csv.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await page.getByRole('button', { name: t('csv.title'), exact: true }).click();
+  const csv = page.getByRole('dialog', { name: t('csv.title') });
+  await csv.getByRole('button', { name: t('export.share'), exact: true }).click();
+  await csv.getByRole('button', { name: t('common.ok'), exact: true }).click();
   const restore = await pickBackupFile(page, backup);
-  await restore.getByRole('button', { name: 'Tamamen değiştir', exact: true }).click();
+  await restore.getByRole('button', { name: t('import.mode.replace'), exact: true }).click();
   await restore
     .getByRole('checkbox', {
-      name: 'Yedeğin bu cihazdaki tüm verilerin yerini alacağını anlıyorum',
+      name: t('import.confirmReplace'),
     })
     .check();
-  await restore.getByRole('button', { name: 'Değiştir', exact: true }).click();
-  await expect(restore.getByRole('status')).toHaveText('Geri yüklendi: 1 bebek ve 1 kayıt.');
+  await restore.getByRole('button', { name: t('import.applyReplace'), exact: true }).click();
+  await expect(restore.getByRole('status')).toHaveText(
+    t('import.done.replace', { babies: 1, events: 1 }),
+  );
   const violations = await page.evaluate(
     () => (window as unknown as { __cspViolations: string[] }).__cspViolations,
   );
@@ -108,26 +116,26 @@ test('the download fallback for the backup and the CSV triggers no CSP violation
   await removeShare(page);
   await page.goto('./');
   await addBabyInSettings(page, 'Ada');
-  await openTab(page, 'Ana');
+  await openTab(page, t('tab.home'));
   await logDiaper(page);
-  await openTab(page, 'Ayarlar');
-  await page.getByRole('button', { name: 'Yedek al', exact: true }).click();
-  const backup = page.getByRole('dialog', { name: 'Yedek al' });
+  await openTab(page, t('tab.settings'));
+  await page.getByRole('button', { name: t('export.title'), exact: true }).click();
+  const backup = page.getByRole('dialog', { name: t('export.title') });
   const [json] = await Promise.all([
     page.waitForEvent('download'),
-    backup.getByRole('button', { name: 'Dosyayı indir', exact: true }).click(),
+    backup.getByRole('button', { name: t('export.download'), exact: true }).click(),
   ]);
   expect(JSON.parse(await downloadedText(json))).toMatchObject({ app: 'qundaq' });
-  await backup.getByRole('button', { name: 'Evet', exact: true }).click();
-  await backup.getByRole('button', { name: 'Tamam', exact: true }).click();
-  await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
-  const csv = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
-  // One baby, one file: a single "Dosyayı indir".
+  await backup.getByRole('button', { name: t('common.yes'), exact: true }).click();
+  await backup.getByRole('button', { name: t('common.ok'), exact: true }).click();
+  await page.getByRole('button', { name: t('csv.title'), exact: true }).click();
+  const csv = page.getByRole('dialog', { name: t('csv.title') });
+  // One baby, one file: a single download button.
   const [file] = await Promise.all([
     page.waitForEvent('download'),
-    csv.getByRole('button', { name: 'Dosyayı indir', exact: true }).click(),
+    csv.getByRole('button', { name: t('export.download'), exact: true }).click(),
   ]);
-  expect(await downloadedText(file)).toContain('Tarih;Başlangıç;');
+  expect(await downloadedText(file)).toContain(`${t('csv.col.date')};${t('csv.col.start')};`);
   const violations = await page.evaluate(
     () => (window as unknown as { __cspViolations: string[] }).__cspViolations,
   );

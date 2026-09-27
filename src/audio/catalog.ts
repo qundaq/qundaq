@@ -14,7 +14,7 @@ import {
 } from './generators';
 
 /**
- * Every sound the Sesler tab offers, in tile order. All are generated in code (see
+ * Every sound the sounds tab offers, in tile order. All are generated in code (see
  * public/sounds/SOURCES.md): nothing is downloaded and no recording ships in this version.
  */
 export interface Sound {

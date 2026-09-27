@@ -48,7 +48,7 @@ export interface EngineLayer {
   readonly level: number;
 }
 
-/** What the Sesler tab and the now-playing bar show. The same object until something changes. */
+/** What the sounds tab and the now-playing bar show. The same object until something changes. */
 export interface EngineState {
   readonly status: EngineStatus;
   readonly layers: readonly EngineLayer[];
@@ -58,7 +58,7 @@ export interface EngineState {
   readonly timer: TimerChoice;
   /** Wall-clock end of the running timer (epoch ms), or null when none counts down. */
   readonly endsAt: number | null;
-  /** Sounds whose loop is being generated ("Hazırlanıyor…"). */
+  /** Sounds whose loop is being generated (the "preparing" state, sounds.preparing). */
   readonly preparing: readonly SoundId[];
 }
 
@@ -320,7 +320,7 @@ class Engine {
       return 'added';
     }
     if (this.state.status === 'interrupted') {
-      // The tap doubles as "Devam et": the context resumes in it (R6). A timer that ran out meanwhile stays
+      // The tap doubles as "resume" (sounds.resume): the context resumes in it (R6). A timer that ran out meanwhile stays
       // stopped (R2), checked first so the context is never resumed for it; the tile still joins the selection.
       if (this.timerExpired()) {
         this.finishTimer();
@@ -365,7 +365,7 @@ class Engine {
     this.graph.master.approach(sliderGain(master), t, SLIDER_TIME_CONSTANT);
   }
 
-  /** Ayarlar saved a new cap. Raising it never raises what plays now (volume.masterAfterCapChange). */
+  /** Settings saved a new cap. Raising it never raises what plays now (volume.masterAfterCapChange). */
   setCap(value: number): void {
     const next = clampCap(value);
     const previous = this.cap;
@@ -686,12 +686,12 @@ class Engine {
     graph.transport.ramp(1, t + START_FADE_SECONDS);
   }
 
-  /** The queued generations `layers` still needs: deselecting a tile also cancels its "Hazırlanıyor…". */
+  /** The queued generations `layers` still needs: deselecting a tile also cancels its "preparing" state. */
   private stillSelected(layers: readonly EngineLayer[]): SoundId[] {
     return this.state.preparing.filter((id) => layers.some((layer) => layer.soundId === id));
   }
 
-  /** Generates missing loops one per task, so the tile can show "Hazırlanıyor…" and the page stays responsive. */
+  /** Generates missing loops one per task, so the tile can show "preparing" and the page stays responsive. */
   private prepare(soundId: SoundId): void {
     if (this.state.preparing.includes(soundId)) return;
     this.update({ preparing: [...this.state.preparing, soundId] });
@@ -716,7 +716,7 @@ class Engine {
       if (layer && (status === 'playing' || status === 'interrupted'))
         this.startVoice(layer, START_FADE_SECONDS);
     } catch (error) {
-      // Out of memory on an old phone, say: the tile goes back to off instead of staying on "Hazırlanıyor…".
+      // Out of memory on an old phone, say: the tile goes back to off instead of staying on "preparing".
       console.error(`Could not generate the sound ${soundId}`, error);
       const layers = this.state.layers.filter((entry) => entry.soundId !== soundId);
       this.update({ preparing: rest, layers });

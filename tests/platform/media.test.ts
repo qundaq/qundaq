@@ -74,11 +74,11 @@ describe('updateMediaSession', () => {
     const onStop = vi.fn();
     updateMediaSession(
       { mediaSession },
-      { title: 'Beyaz gürültü + Yağmur', playing: true, onPlay, onPause, onStop },
+      { title: 'White noise + Rain', playing: true, onPlay, onPause, onStop },
       createMetadata,
     );
     expect(mediaSession.metadata).toEqual({
-      title: 'Beyaz gürültü + Yağmur',
+      title: 'White noise + Rain',
       artist: MEDIA_ARTIST,
       fake: true,
     });
@@ -96,7 +96,7 @@ describe('updateMediaSession', () => {
     const handlers = { onPlay: vi.fn(), onPause: vi.fn(), onStop: vi.fn() };
     updateMediaSession(
       { mediaSession },
-      { title: 'Gece', playing: false, ...handlers },
+      { title: 'Night', playing: false, ...handlers },
       createMetadata,
     );
     expect(mediaSession.playbackState).toBe('paused');
@@ -110,12 +110,12 @@ describe('updateMediaSession', () => {
     const handlers = { onPlay: vi.fn(), onPause: vi.fn(), onStop: vi.fn() };
     updateMediaSession(
       { mediaSession },
-      { title: 'Gece', playing: true, ...handlers },
+      { title: 'Night', playing: true, ...handlers },
       createMetadata,
     );
     updateMediaSession(
       { mediaSession },
-      { title: 'Gece', playing: null, ...handlers },
+      { title: 'Night', playing: null, ...handlers },
       createMetadata,
     ); // the sleep timer ran out
     for (const action of ['play', 'pause', 'stop']) {
@@ -124,7 +124,7 @@ describe('updateMediaSession', () => {
     }
     updateMediaSession(
       { mediaSession },
-      { title: 'Gece', playing: false, ...handlers },
+      { title: 'Night', playing: false, ...handlers },
       createMetadata,
     );
     mediaSession.handlers.get('play')?.();

@@ -30,7 +30,7 @@ export function capGain(cap: unknown): number {
   return sliderGain(clampCap(cap));
 }
 
-/** Above the default, Ayarlar keeps the safety warning in view. */
+/** Above the default, Settings keeps the safety warning in view. */
 export function isAboveDefaultCap(cap: number): boolean {
   return clampCap(cap) > DEFAULT_CAP;
 }

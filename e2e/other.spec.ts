@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
+import { t } from './support/i18n';
 import {
   addBabyInSettings,
   filterGroup,
   logRows,
   openOther,
   openTab,
-  quick,
+  cardAction,
+  pickTime,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -15,136 +17,172 @@ test.beforeEach(async ({ page }) => {
   await page.goto('./');
 });
 
-test('a medicine for "Hepsi" makes one row per baby, and is offered again with its dose', async ({
+test('the list shows every type with its caption; the back button returns to it and resets the form', async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
-  await addBabyInSettings(page, 'Can');
-  await openTab(page, 'Ana');
-  await quick(page, 'Diğer').click();
-  const sheet = page.getByRole('dialog', { name: 'İlaç' }); // "İlaç" is the default chip
-  await sheet.getByRole('button', { name: 'Hepsi', exact: true }).click();
-  await sheet.getByLabel('İlaç / vitamin').fill('D vitamini');
-  await sheet.getByLabel('Doz (isteğe bağlı)').fill('400 IU');
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
-  await expect(sheet).toBeHidden();
+  await openTab(page, t('tab.home'));
+  await cardAction(page, 'other').click();
+  const sheet = page.getByRole('dialog');
+  await expect(page.getByRole('dialog', { name: t('other.title') })).toBeVisible();
+  // Five rows, plus the header's close button (no back button on the list step itself).
+  await expect(sheet.getByRole('button')).toHaveCount(6);
+  await expect(sheet.getByRole('button', { name: t('other.chip.growth') })).toContainText(
+    t('other.caption.growth'),
+  );
+  await expect(sheet.getByRole('button', { name: t('other.chip.pump') })).toContainText(
+    t('other.caption.pump'),
+  );
 
-  await openTab(page, 'Günlük');
-  await expect(logRows(page)).toHaveCount(2);
-  await expect(logRows(page).filter({ hasText: 'D vitamini · 400 IU' })).toHaveCount(2);
+  await sheet.getByRole('button', { name: t('other.chip.temperature') }).click();
+  await expect(page.getByRole('dialog', { name: t('sheet.temperature.title') })).toBeVisible();
+  await sheet.getByLabel(t('temperature.value')).fill('37,5');
 
-  await openTab(page, 'Ana');
-  await quick(page, 'Diğer').click();
-  const again = page.getByRole('dialog', { name: 'İlaç' });
-  await again
-    .getByRole('group', { name: 'Son kullanılanlar' })
-    .getByRole('button', { name: 'D vitamini', exact: true })
-    .click();
-  await expect(again.getByLabel('İlaç / vitamin')).toHaveValue('D vitamini');
-  await expect(again.getByLabel('Doz (isteğe bağlı)')).toHaveValue('400 IU');
+  await sheet.getByRole('button', { name: t('common.back') }).click();
+  await expect(page.getByRole('dialog', { name: t('other.title') })).toBeVisible();
+  await sheet.getByRole('button', { name: t('other.chip.temperature') }).click();
+  await expect(page.getByRole('dialog', { name: t('sheet.temperature.title') })).toBeVisible();
+  await expect(sheet.getByLabel(t('temperature.value'))).toHaveValue('');
 });
 
-test('growth for one baby, typed with a comma', async ({ page }) => {
+test('a medicine for "all babies" makes one row per baby, and is offered again with its dose', async ({
+  page,
+}) => {
   await addBabyInSettings(page, 'Ada');
-  await addBabyInSettings(page, 'Can');
-  await openTab(page, 'Ana');
-  const sheet = await openOther(page, 'Büyüme');
-  await expect(page.getByRole('dialog', { name: 'Büyüme' })).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Hepsi', exact: true })).toHaveCount(0);
-  await sheet.getByRole('button', { name: 'Can', exact: true }).click();
-  await sheet.getByLabel('Kilo (kg)').fill('3,45');
-  await sheet.getByLabel('Boy (cm)').fill('52,5');
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await addBabyInSettings(page, 'Cal');
+  await openTab(page, t('tab.home'));
+  let sheet = await openOther(page, 'medication');
+  await expect(page.getByRole('dialog', { name: t('sheet.medication.title') })).toBeVisible();
+  // Two babies: no "all" chip, so the twin is added with their own chip (sheet.all only leads from three).
+  await sheet.getByRole('button', { name: 'Cal', exact: true }).click();
+  await sheet.getByLabel(t('medication.name')).fill('Vitamin D');
+  await sheet.getByLabel(t('medication.dose')).fill('400 IU');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
-  await openTab(page, 'Günlük');
-  const row = logRows(page).filter({ hasText: 'Büyüme' });
-  await expect(row).toContainText('Can');
-  await expect(row).toContainText('3,45 kg · Boy 52,5 cm');
-  await filterGroup(page, 'Bebek').getByRole('button', { name: 'Ada', exact: true }).click();
-  await expect(page.getByText('Filtreye uyan kayıt yok.')).toBeVisible();
+  await openTab(page, t('tab.log'));
+  await expect(logRows(page)).toHaveCount(2);
+  await expect(logRows(page).filter({ hasText: 'Vitamin D · 400 IU' })).toHaveCount(2);
+
+  await openTab(page, t('tab.home'));
+  sheet = await openOther(page, 'medication');
+  await sheet
+    .getByRole('group', { name: t('medication.recent') })
+    .getByRole('button', { name: 'Vitamin D', exact: true })
+    .click();
+  await expect(sheet.getByLabel(t('medication.name'))).toHaveValue('Vitamin D');
+  await expect(sheet.getByLabel(t('medication.dose'))).toHaveValue('400 IU');
+});
+
+test('weight and height for one baby, typed with a comma', async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await addBabyInSettings(page, 'Cal');
+  await openTab(page, t('tab.home'));
+  const sheet = await openOther(page, 'growth');
+  await expect(page.getByRole('dialog', { name: t('sheet.growth.title') })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: t('sheet.all'), exact: true })).toHaveCount(0);
+  // Growth is a one-baby measurement: its chips are a radio group, not toggle buttons.
+  await sheet.getByRole('radio', { name: 'Cal', exact: true }).click();
+  await sheet.getByLabel(t('growth.weight')).fill('3,45');
+  await sheet.getByLabel(t('growth.height')).fill('52,5');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('sheet.growth.title') });
+  await expect(row).toContainText('Cal');
+  await expect(row).toContainText(`3,45 kg · ${t('describe.height', { value: '52,5' })}`);
+  await filterGroup(page, 'baby').getByRole('button', { name: 'Ada', exact: true }).click();
+  await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
 });
 
 test('a weight typed in grams asks for kilograms', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
-  await openTab(page, 'Ana');
-  const sheet = await openOther(page, 'Büyüme');
-  await sheet.getByLabel('Kilo (kg)').fill('3450');
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
-  await expect(sheet.getByRole('alert')).toHaveText('Kiloyu kg olarak girin (ör. 3,45).');
+  await openTab(page, t('tab.home'));
+  const sheet = await openOther(page, 'growth');
+  await sheet.getByLabel(t('growth.weight')).fill('3450');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet.getByRole('alert')).toHaveText(t('rule.weight-in-kg'));
 });
 
 test('a temperature of 38 °C or more shows the fever hint and marks the row', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
-  await openTab(page, 'Ana');
-  const sheet = await openOther(page, 'Ateş');
-  await sheet.getByLabel('Ateş (°C)').fill('38,2');
-  await expect(
-    sheet.getByText(
-      '38 °C ve üzeri ateş, özellikle 3 aydan küçük bebeklerde hemen doktora danışmayı gerektirir.',
-    ),
-  ).toBeVisible();
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await openTab(page, t('tab.home'));
+  const sheet = await openOther(page, 'temperature');
+  await sheet.getByLabel(t('temperature.value')).fill('38,2');
+  await expect(sheet.getByText(t('temperature.alert.fever'))).toBeVisible();
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
-  await openTab(page, 'Günlük');
-  const row = logRows(page).filter({ hasText: '38,2 °C' });
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('describe.temperature', { value: '38,2' }) });
   await expect(row).toHaveCount(1);
-  await expect(row.getByRole('button')).toHaveAccessibleName(/Uyarı/);
+  await expect(row.getByRole('button')).toHaveAccessibleName(new RegExp(t('log.warning')));
 });
 
-test('pumping has no baby and shows under "Hepsi" only', async ({ page }) => {
+test('pumping has no baby and shows under "all babies" only', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
-  await addBabyInSettings(page, 'Can');
-  await openTab(page, 'Ana');
-  const sheet = await openOther(page, 'Sağım');
-  await expect(sheet.getByRole('group', { name: 'Bebek', exact: true })).toHaveCount(0);
-  await sheet.getByLabel('Sol (ml)').fill('60');
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await addBabyInSettings(page, 'Cal');
+  await openTab(page, t('tab.home'));
+  const sheet = await openOther(page, 'pump');
+  await expect(sheet.getByRole('group', { name: t('sheet.babies'), exact: true })).toHaveCount(0);
+  await sheet.getByLabel(t('pump.left')).fill('60');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
-  await openTab(page, 'Günlük');
-  const row = logRows(page).filter({ hasText: 'Sağım' });
-  await expect(row).toContainText('Anne');
-  await expect(row).toContainText('Sol 60 ml');
-  await filterGroup(page, 'Bebek').getByRole('button', { name: 'Ada', exact: true }).click();
-  await expect(page.getByText('Filtreye uyan kayıt yok.')).toBeVisible();
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
+  await expect(row).toContainText(t('log.mother'));
+  await expect(row).toContainText(`${t('side.L.button')} ${t('unit.ml', { ml: 60 })}`);
+  await filterGroup(page, 'baby').getByRole('button', { name: 'Ada', exact: true }).click();
+  await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
 });
 
-test('switching the type keeps the time and the note; a health note needs text', async ({
+test('a health note needs text and is shown from the start', async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  const sheet = await openOther(page, 'healthNote');
+  await expect(page.getByRole('dialog', { name: t('sheet.healthNote.title') })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: t('note.add') })).toHaveCount(0);
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet.getByRole('alert')).toHaveText(t('rule.note-required'));
+  await expect(sheet.getByLabel(t('note.required'), { exact: true })).toHaveAttribute(
+    'aria-required',
+    'true',
+  );
+
+  await pickTime(sheet, '2026-09-25T09:15');
+  await sheet.getByLabel(t('note.required'), { exact: true }).fill('Vaccine day, cranky');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('sheet.healthNote.title') });
+  await expect(row).toContainText('09:15');
+  await expect(row).toContainText('Vaccine day, cranky');
+});
+
+test("another entry's note is added only when the note button is tapped, and is focused once shown", async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
-  await openTab(page, 'Ana');
-  const sheet = await openOther(page, 'Not');
-  await expect(page.getByRole('dialog', { name: 'Sağlık notu' })).toBeVisible();
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
-  await expect(sheet.getByRole('alert')).toHaveText('Bir not yazın.');
-  await expect(sheet.getByLabel('Not', { exact: true })).toHaveAttribute('aria-required', 'true');
-
-  await sheet.getByLabel('Zaman').fill('2026-09-25T09:15');
-  await sheet.getByLabel('Not', { exact: true }).fill('Aşı günü, huysuz');
-  await sheet
-    .getByRole('group', { name: 'Kayıt türü', exact: true })
-    .getByRole('button', { name: 'İlaç', exact: true })
-    .click();
-  await expect(page.getByRole('dialog', { name: 'İlaç' })).toBeVisible();
-  await expect(sheet.getByLabel('Not (isteğe bağlı)')).toHaveValue('Aşı günü, huysuz');
-  await expect(sheet.getByLabel('Zaman')).toHaveValue('2026-09-25T09:15');
-  await sheet
-    .getByRole('group', { name: 'Kayıt türü', exact: true })
-    .getByRole('button', { name: 'Not', exact: true })
-    .click();
-  await sheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await openTab(page, t('tab.home'));
+  const sheet = await openOther(page, 'medication');
+  await expect(sheet.getByLabel(t('note.optional'))).toHaveCount(0);
+  await sheet.getByRole('button', { name: t('note.add'), exact: true }).click();
+  const note = sheet.getByLabel(t('note.optional'));
+  await expect(note).toBeFocused();
+  await note.fill('Given with food');
+  await sheet.getByLabel(t('medication.name')).fill('Vitamin D');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
-  await openTab(page, 'Günlük');
-  const row = logRows(page).filter({ hasText: 'Sağlık notu' });
-  await expect(row).toContainText('09:15');
-  await expect(row).toContainText('Aşı günü, huysuz');
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: 'Vitamin D' });
+  await expect(row).toContainText('Given with food');
 });
 
-test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English', async ({
+test('the five card actions fit at 320, 360 and 414 px, in Turkish and English', async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
@@ -156,22 +194,20 @@ test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English'
       for (const button of await buttons.all()) {
         const box = await button.boundingBox();
         expect(box!.width, `${groupName} at ${width}px`).toBeGreaterThanOrEqual(48);
-        expect(box!.height, `${groupName} at ${width}px`).toBeGreaterThanOrEqual(48);
+        expect(box!.height, `${groupName} at ${width}px`).toBeGreaterThanOrEqual(56);
         expect(
           await button.evaluate((el) => el.scrollWidth <= el.clientWidth),
           `text clipped at ${width}px`,
         ).toBe(true);
-        if (width >= 360) {
-          // overflow-wrap would hide a mid-word break from the check above: each label must be one line.
-          // The icon sits above the label as its own element, so measure the label span, not the button.
-          const lines = await button.evaluate((el) => {
-            const label = el.querySelector('span:last-child') ?? el;
-            const range = document.createRange();
-            range.selectNodeContents(label);
-            return range.getClientRects().length;
-          });
-          expect(lines, `label wraps at ${width}px`).toBe(1);
-        }
+        // overflow-wrap would hide a mid-word break from the check above: each label must be one line.
+        // The icon sits above the label as its own element, so measure the label span, not the button.
+        const lines = await button.evaluate((el) => {
+          const label = el.querySelector('span:last-child') ?? el;
+          const range = document.createRange();
+          range.selectNodeContents(label);
+          return range.getClientRects().length;
+        });
+        expect(lines, `label wraps at ${width}px`).toBe(1);
       }
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
@@ -179,13 +215,13 @@ test('the five quick buttons fit at 320, 360 and 414 px, in Turkish and English'
       ).toBe(true);
     }
   };
-  await openTab(page, 'Ana');
-  await check('Hızlı kayıt');
-  await openTab(page, 'Ayarlar');
+  await openTab(page, t('tab.home'));
+  await check(t('card.actions', { name: 'Ada' }));
+  await openTab(page, t('tab.settings'));
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('button', { name: 'Home', exact: true })
     .click();
-  await check('Quick log');
+  await check('Ada: log');
 });
