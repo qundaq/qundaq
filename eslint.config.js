@@ -14,6 +14,28 @@ export default tseslint.config(
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
+  {
+    files: ['src/ui/**/*.tsx'],
+    ignores: ['src/ui/shared/**', 'src/ui/app/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='className'] > Literal",
+          message: "Compose a shared component or use this screen's CSS Module.",
+        },
+        {
+          selector: "JSXAttribute[name.name='className'] > JSXExpressionContainer > Literal",
+          message: "Compose a shared component or use this screen's CSS Module.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] > JSXExpressionContainer > TemplateLiteral",
+          message: 'Join module classes with an array and filter(Boolean), not a template string.',
+        },
+      ],
+    },
+  },
   // Plain JS (scripts/*.mjs, src/sw/sw.js, e2e/support/*.mjs) is not in the TS project service.
   { files: ['**/*.mjs', '**/*.js'], ...tseslint.configs.disableTypeChecked },
 );
