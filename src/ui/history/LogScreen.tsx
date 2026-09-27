@@ -16,7 +16,7 @@ import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
 import styles from './Log.module.css';
 
-/** Günlük's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
+/** The log (history) tab's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
 export interface LogView {
   day: number | null; // null: today
   babyId: Id | null; // null: every baby, pumps included

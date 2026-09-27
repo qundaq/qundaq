@@ -8,7 +8,7 @@ const t = (key: MessageKey, vars?: Record<string, string | number>) => translate
 describe('bannerMessage', () => {
   it('shows the requested message for a failure to load data', () => {
     expect(bannerMessage(t, new Error('IndexedDB broke'), 'error.loadFailed')).toBe(
-      'Veriler yüklenemedi. Uygulamayı kapatıp yeniden açın.',
+      t('error.loadFailed'),
     );
     expect(translate('en', 'error.loadFailed')).toBe(
       "Couldn't load your data. Close and reopen the app.",
@@ -19,19 +19,19 @@ describe('bannerMessage', () => {
     expect(bannerMessage(t, new ValidationError(['already-running']))).toBe(
       t('rule.already-running'),
     );
-    expect(bannerMessage(t, new Error('quota'))).toBe('Kaydedilemedi. Lütfen tekrar deneyin.');
+    expect(bannerMessage(t, new Error('quota'))).toBe(t('error.saveFailed'));
   });
 });
 
 describe('messageFor', () => {
   const babies = [
     { id: 'a', name: 'Ada' },
-    { id: 'b', name: 'Can' },
+    { id: 'b', name: 'Cal' },
   ];
 
   it('names the babies that already have a running entry', () => {
     expect(messageFor(t, new ValidationError(['already-running'], ['a', 'b']), babies)).toBe(
-      'Ada, Can için zaten devam eden bir kayıt var.',
+      t('rule.already-running.named', { names: 'Ada, Cal' }),
     );
     expect(translate('en', 'rule.already-running.named', { names: 'Ada' })).toBe(
       'Ada already has a running entry.',
@@ -40,15 +40,20 @@ describe('messageFor', () => {
 
   it('falls back to the plain message when no name is known', () => {
     expect(messageFor(t, new ValidationError(['already-running'], ['gone']), babies)).toBe(
-      'Bu bebek için zaten devam eden bir kayıt var.',
+      t('rule.already-running'),
     );
-    expect(messageFor(t, new ValidationError(['already-running']))).toBe(
-      'Bu bebek için zaten devam eden bir kayıt var.',
-    );
+    expect(messageFor(t, new ValidationError(['already-running']))).toBe(t('rule.already-running'));
   });
 
   it('shows the first rule otherwise', () => {
     expect(messageFor(t, new ValidationError(['too-long', 'in-future']))).toBe(t('rule.too-long'));
-    expect(messageFor(t, new Error('disk full'))).toBe('Kaydedilemedi. Lütfen tekrar deneyin.');
+    expect(messageFor(t, new Error('disk full'))).toBe(t('error.saveFailed'));
+  });
+
+  it('names the babies whose new timer would start before their running one', () => {
+    expect(messageFor(t, new ValidationError(['running-overlap'], ['a']), babies)).toBe(
+      t('rule.running-overlap.named', { names: 'Ada' }),
+    );
+    expect(messageFor(t, new ValidationError(['running-overlap']))).toBe(t('rule.running-overlap'));
   });
 });

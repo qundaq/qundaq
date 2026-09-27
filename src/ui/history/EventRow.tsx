@@ -13,7 +13,7 @@ interface Props {
   onOpen: () => void;
 }
 
-/** One Günlük entry: a single button (≥ 48px) that opens the edit sheet. */
+/** One log (history) entry: a single button (≥ 48px) that opens the edit sheet. */
 export function EventRow({ event, baby, day, now, onOpen }: Props) {
   const t = useT();
   const locale = useLocale();

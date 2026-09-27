@@ -1,10 +1,6 @@
 import { TEXT_LIMITS } from '../../../domain/rules';
 import { useT } from '../../app/I18nProvider';
-import { typeIcon } from '../../history/describe';
-import { Chip } from '../../shared/Chip';
 import { Field } from '../../shared/Field';
-import { OTHER_TYPES, type OtherType } from '../drafts';
-import styles from '../LogSheet.module.css';
 
 export interface FormProps<T> {
   value: T;
@@ -25,7 +21,7 @@ export function DurationField({
 }) {
   const t = useT();
   return (
-    <Field label={t('sheet.durationOptional')}>
+    <Field label={t('sheet.durationMinutes')}>
       <input
         type="number"
         inputMode="numeric"
@@ -64,14 +60,20 @@ export function DecimalField({
   );
 }
 
-/** A multi-line note; optional on every entry, required on a health note. */
+/**
+ * A multi-line note; optional on every entry, required on a health note. `autoFocus` is set only when the
+ * field has just been revealed by the note.add button, never on a health note, which shows it from the
+ * start.
+ */
 export function NoteField({
   value,
   required,
+  autoFocus,
   onChange,
 }: {
   value: string;
   required: boolean;
+  autoFocus?: boolean;
   onChange: (next: string) => void;
 }) {
   const t = useT();
@@ -81,31 +83,10 @@ export function NoteField({
         rows={3}
         maxLength={TEXT_LIMITS.note}
         aria-required={required || undefined}
+        autoFocus={autoFocus}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
-  );
-}
-
-/** The entry-type chips at the top of the "Diğer" sheet. */
-export function OtherTypeChips({ value, onChange }: FormProps<OtherType>) {
-  const t = useT();
-  return (
-    <fieldset>
-      <legend>{t('other.type')}</legend>
-      <div className={styles.chips}>
-        {OTHER_TYPES.map((type) => (
-          <Chip
-            key={type}
-            icon={typeIcon(type)}
-            selected={value === type}
-            onClick={() => onChange(type)}
-          >
-            {t(`other.chip.${type}`)}
-          </Chip>
-        ))}
-      </div>
-    </fieldset>
   );
 }

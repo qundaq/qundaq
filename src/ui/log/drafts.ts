@@ -9,10 +9,16 @@ import type {
   StoolColor,
 } from '../../domain/types';
 
-/** What a quick button opens. "other" is the "Diğer" sheet, whose chip picks one of OTHER_TYPES. */
+/** What a quick button opens. "other" is the "Other" sheet (quick.other), whose chip picks one of OTHER_TYPES. */
 export type SheetKind = 'breastfeed' | 'bottle' | 'sleep' | 'diaper' | 'other';
 
-/** The record types of the "Diğer" sheet in chip order. The first is the default: daily vitamin D. */
+/** A card action's request: what to log, for which baby the sheet starts selected. */
+export interface LogRequest {
+  kind: SheetKind;
+  babyId: Id;
+}
+
+/** The record types of the "Other" sheet (quick.other) in chip order. The first is the default: daily vitamin D. */
 export type OtherType = 'medication' | 'growth' | 'temperature' | 'pump' | 'healthNote';
 export const OTHER_TYPES: readonly OtherType[] = [
   'medication',
@@ -21,7 +27,6 @@ export const OTHER_TYPES: readonly OtherType[] = [
   'pump',
   'healthNote',
 ];
-export const DEFAULT_OTHER_TYPE: OtherType = 'medication';
 
 export interface BreastfeedInput {
   side: Side;
@@ -88,11 +93,6 @@ export const DEFAULT_INPUTS: { [K in InputKind]: InputValue<K> } = {
 
 export function initialInput(kind: InputKind): SheetInput {
   return { kind, value: DEFAULT_INPUTS[kind] } as SheetInput;
-}
-
-/** The sheet's time: `null` means "now", the moment of saving, never a value parsed back from the field. */
-export function resolveEntryTime(value: number | null, now: number): number {
-  return value ?? now;
 }
 
 /** A note is stored as typed; an empty or whitespace-only one is left out. */

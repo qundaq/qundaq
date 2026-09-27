@@ -17,7 +17,7 @@ interface Props {
 }
 
 /**
- * "‹ Bugün ›". The label is also a native date field: a transparent <input type="date"> covers it, because
+ * "‹ Today ›" (day.today). The label is also a native date field: a transparent <input type="date"> covers it, because
  * iOS opens its picker only on a real tap on the input.
  */
 export function DayPicker({ day, now, onChange }: Props) {

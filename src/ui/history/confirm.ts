@@ -1,6 +1,7 @@
 /**
- * "Sil" needs two taps. The second counts only between these bounds after the first: a sleepy double tap
- * is faster (and restarts the wait), and after four seconds the button has gone back to "Sil".
+ * The delete button (edit.delete) needs two taps. The second counts only between these bounds after the
+ * first: a sleepy double tap is faster (and restarts the wait), and after four seconds the button has
+ * gone back to its plain label.
  */
 export const DELETE_CONFIRM_MIN_MS = 600;
 export const DELETE_CONFIRM_MAX_MS = 4000;
