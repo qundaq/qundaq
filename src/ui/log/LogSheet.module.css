@@ -1,0 +1,78 @@
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.error {
+  color: var(--danger);
+}
+.timeField {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.timeField > label {
+  flex: 1;
+  margin-bottom: 0;
+}
+.timeField > button {
+  margin-bottom: var(--space-3);
+}
+.fieldRow {
+  display: flex;
+  gap: var(--space-2);
+}
+.fieldRow > label {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.fieldRow > label input {
+  width: 100%;
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* A styled label around a transparent native radio that covers it: the radio gets the taps and the arrow keys. */
+.swatch {
+  position: relative;
+  display: inline-block;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 50%;
+  border: 3px solid var(--border);
+}
+.swatch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.swatch:has(input:checked) {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--info);
+}
+.swatch:has(input:focus-visible) {
+  outline: 2px solid var(--info);
+  outline-offset: 3px;
+}
+.stoolAlert {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.recent {
+  margin: calc(-1 * var(--space-1)) 0 var(--space-3);
+}

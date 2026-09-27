@@ -1,0 +1,184 @@
+/* Sesler: the play button is the brightest element; tiles are toggle buttons with a level slider each. */
+.playButton {
+  min-height: 64px;
+  font-size: 20px;
+}
+.status {
+  margin: var(--space-2) 0 var(--space-3);
+}
+.notice {
+  min-height: 1.45em;
+  margin: var(--space-2) 0;
+  color: var(--danger);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+@media (min-width: 390px) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.tileCell {
+  display: grid;
+  gap: 4px;
+}
+.tile {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.tileOn {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: transparent;
+  font-weight: 600;
+}
+.preparing {
+  font-size: 13px;
+}
+/* Range inputs: a 32px thumb on a 48px-tall control, so a sleepy thumb still finds them one-handed. The
+   attribute selector keeps this ahead of Field's own `.field input` rule when the master slider sits inside one. */
+.level[type='range'] {
+  width: 100%;
+  height: var(--tap);
+  min-height: var(--tap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  accent-color: var(--primary);
+}
+.level[type='range']::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.level[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 0;
+}
+.level[type='range']::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.level[type='range']::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 0;
+}
+.master {
+  margin-top: var(--space-4);
+}
+.safety {
+  color: var(--muted);
+  font-size: 13px;
+}
+/* The now-playing bar sits above the tab bar on the other tabs; App.module.css and Home's quick actions make
+   room through --nowplaying-h. */
+.bar {
+  position: fixed;
+  z-index: var(--z-alert);
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  height: var(--nowplaying-h);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+.text {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Saved mixes: the name is the play button across the full row; rename and a two-step delete share the row
+   under it, 16px apart like .timerRow, so a sleepy thumb cannot hit the wrong one and the armed "Silmek için
+   tekrar dokunun" never squeezes the name, even at 320px. */
+.mixList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.mixRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.mixAction {
+  flex: 1 1 0;
+}
+.mixPlay {
+  flex: 1 1 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.mixName {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.mixLayers {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

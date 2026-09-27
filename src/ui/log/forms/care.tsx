@@ -2,7 +2,10 @@ import { useId } from 'react';
 import { STOOL_COLORS, stoolAlert } from '../../../domain/stool';
 import type { BottleContents, Consistency, Side } from '../../../domain/types';
 import { useT } from '../../app/I18nProvider';
+import { Chip } from '../../shared/Chip';
+import { Field } from '../../shared/Field';
 import type { BottleInput, BreastfeedInput, DiaperInput, SleepInput } from '../drafts';
+import styles from '../LogSheet.module.css';
 import { DurationField, parsePositiveInt, type FormProps } from './fields';
 
 const CONSISTENCIES: readonly Consistency[] = ['watery', 'soft', 'formed', 'hard'];
@@ -15,32 +18,22 @@ export function DiaperForm({ value, onChange }: FormProps<DiaperInput>) {
     <>
       <fieldset>
         <legend>{t('diaper.kind')}</legend>
-        <div className="chips">
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={value.wet}
-            onClick={() => onChange({ ...value, wet: !value.wet })}
-          >
+        <div className={styles.chips}>
+          <Chip selected={value.wet} onClick={() => onChange({ ...value, wet: !value.wet })}>
             {t('diaper.wet.button')}
-          </button>
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={value.dirty}
-            onClick={() => onChange({ ...value, dirty: !value.dirty })}
-          >
+          </Chip>
+          <Chip selected={value.dirty} onClick={() => onChange({ ...value, dirty: !value.dirty })}>
             {t('diaper.dirty.button')}
-          </button>
+          </Chip>
         </div>
       </fieldset>
       {value.dirty && (
         <>
           <fieldset>
             <legend>{t('stool.color')}</legend>
-            <div className="swatches">
+            <div className={styles.swatches}>
               {STOOL_COLORS.map((color) => (
-                <label key={color.id} className="swatch" style={{ background: color.hex }}>
+                <label key={color.id} className={styles.swatch} style={{ background: color.hex }}>
                   <input
                     type="radio"
                     name={stoolGroup}
@@ -54,23 +47,21 @@ export function DiaperForm({ value, onChange }: FormProps<DiaperInput>) {
             </div>
           </fieldset>
           {alert && (
-            <p role="alert" className="stool-alert">
+            <p role="alert" className={styles.stoolAlert}>
               {t(`stool.alert.${alert}`)}
             </p>
           )}
           <fieldset>
             <legend>{t('stool.consistency')}</legend>
-            <div className="chips">
+            <div className={styles.chips}>
               {CONSISTENCIES.map((c) => (
-                <button
+                <Chip
                   key={c}
-                  type="button"
-                  className="chip"
-                  aria-pressed={value.consistency === c}
+                  selected={value.consistency === c}
                   onClick={() => onChange({ ...value, consistency: c })}
                 >
                   {t(`consistency.${c}`)}
-                </button>
+                </Chip>
               ))}
             </div>
           </fieldset>
@@ -90,17 +81,15 @@ export function BreastfeedForm({ value, onChange }: FormProps<BreastfeedInput>) 
     <>
       <fieldset>
         <legend>{t('sheet.side')}</legend>
-        <div className="chips">
+        <div className={styles.chips}>
           {SIDES.map((side) => (
-            <button
+            <Chip
               key={side}
-              type="button"
-              className="chip"
-              aria-pressed={value.side === side}
+              selected={value.side === side}
               onClick={() => onChange({ ...value, side })}
             >
               {t(`side.${side}.button`)}
-            </button>
+            </Chip>
           ))}
         </div>
       </fieldset>
@@ -125,8 +114,7 @@ export function BottleForm({ value, onChange }: FormProps<BottleInput>) {
   const t = useT();
   return (
     <>
-      <label className="field">
-        {t('sheet.amount')}
+      <Field label={t('sheet.amount')}>
         <input
           type="number"
           inputMode="numeric"
@@ -135,33 +123,25 @@ export function BottleForm({ value, onChange }: FormProps<BottleInput>) {
           value={value.ml ?? ''}
           onChange={(e) => onChange({ ...value, ml: parsePositiveInt(e.target.value) })}
         />
-      </label>
-      <div className="chips">
+      </Field>
+      <div className={styles.chips}>
         {QUICK_ML.map((ml) => (
-          <button
-            key={ml}
-            type="button"
-            className="chip"
-            aria-pressed={value.ml === ml}
-            onClick={() => onChange({ ...value, ml })}
-          >
+          <Chip key={ml} selected={value.ml === ml} onClick={() => onChange({ ...value, ml })}>
             {t('unit.ml', { ml })}
-          </button>
+          </Chip>
         ))}
       </div>
       <fieldset>
         <legend>{t('bottle.contents')}</legend>
-        <div className="chips">
+        <div className={styles.chips}>
           {CONTENTS.map((contents) => (
-            <button
+            <Chip
               key={contents}
-              type="button"
-              className="chip"
-              aria-pressed={value.contents === contents}
+              selected={value.contents === contents}
               onClick={() => onChange({ ...value, contents })}
             >
               {t(`bottle.${contents}`)}
-            </button>
+            </Chip>
           ))}
         </div>
       </fieldset>

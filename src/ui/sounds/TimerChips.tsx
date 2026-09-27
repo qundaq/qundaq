@@ -1,5 +1,7 @@
 import { TIMER_CHOICES, type TimerChoice } from '../../domain/sounds';
 import { useT } from '../app/I18nProvider';
+import { Chip } from '../shared/Chip';
+import styles from './Sounds.module.css';
 
 /** 15 · 30 · 60 dk · ∞ as a radio group; ∞ means no timer (R15). */
 export function TimerChips({
@@ -11,19 +13,17 @@ export function TimerChips({
 }) {
   const t = useT();
   return (
-    <div className="chips" role="radiogroup" aria-label={t('sounds.timer')}>
+    <div className={styles.chips} role="radiogroup" aria-label={t('sounds.timer')}>
       {TIMER_CHOICES.map((choice) => (
-        <button
+        <Chip
           key={choice ?? 'none'}
-          type="button"
-          role="radio"
-          className="chip"
-          aria-checked={value === choice}
+          mode="radio"
+          selected={value === choice}
           aria-label={choice === null ? t('sounds.timer.none') : undefined}
           onClick={() => onChange(choice)}
         >
           {choice === null ? '∞' : t('sounds.timer.minutes', { m: choice })}
-        </button>
+        </Chip>
       ))}
     </div>
   );

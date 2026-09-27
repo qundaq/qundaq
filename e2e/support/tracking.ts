@@ -69,7 +69,8 @@ export async function openOther(page: Page, chip: 'İlaç' | 'Büyüme' | 'Ateş
 /** The value next to `label` in Özet's day card. */
 export function summaryValue(page: Page, label: string) {
   return page
-    .locator('.summary-day dl > div')
+    .getByTestId('summary-day')
+    .locator('dl > div')
     .filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) })
     .locator('dd');
 }

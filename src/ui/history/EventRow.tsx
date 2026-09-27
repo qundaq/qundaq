@@ -1,6 +1,9 @@
 import type { Baby, TrackerEvent } from '../../domain/types';
+import { resolveBabyColor } from '../babies/colors';
 import { useLocale, useT } from '../app/I18nProvider';
-import { describeEvent, firstLine, hasAlert, timeRange, typeLabel } from './describe';
+import { Icon } from '../shared/Icon';
+import { describeEvent, firstLine, hasAlert, timeRange, typeIcon, typeLabel } from './describe';
+import styles from './Log.module.css';
 
 interface Props {
   event: TrackerEvent;
@@ -16,27 +19,27 @@ export function EventRow({ event, baby, day, now, onOpen }: Props) {
   const locale = useLocale();
   const detail = describeEvent(t, locale, event, now);
   return (
-    <button type="button" className="log-row" onClick={onOpen}>
-      <span className="log-time">{timeRange(t, locale, event, day)}</span>
-      <span className="log-main">
+    <button type="button" className={styles.row} onClick={onOpen}>
+      <span className={styles.time}>{timeRange(t, locale, event, day)}</span>
+      <span className={styles.main}>
+        <span className={styles.typeIcon}>
+          <Icon name={typeIcon(event.type)} size={16} />
+        </span>
         <span
-          className="dot"
-          style={baby ? { background: baby.color } : undefined}
+          className={styles.dot}
+          style={baby ? { background: resolveBabyColor(baby.color) } : undefined}
           aria-hidden="true"
         />
         <span>{baby ? baby.name : t('log.mother')}</span>
-        <span className="muted">· {typeLabel(t, event.type)}</span>
+        <span className={styles.muted}>· {typeLabel(t, event.type)}</span>
         {hasAlert(event) && (
-          <span className="log-warn" role="img" aria-label={t('log.warning')}>
-            ⚠︎
-          </span>
+          <Icon name="triangle-alert" size={16} label={t('log.warning')} className={styles.warn} />
         )}
       </span>
-      {detail && <span className="log-detail">{detail}</span>}
+      {detail && <span className={styles.detail}>{detail}</span>}
       {event.note && event.type !== 'healthNote' && (
-        <span className="log-note">
-          <span aria-hidden="true">✎︎ </span>
-          {firstLine(event.note)}
+        <span className={styles.note}>
+          <Icon name="pencil" size={16} /> {firstLine(event.note)}
         </span>
       )}
     </button>

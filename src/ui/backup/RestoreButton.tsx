@@ -1,4 +1,5 @@
 import { useT } from '../app/I18nProvider';
+import styles from './Backup.module.css';
 
 /**
  * "Yedekten geri yükle": a label styled as a button around a transparent file input, because iOS opens its
@@ -8,7 +9,7 @@ import { useT } from '../app/I18nProvider';
 export function RestoreButton({ onFile }: { onFile: (file: File) => void }) {
   const t = useT();
   return (
-    <label className="btn file-button">
+    <label className={styles.fileButton}>
       {t('backup.import')}
       <input
         type="file"

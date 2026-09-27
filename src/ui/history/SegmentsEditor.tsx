@@ -1,5 +1,8 @@
 import type { Side } from '../../domain/types';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Chip } from '../shared/Chip';
+import { Field } from '../shared/Field';
 import {
   addSegment,
   removeSegment,
@@ -7,6 +10,7 @@ import {
   setSegmentSide,
   type BreastfeedEdit,
 } from '../log/edits';
+import styles from './Log.module.css';
 
 const SIDES: readonly Side[] = ['L', 'R'];
 
@@ -32,32 +36,29 @@ export function SegmentsEditor({
   const t = useT();
   const last = value.segments.length - 1;
   return (
-    <div className="segments">
+    <div className={styles.segments}>
       {value.segments.map((segment, index) => (
-        <fieldset key={index} className="segment">
+        <fieldset key={index}>
           <legend>{t('edit.segment', { n: index + 1 })}</legend>
-          <div className="segment-row">
-            <div className="chips">
+          <div className={styles.segmentRow}>
+            <div className={styles.chips}>
               {SIDES.map((side) => (
-                <button
+                <Chip
                   key={side}
-                  type="button"
-                  className="chip"
-                  aria-pressed={segment.side === side}
+                  selected={segment.side === side}
                   disabled={running && index !== last}
                   onClick={() => onChange(setSegmentSide(value, index, side))}
                 >
                   {t(`side.${side}.button`)}
-                </button>
+                </Chip>
               ))}
             </div>
             {running ? (
-              <span className="muted">
+              <span className={styles.muted}>
                 {index === last ? t('log.ongoing') : t('time.minutes', { m: segment.minutes })}
               </span>
             ) : (
-              <label className="field segment-minutes">
-                {t('edit.minutes')}
+              <Field label={t('edit.minutes')}>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -68,25 +69,21 @@ export function SegmentsEditor({
                     onChange(setSegmentMinutes(value, index, parseMinutes(e.target.value)))
                   }
                 />
-              </label>
+              </Field>
             )}
             {!running && value.segments.length > 1 && (
-              <button
-                type="button"
-                className="btn"
+              <Button
                 aria-label={t('edit.removeSegment', { n: index + 1 })}
                 onClick={() => onChange(removeSegment(value, index))}
               >
                 ✕︎
-              </button>
+              </Button>
             )}
           </div>
         </fieldset>
       ))}
       {!running && (
-        <button type="button" className="btn" onClick={() => onChange(addSegment(value))}>
-          {t('edit.addSegment')}
-        </button>
+        <Button onClick={() => onChange(addSegment(value))}>{t('edit.addSegment')}</Button>
       )}
     </div>
   );

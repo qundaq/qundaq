@@ -1,5 +1,8 @@
 import { useLocale, useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Card } from '../shared/Card';
 import { useNow } from '../shared/useNow';
+import styles from './Backup.module.css';
 import { RestoreButton } from './RestoreButton';
 import { lastBackupText } from './text';
 
@@ -21,19 +24,17 @@ export function BackupCard({
   const locale = useLocale();
   const now = useNow();
   return (
-    <div className="card">
+    <Card>
       <h2>{t('backup.title')}</h2>
       <p>{lastBackupText(t, locale, lastBackupAt, now)}</p>
-      <p className="muted small">{t('backup.hint')}</p>
-      <div className="backup-actions">
-        <button type="button" className="btn btn-primary" onClick={actions.onExport}>
+      <p className={styles.hint}>{t('backup.hint')}</p>
+      <div className={styles.actions}>
+        <Button variant="primary" onClick={actions.onExport}>
           {t('backup.export')}
-        </button>
+        </Button>
         <RestoreButton onFile={actions.onImportFile} />
-        <button type="button" className="btn" onClick={actions.onCsv}>
-          {t('backup.csv')}
-        </button>
+        <Button onClick={actions.onCsv}>{t('backup.csv')}</Button>
       </div>
-    </div>
+    </Card>
   );
 }

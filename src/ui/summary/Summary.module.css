@@ -1,0 +1,73 @@
+.muted {
+  color: var(--muted);
+}
+.filter {
+  margin-bottom: var(--space-2);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.day .status dd {
+  font-variant-numeric: tabular-nums;
+}
+.status {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.status div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.status dt {
+  color: var(--muted);
+}
+.status dd {
+  margin: 0;
+  text-align: right;
+}
+.week,
+.growthTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--font-caption);
+}
+.week th,
+.week td,
+.growthTable th,
+.growthTable td {
+  padding: var(--space-2) var(--space-1);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  border-top: 1px solid var(--border);
+}
+.week thead th,
+.growthTable thead th {
+  color: var(--muted);
+  font-weight: 600;
+  border-top: 0;
+}
+.weekDetail {
+  display: block;
+  color: var(--muted);
+  font: var(--font-caption);
+}
+.growthChart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: var(--space-2) 0;
+}
+.axis {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+.label {
+  fill: var(--muted);
+  font-size: 11px;
+}

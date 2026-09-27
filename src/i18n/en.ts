@@ -12,7 +12,12 @@ export const en: Record<MessageKey, string> = {
   'settings.language.tr': 'Türkçe',
   'settings.language.en': 'English',
   'settings.nightMode': 'Night mode',
-  'settings.nightMode.hint': 'Dim red tones that are easy on the eyes in the dark.',
+  'settings.nightMode.hint':
+    'Dim red tones that are easy on the eyes in the dark. Overrides the theme while on.',
+  'settings.theme.title': 'Theme',
+  'settings.theme.dark': 'Dark',
+  'settings.theme.light': 'Light',
+  'settings.theme.system': 'System',
   'settings.cap.title': 'Volume safety cap',
   'settings.cap.hint':
     "The volume on the Sounds tab can never exceed this. The phone's own volume buttons apply on top.",
@@ -52,6 +57,7 @@ export const en: Record<MessageKey, string> = {
   'common.cancel': 'Cancel',
   'common.save': 'Save',
   'common.dismiss': 'Dismiss',
+  'common.undo': 'Undo',
   'common.ok': 'OK',
   'common.yes': 'Yes',
   'common.no': 'No',

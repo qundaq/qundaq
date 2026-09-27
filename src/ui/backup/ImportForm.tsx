@@ -15,6 +15,9 @@ import type { Id } from '../../domain/types';
 import { useReportError } from '../shared/ErrorBanner';
 import { useLocale, useT } from '../app/I18nProvider';
 import { clockTime, formatNumber, shortDate } from '../history/describe';
+import { Button } from '../shared/Button';
+import { Chip } from '../shared/Chip';
+import styles from './Backup.module.css';
 import type { ImportSource } from './importFile';
 import { FileSummary, SkippedList, Timers } from './ImportPreview';
 import type { Phase, Props } from './ImportSheet';
@@ -182,11 +185,11 @@ export function ImportForm({
       applied.stats.mixes.add + applied.stats.mixes.update + applied.stats.mixes.remove > 0;
     return (
       <div ref={root}>
-        <p role="status" className="status-ok">
+        <p role="status" className={styles.ok}>
           {message}
         </p>
         {mixesChanged && (
-          <p className="status-ok">
+          <p className={styles.ok}>
             {t('import.done.mergeMixes', {
               added: n(applied.stats.mixes.add),
               updated: n(applied.stats.mixes.update),
@@ -194,10 +197,10 @@ export function ImportForm({
             })}
           </p>
         )}
-        <div className="sheet-actions">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
+        <div className={styles.sheetActions}>
+          <Button variant="primary" onClick={onClose}>
             {t('common.ok')}
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -225,38 +228,35 @@ export function ImportForm({
       same: formatNumber(locale, stats.same),
       keep: formatNumber(locale, stats.keep),
     });
-  const backupFirstPrimary = mode === 'replace' && (plan.loss.events > 0 || plan.loss.mixes > 0);
-
   return (
     <div ref={root}>
       {changed && (
-        <p role="alert" className="status-warn">
+        <p role="alert" className={styles.warn}>
           {t('import.changed')}
         </p>
       )}
       <FileSummary backup={backup} />
       <SkippedList skipped={result.skipped} />
       {result.warnings.outOfRange > 0 && (
-        <p className="muted small">
+        <p className={styles.hint}>
           {t('import.outOfRange', { n: formatNumber(locale, result.warnings.outOfRange) })}
         </p>
       )}
       {result.warnings.badBirthDate > 0 && (
-        <p className="muted small">
+        <p className={styles.hint}>
           {t('import.badBirthDate', { n: formatNumber(locale, result.warnings.badBirthDate) })}
         </p>
       )}
-      {result.warnings.settings && <p className="muted small">{t('import.settingsWarning')}</p>}
+      {result.warnings.settings && <p className={styles.hint}>{t('import.settingsWarning')}</p>}
 
       {!deviceEmpty && (
         <fieldset>
           <legend>{t('import.mode')}</legend>
-          <div className="segmented">
+          <div className={styles.segmented}>
             {(['merge', 'replace'] as const).map((option) => (
-              <button
+              <Chip
                 key={option}
-                type="button"
-                aria-pressed={mode === option}
+                selected={mode === option}
                 disabled={applying}
                 onClick={() => {
                   setConfirmed(false);
@@ -264,7 +264,7 @@ export function ImportForm({
                 }}
               >
                 {t(`import.mode.${option}`)}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>
@@ -275,7 +275,7 @@ export function ImportForm({
           {(pairs.length > 0 || plan.follows.length > 0) && (
             <fieldset>
               <legend>{t('import.sameBabyTitle')}</legend>
-              <p className="muted small">{t('import.sameBabyHint')}</p>
+              <p className={styles.hint}>{t('import.sameBabyHint')}</p>
               {[
                 ...pairs.map((pair) => ({
                   id: pair.localId,
@@ -286,7 +286,7 @@ export function ImportForm({
                   label: t('import.follow', { localName: follow.name, name: follow.survivorName }),
                 })),
               ].map((item) => (
-                <label key={item.id} className="toggle">
+                <label key={item.id} className={styles.toggle}>
                   <input
                     type="checkbox"
                     checked={!choices.notSame.includes(item.id)}
@@ -305,7 +305,7 @@ export function ImportForm({
               ))}
             </fieldset>
           )}
-          <dl className="import-counts">
+          <dl className={styles.counts} data-testid="import-counts">
             <div>
               <dt>{t('import.babies')}</dt>
               <dd>{counts(plan.stats.babies)}</dd>
@@ -315,7 +315,7 @@ export function ImportForm({
               <dd>
                 {counts(plan.stats.events)}
                 {plan.stats.events.deleted > 0 && (
-                  <span className="muted">
+                  <span className={styles.muted}>
                     {' '}
                     · {t('import.deleted', { n: formatNumber(locale, plan.stats.events.deleted) })}
                   </span>
@@ -330,12 +330,12 @@ export function ImportForm({
             )}
           </dl>
           {plan.removedBabies.length > 0 && (
-            <p className="status-warn">
+            <p className={styles.warn}>
               {t('import.removedBabies', { names: plan.removedBabies.join(', ') })}
             </p>
           )}
           {plan.hidden.map((baby, i) => (
-            <p key={i} className="status-warn">
+            <p key={i} className={styles.warn}>
               {t('import.hidden', { name: baby.name, n: formatNumber(locale, baby.events) })}
             </p>
           ))}
@@ -354,12 +354,12 @@ export function ImportForm({
             })}
           </p>
           {plan.stats.localMixes > 0 && (
-            <p className="status-warn">
+            <p className={styles.warn}>
               {t('import.replaceMixes', { n: formatNumber(locale, plan.stats.localMixes) })}
             </p>
           )}
           {plan.loss.events > 0 && plan.loss.newestAt !== null && (
-            <p className="status-warn">
+            <p className={styles.warn}>
               {t('import.loss', {
                 n: formatNumber(locale, plan.loss.events),
                 newest: when(plan.loss.newestAt),
@@ -379,19 +379,14 @@ export function ImportForm({
         onChoicesChange={onChoicesChange}
       />
 
-      <div className="export-actions">
+      <div className={styles.formActions}>
         {!deviceEmpty && (
-          <button
-            type="button"
-            className={backupFirstPrimary ? 'btn btn-primary' : 'btn'}
-            disabled={applying}
-            onClick={onBackupFirst}
-          >
+          <Button variant="tertiary" disabled={applying} onClick={onBackupFirst}>
             {t('import.backupFirst')}
-          </button>
+          </Button>
         )}
         {mode === 'replace' && (
-          <label className="toggle">
+          <label className={styles.toggle}>
             <input
               type="checkbox"
               checked={confirmed}
@@ -403,28 +398,18 @@ export function ImportForm({
         )}
         {applying && <p aria-busy="true">{t('import.applying')}</p>}
       </div>
-      <div className="sheet-actions">
-        <button type="button" className="btn" disabled={applying} onClick={onClose}>
+      <div className={styles.sheetActions}>
+        <Button disabled={applying} onClick={onClose}>
           {t('common.cancel')}
-        </button>
+        </Button>
         {mode === 'merge' ? (
-          <button
-            type="button"
-            className={backupFirstPrimary ? 'btn' : 'btn btn-primary'}
-            disabled={applying}
-            onClick={() => void apply()}
-          >
+          <Button variant="primary" disabled={applying} onClick={() => void apply()}>
             {t('import.applyMerge')}
-          </button>
+          </Button>
         ) : (
-          <button
-            type="button"
-            className="btn btn-danger"
-            disabled={applying || !confirmed}
-            onClick={() => void apply()}
-          >
+          <Button variant="danger" disabled={applying || !confirmed} onClick={() => void apply()}>
             {t('import.applyReplace')}
-          </button>
+          </Button>
         )}
       </div>
     </div>

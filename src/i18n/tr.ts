@@ -10,7 +10,12 @@ export const tr = {
   'settings.language.tr': 'Türkçe',
   'settings.language.en': 'English',
   'settings.nightMode': 'Gece modu',
-  'settings.nightMode.hint': 'Karanlıkta göz yormayan kırmızı tonlar.',
+  'settings.nightMode.hint':
+    'Karanlıkta göz yormayan kırmızı tonlar. Açıkken tema seçimini geçersiz kılar.',
+  'settings.theme.title': 'Tema',
+  'settings.theme.dark': 'Koyu',
+  'settings.theme.light': 'Açık',
+  'settings.theme.system': 'Sistem',
   'settings.cap.title': 'Ses güvenlik sınırı',
   'settings.cap.hint':
     'Sesler sekmesindeki ses seviyesi bu sınırı aşamaz. Telefonun ses tuşları bunun üstüne eklenir.',
@@ -51,6 +56,7 @@ export const tr = {
   'common.cancel': 'Vazgeç',
   'common.save': 'Kaydet',
   'common.dismiss': 'Kapat',
+  'common.undo': 'Geri al',
   'common.ok': 'Tamam',
   'common.yes': 'Evet',
   'common.no': 'Hayır',

@@ -1,0 +1,111 @@
+.row {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+.row > * {
+  flex: 1;
+}
+.actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+/* The file input covers its label, invisible: a real tap on it opens the iOS picker. */
+.fileButton {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: var(--font-body);
+  font-weight: 600;
+  text-align: center;
+}
+.fileButton input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  font: inherit;
+}
+.fileButton:has(input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.hint {
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.muted {
+  color: var(--muted);
+}
+.warn {
+  color: var(--danger);
+}
+.ok {
+  color: var(--ok);
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+}
+.toggle input {
+  width: 28px;
+  height: 28px;
+  accent-color: var(--primary);
+  flex: none;
+}
+.segmented {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.sheetActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.formActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.timerRow {
+  display: flex;
+  gap: var(--space-2);
+}
+.counts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+.counts dt {
+  font-weight: 600;
+}
+.counts dd {
+  margin: 0;
+}
+.skipped {
+  margin-bottom: var(--space-3);
+}
+.skipped summary {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+}
+.timers ul {
+  margin: 0 0 var(--space-2);
+  padding-left: 20px;
+}

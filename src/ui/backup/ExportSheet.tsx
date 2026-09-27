@@ -7,7 +7,9 @@ import {
 } from '../../platform/share';
 import { ErrorBoundary } from '../app/ErrorBoundary';
 import { useLocale, useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
 import { Sheet, useSheetSession } from '../shared/Sheet';
+import styles from './Backup.module.css';
 import { prepareBackup, prepareCsv, type Prepared } from './prepare';
 import { SheetMessage } from './SheetMessage';
 import type { ExportKind } from './text';
@@ -96,13 +98,13 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
   if (done) {
     return (
       <>
-        <p role="status" className="status-ok">
+        <p role="status" className={styles.ok}>
           {t(kind === 'csv' ? 'csv.shared' : done === 'shared' ? 'export.shared' : 'export.saved')}
         </p>
-        <div className="sheet-actions">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
+        <div className={styles.sheetActions}>
+          <Button variant="primary" onClick={onClose}>
             {t('common.ok')}
-          </button>
+          </Button>
         </div>
       </>
     );
@@ -129,50 +131,41 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
   return (
     <>
       <p>{prepared.summary}</p>
-      <p className="muted small">{t(TEXT[kind].warning)}</p>
+      <p className={styles.hint}>{t(TEXT[kind].warning)}</p>
       {asking ? (
-        <div className="export-actions">
+        <div className={styles.formActions}>
           <p>{t('export.savedQuestion')}</p>
-          <div className="timer-row">
-            <button type="button" className="btn" onClick={() => setAsking(false)}>
-              {t('common.no')}
-            </button>
-            <button type="button" className="btn btn-primary" onClick={() => finish('saved')}>
+          <div className={styles.timerRow}>
+            <Button onClick={() => setAsking(false)}>{t('common.no')}</Button>
+            <Button variant="primary" onClick={() => finish('saved')}>
               {t('common.yes')}
-            </button>
+            </Button>
           </div>
         </div>
       ) : files.length === 0 ? null : (
-        <div className="export-actions">
+        <div className={styles.formActions}>
           {shareable ? (
-            <button type="button" className="btn btn-primary" onClick={share}>
+            <Button variant="primary" onClick={share}>
               {t('export.share')}
-            </button>
+            </Button>
           ) : (
             files.map((file) => (
-              <button
-                key={file.name}
-                type="button"
-                className="btn btn-primary"
-                onClick={() => download(file)}
-              >
+              <Button key={file.name} variant="primary" onClick={() => download(file)}>
                 {files.length === 1
                   ? t('export.download')
                   : t('export.downloadNamed', { name: file.name })}
-              </button>
+              </Button>
             ))
           )}
           {retry && (
-            <p role="alert" className="status-warn">
+            <p role="alert" className={styles.warn}>
               {t('export.retry')}
             </p>
           )}
         </div>
       )}
-      <div className="sheet-actions">
-        <button type="button" className="btn" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
+      <div className={styles.sheetActions}>
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
       </div>
     </>
   );

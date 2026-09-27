@@ -3,6 +3,7 @@ import type { ParsedBackup, SkippedRow } from '../../backup/validate';
 import type { Id } from '../../domain/types';
 import { useLocale, useT } from '../app/I18nProvider';
 import { clockTime, formatNumber, longDate, shortDate, typeLabel } from '../history/describe';
+import styles from './Backup.module.css';
 import type { ImportChoices } from './importFile';
 
 /** Smallest and largest of many numbers, without spreading them into Math.min/max (JavaScriptCore caps arguments). */
@@ -29,7 +30,7 @@ export function FileSummary({ backup }: { backup: ParsedBackup }) {
   const events = backup.events.filter((event) => event.deletedAt === undefined);
   const span = range(events.map((event) => event.startAt));
   return (
-    <div className="import-file">
+    <div>
       <p>
         {backup.appVersion
           ? t('import.fileInfo', { date: at, version: backup.appVersion })
@@ -71,10 +72,10 @@ export function SkippedList({ skipped }: { skipped: readonly SkippedRow[] }) {
   };
   return (
     <>
-      <p className="status-warn">
+      <p className={styles.warn}>
         {t('import.skipped', { n: formatNumber(locale, skipped.length) })}
       </p>
-      <details className="import-skipped">
+      <details className={styles.skipped}>
         <summary>{t('import.skippedDetails')}</summary>
         <ul>
           {skipped.slice(0, SHOWN_SKIPPED).map((row) => (
@@ -112,7 +113,7 @@ export function Timers({
   const others = stopped.filter((timer) => timer.reason !== 'stale');
   if (stale.length === 0 && others.length === 0) return null;
   return (
-    <div className="import-timers">
+    <div className={styles.timers}>
       {stale.length > 0 && (
         <fieldset>
           <legend>{t('import.staleTitle')}</legend>
@@ -127,7 +128,7 @@ export function Timers({
               </li>
             ))}
           </ul>
-          <label className="toggle">
+          <label className={styles.toggle}>
             <input
               type="checkbox"
               checked={choices.stopStale}

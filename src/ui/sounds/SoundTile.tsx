@@ -1,5 +1,6 @@
 import { percent } from '../../audio/volume';
 import { useT } from '../app/I18nProvider';
+import styles from './Sounds.module.css';
 
 interface Props {
   name: string;
@@ -15,22 +16,22 @@ export function SoundTile({ name, level, preparing, onToggle, onLevel }: Props) 
   const t = useT();
   const active = level !== undefined;
   return (
-    <div className="sound-tile">
+    <div className={styles.tileCell}>
       {/* The name is the accessible name; the "Hazırlanıyor…" text is visual only, so the name never changes. */}
       <button
         type="button"
-        className="tile"
+        className={[styles.tile, active ? styles.tileOn : ''].join(' ')}
         aria-pressed={active}
         aria-label={name}
         onClick={onToggle}
       >
         <span>{name}</span>
-        {preparing && <span className="small">{t('sounds.preparing')}</span>}
+        {preparing && <span className={styles.preparing}>{t('sounds.preparing')}</span>}
       </button>
       {active && (
         <input
           type="range"
-          className="level"
+          className={styles.level}
           min={0}
           max={1}
           step={0.01}

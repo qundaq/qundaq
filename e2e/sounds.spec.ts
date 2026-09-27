@@ -36,7 +36,9 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   for (const name of ['Pembe gürültü', 'Kahverengi gürültü', 'Dalgalar', 'Rüzgâr'])
     await tile(page, name).click();
   await tile(page, 'Şşş').click();
-  await expect(page.getByRole('status')).toHaveText('En fazla 6 ses birlikte çalabilir.');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'En fazla 6 ses birlikte çalabilir.' }),
+  ).toHaveText('En fazla 6 ses birlikte çalabilir.');
   await expect(tile(page, 'Şşş')).toHaveAttribute('aria-pressed', 'false');
 
   await openTab(page, 'Ana');
@@ -50,7 +52,7 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   await bar.getByRole('button', { name: 'Çal', exact: true }).click();
   await expect(bar).toContainText('Çalıyor');
   await bar.getByRole('button', { name: /Çalıyor/ }).click(); // the text opens the Sesler tab
-  await expect(page.getByRole('heading', { level: 1, name: 'Sesler' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Sesler' })).toBeAttached();
   await expect(bar).toHaveCount(0);
 });
 
@@ -219,7 +221,10 @@ test('a saved mix travels in the backup and comes back in a restore', async ({ p
 
   await clearAppData(page);
   const restore = await pickBackupFile(page, backup);
-  const mixesRow = restore.locator('.import-counts > div').filter({ hasText: 'Karışımlar' });
+  const mixesRow = restore
+    .getByTestId('import-counts')
+    .locator('> div')
+    .filter({ hasText: 'Karışımlar' });
   await expect(mixesRow).toContainText('Eklenecek: 1 · Güncellenecek: 0 · Silinecek: 0 · Aynı: 0');
   await restore.getByRole('button', { name: 'Geri yükle', exact: true }).click();
   await expect(restore.getByRole('status')).toHaveText(

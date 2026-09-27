@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { isAboveDefaultCap, percent } from '../../audio/volume';
 import { DEFAULT_CAP, MIN_CAP } from '../../domain/sounds';
 import { useT } from '../app/I18nProvider';
+import { Card } from '../shared/Card';
+import styles from './Settings.module.css';
 
 /** A slider move is saved this long after it stops: every move would otherwise be a write. */
 const SAVE_AFTER_MS = 300;
@@ -47,12 +49,12 @@ export function CapCard({ cap, onChange }: { cap: number; onChange: (cap: number
   );
 
   return (
-    <div className="card">
+    <Card>
       <h2>{t('settings.cap.title')}</h2>
-      <p className="muted small">{t('settings.cap.hint')}</p>
+      <p className={styles.hint}>{t('settings.cap.hint')}</p>
       <input
         type="range"
-        className="level"
+        className={styles.capSlider}
         min={MIN_CAP}
         max={1}
         step={0.05}
@@ -62,13 +64,13 @@ export function CapCard({ cap, onChange }: { cap: number; onChange: (cap: number
         onChange={(event) => setValue(Number(event.target.value))}
       />
       {isAboveDefaultCap(value) && (
-        <p role="alert" className="status-warn">
+        <p role="alert" className={styles.warn}>
           {t('settings.cap.warning')}
         </p>
       )}
       {!isAboveDefaultCap(value) && value !== DEFAULT_CAP && (
-        <p className="muted small">{t('settings.cap.belowDefault')}</p>
+        <p className={styles.hint}>{t('settings.cap.belowDefault')}</p>
       )}
-    </div>
+    </Card>
   );
 }

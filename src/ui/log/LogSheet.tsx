@@ -4,6 +4,7 @@ import { db } from '../../db/instance';
 import type { Baby, Id } from '../../domain/types';
 import { messageFor, useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
 import { Sheet, useSheetSession } from '../shared/Sheet';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { BabyPicker, SingleBabyPicker } from './BabyPicker';
@@ -22,6 +23,7 @@ import { BottleForm, BreastfeedForm, DiaperForm, SleepForm } from './forms/care'
 import { NoteField, OtherTypeChips, type FormProps } from './forms/fields';
 import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from './forms/other';
 import { TimeField } from './TimeField';
+import styles from './LogSheet.module.css';
 
 interface Props {
   kind: SheetKind | null;
@@ -174,17 +176,15 @@ function LogForm({
         <NoteField value={note} required={input.kind === 'healthNote'} onChange={setNote} />
       )}
       {error && (
-        <p role="alert" className="status-warn">
+        <p role="alert" className={styles.error}>
           {error}
         </p>
       )}
-      <div className="sheet-actions">
-        <button type="button" className="btn" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={pending}>
+      <div className={styles.actions}>
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button type="submit" variant="primary" disabled={pending}>
           {t(isTimer ? 'sheet.start' : 'common.save')}
-        </button>
+        </Button>
       </div>
     </form>
   );

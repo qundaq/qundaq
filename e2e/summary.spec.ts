@@ -176,7 +176,7 @@ test('every record type shows up in Günlük and in Özet, without CSP violation
   await expect(summaryValue(page, 'Biberon')).toHaveText('1 kez · 90 ml');
   await expect(summaryValue(page, 'Uyku')).toHaveText('1 sa 0 dk · 1 kez');
   await expect(summaryValue(page, 'Bez')).toHaveText('1 ıslak · 0 kirli · 1 bez');
-  await expect(page.locator('.summary-pump')).toContainText('Toplam 60 ml');
+  await expect(page.getByTestId('summary-pump')).toContainText('Toplam 60 ml');
   await expect(page.getByRole('img', { name: 'Kilo: 3,45 kg, 1 ölçüm' })).toBeVisible();
   expect(
     await page.evaluate(() => (window as unknown as { __cspViolations: string[] }).__cspViolations),

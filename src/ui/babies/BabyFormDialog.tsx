@@ -4,8 +4,11 @@ import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
 import { messageFor } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { Field } from '../shared/Field';
 import { Sheet } from '../shared/Sheet';
-import { BABY_COLORS, nextColor } from './colors';
+import { BABY_COLORS, nextColor, resolveBabyColor } from './colors';
+import styles from './Babies.module.css';
 
 interface Props {
   open: boolean;
@@ -61,20 +64,23 @@ function BabyForm({
 
   return (
     <form onSubmit={(event) => void submit(event)} noValidate>
-      <label className="field">
-        {t('babies.name')}
+      <Field label={t('babies.name')}>
         <input
           value={name}
           maxLength={BABY_NAME_MAX}
           autoComplete="off"
           onChange={(e) => setName(e.target.value)}
         />
-      </label>
+      </Field>
       <fieldset>
         <legend>{t('babies.color')}</legend>
-        <div className="swatches">
+        <div className={styles.swatches}>
           {BABY_COLORS.map((option) => (
-            <label key={option.id} className="swatch" style={{ background: option.hex }}>
+            <label
+              key={option.id}
+              className={styles.swatch}
+              style={{ background: resolveBabyColor(option.hex) }}
+            >
               <input
                 type="radio"
                 name={colorGroup}
@@ -87,8 +93,7 @@ function BabyForm({
           ))}
         </div>
       </fieldset>
-      <label className="field">
-        {t('babies.birthDate')}
+      <Field label={t('babies.birthDate')}>
         <input
           type="date"
           value={birthDate}
@@ -96,19 +101,17 @@ function BabyForm({
           max="9999-12-31"
           onChange={(e) => setBirthDate(e.target.value)}
         />
-      </label>
+      </Field>
       {error && (
-        <p role="alert" className="status-warn">
+        <p role="alert" className={styles.error}>
           {error}
         </p>
       )}
-      <div className="sheet-actions">
-        <button type="button" className="btn" onClick={onDone}>
-          {t('common.cancel')}
-        </button>
-        <button type="submit" className="btn btn-primary">
+      <div className={styles.actions}>
+        <Button onClick={onDone}>{t('common.cancel')}</Button>
+        <Button type="submit" variant="primary">
           {t('common.save')}
-        </button>
+        </Button>
       </div>
     </form>
   );

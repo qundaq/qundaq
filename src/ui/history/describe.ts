@@ -8,6 +8,7 @@ import type { Locale } from '../../i18n';
 import { HOUR } from '../../domain/time';
 import { formatDuration } from '../shared/format';
 import type { TranslateFn } from '../app/I18nProvider';
+import type { IconName } from '../shared/icons';
 import { segmentMinutes } from '../log/edits';
 
 // Formatters are built per call: Intl captures the time zone when it is constructed.
@@ -75,6 +76,22 @@ export function timeRange(
 
 export function typeLabel(t: TranslateFn, type: EventType): string {
   return t(`sheet.${type}.title`);
+}
+
+const TYPE_ICONS: Record<EventType, IconName> = {
+  sleep: 'moon',
+  breastfeed: 'heart',
+  bottle: 'milk',
+  diaper: 'baby',
+  pump: 'droplets',
+  growth: 'ruler',
+  temperature: 'thermometer',
+  medication: 'pill',
+  healthNote: 'notebook-pen',
+};
+
+export function typeIcon(type: EventType): IconName {
+  return TYPE_ICONS[type];
 }
 
 /** The first line of a note, trimmed, at most `max` characters (the last one an ellipsis when cut). */

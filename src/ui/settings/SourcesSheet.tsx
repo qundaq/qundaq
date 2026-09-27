@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
 import { Sheet } from '../shared/Sheet';
+import styles from './Settings.module.css';
 
 /** Where every sound comes from, served with the app (precached like everything in dist). */
 export const SOURCES_PATH = 'sounds/SOURCES.md';
@@ -43,15 +45,13 @@ export function SourcesSheet({ open, onClose }: { open: boolean; onClose: () => 
     <Sheet open={open} title={t('settings.sources')} onClose={onClose}>
       {loaded.state === 'loading' && <p aria-busy="true">{t('sources.loading')}</p>}
       {loaded.state === 'failed' && (
-        <p role="alert" className="status-warn">
+        <p role="alert" className={styles.warn}>
           {t('sources.failed')}
         </p>
       )}
-      {loaded.state === 'ready' && <pre className="sources">{loaded.text}</pre>}
-      <div className="sheet-actions">
-        <button type="button" className="btn" onClick={onClose}>
-          {t('common.dismiss')}
-        </button>
+      {loaded.state === 'ready' && <pre className={styles.sources}>{loaded.text}</pre>}
+      <div className={styles.actions}>
+        <Button onClick={onClose}>{t('common.dismiss')}</Button>
       </div>
     </Sheet>
   );

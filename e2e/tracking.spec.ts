@@ -326,10 +326,10 @@ test.describe('timers and feeds', () => {
     await expect(wakeUp).toHaveText('Uyandı');
 
     const feedRow = card
-      .locator('.timer-row')
+      .getByTestId('timer-row')
       .filter({ has: page.getByRole('button', { name: 'Ada: Emzirmeyi bitir' }) });
     const sleepRow = card
-      .locator('.timer-row')
+      .getByTestId('timer-row')
       .filter({ has: page.getByRole('button', { name: 'Ada: Uyandı' }) });
     await expect(feedRow).toBeVisible();
     await expect(sleepRow).toBeVisible();
@@ -540,7 +540,7 @@ test.describe('sheet defaults and saved fields', () => {
       const empty: string[] = [];
       (window as unknown as { __emptySheets: string[] }).__emptySheets = empty;
       new MutationObserver(() => {
-        for (const dialog of document.querySelectorAll<HTMLDialogElement>('dialog.sheet')) {
+        for (const dialog of document.querySelectorAll<HTMLDialogElement>('dialog')) {
           const title = dialog.querySelector('h2')?.textContent ?? '';
           if (dialog.open && (!dialog.querySelector('form') || title === '')) empty.push(title);
         }

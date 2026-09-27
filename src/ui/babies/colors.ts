@@ -12,3 +12,9 @@ export function nextColor(usedHexes: readonly string[]): string {
   const free = BABY_COLORS.find((color) => !usedHexes.includes(color.hex));
   return (free ?? BABY_COLORS[usedHexes.length % BABY_COLORS.length]!).hex;
 }
+
+/** The stripe and dot colour for a baby: a theme token for palette colours, so light and night mode re-tint them. */
+export function resolveBabyColor(hex: string): string {
+  const known = BABY_COLORS.find((color) => color.hex.toLowerCase() === hex.toLowerCase());
+  return known ? `var(--baby-${known.id})` : hex;
+}

@@ -3,9 +3,12 @@ import { db } from '../../db/instance';
 import { renameMix, saveMix } from '../../db/mixes';
 import { MIX_NAME_MAX, ValidationError } from '../../domain/rules';
 import type { Mix, MixLayer } from '../../domain/types';
-import { messageFor } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
+import { messageFor } from '../shared/ErrorBanner';
+import { Field } from '../shared/Field';
 import { Sheet, useSheetSession } from '../shared/Sheet';
+import styles from './Sounds.module.css';
 
 /** Opened with the layers to save under a new name, or with a mix to rename. */
 export type MixNameRequest =
@@ -56,27 +59,19 @@ function MixNameForm({ request, onDone }: { request: MixNameRequest; onDone: () 
 
   return (
     <form onSubmit={(event) => void submit(event)} noValidate>
-      <label className="field">
-        {t('sounds.mix.name')}
+      <Field label={t('sounds.mix.name')} error={error}>
         <input
           value={name}
           maxLength={MIX_NAME_MAX}
           autoComplete="off"
           onChange={(event) => setName(event.target.value)}
         />
-      </label>
-      {error && (
-        <p role="alert" className="status-warn">
-          {error}
-        </p>
-      )}
-      <div className="sheet-actions">
-        <button type="button" className="btn" onClick={onDone}>
-          {t('common.cancel')}
-        </button>
-        <button type="submit" className="btn btn-primary">
+      </Field>
+      <div className={styles.formActions}>
+        <Button onClick={onDone}>{t('common.cancel')}</Button>
+        <Button type="submit" variant="primary">
           {t('common.save')}
-        </button>
+        </Button>
       </div>
     </form>
   );

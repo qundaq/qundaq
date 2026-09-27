@@ -7,11 +7,14 @@ import { TYPE_FILTERS, matchesFilters, visibleEvents, type TypeFilter } from '..
 import type { Baby, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
+import { Chip } from '../shared/Chip';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
+import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { DayPicker } from './DayPicker';
 import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
+import styles from './Log.module.css';
 
 /** Günlük's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
 export interface LogView {
@@ -59,52 +62,43 @@ export function LogScreen({
 
   return (
     <section>
-      <h1>{t('tab.log')}</h1>
+      <VisuallyHidden as="h1">{t('tab.log')}</VisuallyHidden>
       <DayPicker day={view.day} now={tick} onChange={(next) => set({ day: next })} />
       {babies.length > 1 && (
-        <fieldset className="filter">
+        <fieldset className={styles.filter}>
           <legend>{t('log.filter.baby')}</legend>
-          <div className="chips">
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={babyFilter === null}
-              onClick={() => set({ babyId: null })}
-            >
+          <div className={styles.chips}>
+            <Chip selected={babyFilter === null} onClick={() => set({ babyId: null })}>
               {t('sheet.all')}
-            </button>
+            </Chip>
             {babies.map((baby) => (
-              <button
+              <Chip
                 key={baby.id}
-                type="button"
-                className="chip"
-                aria-pressed={babyFilter === baby.id}
+                selected={babyFilter === baby.id}
                 onClick={() => set({ babyId: baby.id })}
               >
                 {baby.name}
-              </button>
+              </Chip>
             ))}
           </div>
         </fieldset>
       )}
-      <fieldset className="filter">
+      <fieldset className={styles.filter}>
         <legend>{t('log.filter.type')}</legend>
-        <div className="chips">
+        <div className={styles.chips}>
           {TYPE_FILTERS.map((filter) => (
-            <button
+            <Chip
               key={filter}
-              type="button"
-              className="chip"
-              aria-pressed={view.type === filter}
+              selected={view.type === filter}
               onClick={() => set({ type: filter })}
             >
               {t(`log.type.${filter}`)}
-            </button>
+            </Chip>
           ))}
         </div>
       </fieldset>
       {data === undefined ? (
-        <p className="muted" aria-busy="true" />
+        <p className={styles.muted} aria-busy="true" />
       ) : (
         <DayList
           events={data.events}
@@ -141,13 +135,13 @@ function DayList({ events, babies, day, babyFilter, typeFilter, now, onOpen }: D
     .sort((a, b) => b.startAt - a.startAt);
   if (rows.length === 0) {
     return (
-      <p className="muted">
+      <p className={styles.muted}>
         {t(babyFilter !== null || typeFilter !== 'all' ? 'log.emptyFiltered' : 'log.empty')}
       </p>
     );
   }
   return (
-    <ul className="log-list" role="list" aria-label={t('log.list')}>
+    <ul className={styles.list} role="list" aria-label={t('log.list')} data-testid="log-list">
       {rows.map((event) => (
         <li key={event.id}>
           <EventRow

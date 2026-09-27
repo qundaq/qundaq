@@ -5,6 +5,7 @@ import { isOpen } from '../../domain/rules';
 import type { Baby, TrackerEvent } from '../../domain/types';
 import { messageFor } from '../shared/ErrorBanner';
 import { useLocale, useT } from '../app/I18nProvider';
+import { Button } from '../shared/Button';
 import { SingleBabyPicker } from '../log/BabyPicker';
 import { decimalSeparatorFor, eventToInput, inputToDraft, type EditInput } from '../log/edits';
 import { BottleForm, DiaperForm } from '../log/forms/care';
@@ -13,6 +14,7 @@ import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from '../log/fo
 import { EditTimeField, OptionalTimeField } from '../log/TimeField';
 import { Sheet, useSheetSession } from '../shared/Sheet';
 import { DELETE_CONFIRM_MAX_MS, deleteTap } from './confirm';
+import styles from './Log.module.css';
 import { SegmentsEditor } from './SegmentsEditor';
 
 interface Props {
@@ -176,46 +178,47 @@ function EditForm({
         onChange={(note) => setInput({ ...input, note })}
       />
       {running && (
-        <div className="edit-stop">
-          <button
-            type="button"
-            className="btn btn-primary"
+        <div className={styles.editStop}>
+          <Button
+            variant="secondary"
+            size="lg"
+            block
             disabled={dirty || pending}
             aria-describedby={dirty ? saveFirstId : undefined}
             onClick={() => void run(() => stopEvent(db, event.id))}
           >
             {t(event.type === 'sleep' ? 'timer.wakeUp' : 'timer.stopFeed')}
-          </button>
+          </Button>
           {dirty && (
-            <p id={saveFirstId} className="muted small">
+            <p id={saveFirstId} className={[styles.muted, styles.small].filter(Boolean).join(' ')}>
               {t('edit.saveFirst')}
             </p>
           )}
         </div>
       )}
       {error && (
-        <p role="alert" className="status-warn">
+        <p role="alert" className={styles.error}>
           {error}
         </p>
       )}
-      <div className="sheet-actions">
-        <button type="button" className="btn" disabled={pending} onClick={onDone}>
+      <div className={styles.actions}>
+        <Button disabled={pending} onClick={onDone}>
           {t('common.cancel')}
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={pending}>
+        </Button>
+        <Button type="submit" variant="primary" disabled={pending}>
           {t('common.save')}
-        </button>
+        </Button>
       </div>
-      <div className="edit-delete">
-        <button
-          type="button"
-          className="btn btn-danger"
-          data-armed={armedAt !== null}
+      <div className={styles.editDelete}>
+        <Button
+          variant="danger"
+          block
+          armed={armedAt !== null}
           disabled={pending}
           onClick={tapDelete}
         >
           {t(armedAt === null ? 'edit.delete' : 'edit.deleteConfirm')}
-        </button>
+        </Button>
       </div>
     </form>
   );
