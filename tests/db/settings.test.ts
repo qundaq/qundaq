@@ -20,6 +20,7 @@ describe('settings repository', () => {
     expect(await loadSettings(freshDb(), 'en')).toEqual({
       locale: 'en',
       nightMode: false,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -29,11 +30,13 @@ describe('settings repository', () => {
     expect(await saveSettings(db, { nightMode: true }, 'tr')).toEqual({
       locale: 'tr',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
     expect(await loadSettings(db, 'en')).toEqual({
       locale: 'tr',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -45,6 +48,7 @@ describe('settings repository', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'en',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -57,6 +61,7 @@ describe('settings repository', () => {
     expect(await loadSettings(freshDb(name), 'tr')).toEqual({
       locale: 'en',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -67,6 +72,7 @@ describe('settings repository', () => {
     expect(await loadSettings(db, 'en')).toEqual({
       locale: 'en',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -77,6 +83,7 @@ describe('settings repository', () => {
     expect(await loadSettings(db, 'en')).toEqual({
       locale: 'tr',
       nightMode: false,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -89,6 +96,7 @@ describe('settings repository', () => {
       id: 'app',
       locale: 'tr',
       nightMode: true,
+      theme: 'dark',
       extra: 1,
       lastBabyIds: [],
     });
@@ -101,6 +109,20 @@ describe('settings repository', () => {
     await db.settings.put({ id: 'app', locale: 'tr', nightMode: false, lastBabyIds: 'a' } as never);
     expect((await loadSettings(db, 'tr')).lastBabyIds).toEqual([]);
   });
+
+  it('validates the theme and defaults it to dark', async () => {
+    const db = freshDb();
+    await db.settings.put({
+      id: 'app',
+      locale: 'tr',
+      nightMode: false,
+      lastBabyIds: [],
+      theme: 'purple',
+    } as never);
+    expect((await loadSettings(db, 'tr')).theme).toBe('dark');
+    await saveSettings(db, { theme: 'light' }, 'tr');
+    expect((await loadSettings(db, 'tr')).theme).toBe('light');
+  });
 });
 
 describe('backup times in the settings row', () => {
@@ -110,6 +132,7 @@ describe('backup times in the settings row', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'tr',
       nightMode: false,
+      theme: 'dark',
       lastBabyIds: [],
       lastBackupAt: 1000,
       backupReminderSnoozedUntil: 2000,
@@ -125,6 +148,7 @@ describe('backup times in the settings row', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'tr',
       nightMode: false,
+      theme: 'dark',
       lastBabyIds: [],
     });
   });
@@ -137,6 +161,7 @@ describe('sound settings in the settings row', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'tr',
       nightMode: false,
+      theme: 'dark',
       lastBabyIds: [],
       volumeCap: 0.8,
     });
@@ -151,6 +176,7 @@ describe('sound settings in the settings row', () => {
       expect(await loadSettings(db, 'tr'), String(bad)).toEqual({
         locale: 'tr',
         nightMode: false,
+        theme: 'dark',
         lastBabyIds: [],
       });
     }
@@ -200,6 +226,7 @@ describe('sound settings in the settings row', () => {
       expect(await loadSettings(db, 'tr'), JSON.stringify(bad)).toEqual({
         locale: 'tr',
         nightMode: false,
+        theme: 'dark',
         lastBabyIds: [],
       });
     }

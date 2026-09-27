@@ -1,4 +1,5 @@
 import { readLastSound, readVolumeCap, type LastSound } from '../domain/sounds';
+import { readThemeChoice, type ThemeChoice } from '../domain/theme';
 import type { Id } from '../domain/types';
 import { LOCALES, type Locale } from '../i18n';
 import type { TrackerDb } from './db';
@@ -7,6 +8,8 @@ export interface Settings {
   locale: Locale;
   nightMode: boolean;
   lastBabyIds: Id[];
+  /** Ayarlar → Tema. Never exported: a display preference of this device. */
+  theme: ThemeChoice;
   /** When this device last saved a JSON backup (a completed share, or a download the user confirmed). Never exported. */
   lastBackupAt?: number;
   /** Home's backup reminder stays hidden until then ("Yarın hatırlat"). Never exported. */
@@ -26,7 +29,7 @@ const OPTIONAL_TIMES = ['lastBackupAt', 'backupReminderSnoozedUntil'] as const;
 const SETTINGS_ID = 'app';
 
 export function defaultSettings(locale: Locale): Settings {
-  return { locale, nightMode: false, lastBabyIds: [] };
+  return { locale, nightMode: false, theme: 'dark', lastBabyIds: [] };
 }
 
 export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promise<Settings> {
@@ -43,12 +46,13 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
     ? (stored.locale as Locale)
     : defaults.locale;
   const nightMode = typeof stored.nightMode === 'boolean' ? stored.nightMode : defaults.nightMode;
+  const theme = readThemeChoice(stored.theme);
   const lastBabyIds =
     Array.isArray(stored.lastBabyIds) && stored.lastBabyIds.every((id) => typeof id === 'string')
       ? stored.lastBabyIds
       : defaults.lastBabyIds;
 
-  const settings: Settings = { ...defaults, ...stored, locale, nightMode, lastBabyIds };
+  const settings: Settings = { ...defaults, ...stored, locale, nightMode, theme, lastBabyIds };
   for (const key of OPTIONAL_TIMES) {
     const value = stored[key];
     if (!(typeof value === 'number' && Number.isFinite(value))) delete settings[key];

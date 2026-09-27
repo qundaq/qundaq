@@ -486,6 +486,7 @@ describe('whitelisting', () => {
     const settings: Required<Settings> = {
       locale: 'en',
       nightMode: true,
+      theme: 'light',
       lastBabyIds: ['b1'],
       lastBackupAt: T,
       backupReminderSnoozedUntil: T,
@@ -510,6 +511,7 @@ describe('whitelisting', () => {
       backupReminderSnoozedUntil: _snooze,
       volumeCap: _cap,
       lastSound: _sound,
+      theme: _theme,
       ...portable
     } = settings;
     /* eslint-enable @typescript-eslint/no-unused-vars */

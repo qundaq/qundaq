@@ -283,6 +283,7 @@ describe('applyImport', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'tr',
       nightMode: false,
+      theme: 'dark',
       lastBabyIds: [ada.id],
       lastBackupAt: T - DAY,
     });
@@ -310,6 +311,7 @@ describe('applyImport', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'en',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: ['b-file'],
       lastBackupAt: T - DAY,
     });

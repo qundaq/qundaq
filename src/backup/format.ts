@@ -20,14 +20,16 @@ export interface BackupSettings {
 
 /**
  * Settings that describe this device and are never exported: when it last backed up, the reminder snooze,
- * the sound safety cap (a restore must never raise another phone's safety limit) and the last selection
- * on the Sesler tab. Every key of Settings is either here or in BackupSettings, checked below.
+ * the sound safety cap (a restore must never raise another phone's safety limit), the last selection
+ * on the Sesler tab, and the theme (a display preference). Every key of Settings is either here or in
+ * BackupSettings, checked below.
  */
 export const DEVICE_ONLY_SETTINGS = [
   'lastBackupAt',
   'backupReminderSnoozedUntil',
   'volumeCap',
   'lastSound',
+  'theme',
 ] as const;
 
 export interface BackupFile {

@@ -1,0 +1,61 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  min-height: 100dvh;
+  font: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h2 {
+  font: var(--font-heading);
+}
+p + p {
+  margin-top: var(--space-2);
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+  min-inline-size: 0;
+}
+legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  font: var(--font-heading);
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+/* The now-playing bar reserves its height for every screen through this variable (App toggles the class). */
+html.has-nowplaying {
+  --nowplaying-h: 64px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
