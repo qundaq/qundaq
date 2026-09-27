@@ -27,10 +27,10 @@ import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { GrowthChart } from './GrowthChart';
 import styles from './Summary.module.css';
 
-/** Özet's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
+/** The summary tab's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
 export interface SummaryView {
   day: number | null; // null: today
-  babyId: Id | null; // null: the first live baby of lastBabyIds, else the first baby
+  babyId: Id | null; // null: the first baby
   metric: GrowthMetric;
 }
 
@@ -39,7 +39,6 @@ export const DEFAULT_SUMMARY_VIEW: SummaryView = { day: null, babyId: null, metr
 interface Props {
   view: SummaryView;
   onViewChange: (next: SummaryView) => void;
-  lastBabyIds: readonly Id[];
 }
 
 interface SummaryData {
@@ -50,14 +49,9 @@ interface SummaryData {
 }
 
 /** Babies, the 7 days' entries and the chosen baby's growth, in one live query. */
-async function readSummary(
-  chosen: Id | null,
-  preferred: readonly Id[],
-  from: number,
-  to: number,
-): Promise<SummaryData> {
+async function readSummary(chosen: Id | null, from: number, to: number): Promise<SummaryData> {
   const babies = await listBabies(db);
-  const babyId = pickBaby(babies, chosen, preferred);
+  const babyId = pickBaby(babies, chosen);
   const [events, growth] = await Promise.all([
     listEventsOverlapping(db, from, to, Date.now()),
     babyId === null ? Promise.resolve<GrowthEvent[]>([]) : listGrowth(db, babyId),
@@ -65,15 +59,15 @@ async function readSummary(
   return { babies, babyId, events, growth };
 }
 
-export function SummaryScreen({ view, onViewChange, lastBabyIds }: Props) {
+export function SummaryScreen({ view, onViewChange }: Props) {
   const t = useT();
   const tick = useNow();
   const day = resolveDay(view.day, tick);
   const from = addDays(day, -6);
   const to = addDays(day, 1);
   const data = useLiveQuery(
-    () => readSummary(view.babyId, lastBabyIds, from, to),
-    [view.babyId, lastBabyIds.join(','), from, to],
+    () => readSummary(view.babyId, from, to),
+    [view.babyId, from, to],
     useReportLoadError(),
   );
   // The chips stay put while another day loads; the numbers never outlive their day.
@@ -90,7 +84,7 @@ export function SummaryScreen({ view, onViewChange, lastBabyIds }: Props) {
       </section>
     );
   }
-  const shownBabyId = data?.babyId ?? pickBaby(babies, view.babyId, lastBabyIds);
+  const shownBabyId = data?.babyId ?? pickBaby(babies, view.babyId);
 
   return (
     <section>
@@ -222,7 +216,7 @@ function SummaryBody({ data, day, to, metric, onMetric, now }: BodyProps) {
   );
 }
 
-/** "15 dk (sağ 15 dk)": a side without time is left out, and the brackets too when there was no breastfeeding. */
+/** "15m (right 15m)": a side without time is left out, and the brackets too when there was no breastfeeding. */
 function breastText(t: TranslateFn, totals: DailyTotals): string {
   const total = formatDuration(t, totals.breastMs);
   const sides = (['L', 'R'] as const)

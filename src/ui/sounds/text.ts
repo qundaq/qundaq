@@ -6,12 +6,12 @@ import { DEFAULT_TIMER, isSoundId, type LastSound, type SoundId } from '../../do
 import type { MixLayer } from '../../domain/types';
 import type { TranslateFn } from '../app/I18nProvider';
 
-/** "Beyaz gürültü + Yağmur", in layer order. */
+/** sound.white + sound.rain ("White noise + Rain"), in layer order. */
 export function layerNames(t: TranslateFn, layers: readonly { soundId: SoundId }[]): string {
   return layers.map((layer) => t(soundById(layer.soundId).nameKey)).join(' + ');
 }
 
-/** A saved mix's sounds as this version knows them; "(bilinmeyen ses)" when it knows none of them (R7). */
+/** A saved mix's sounds as this version knows them; sounds.mix.unknown ("(unknown sound)") when it knows none of them (R7). */
 export function mixLayerNames(t: TranslateFn, layers: readonly MixLayer[]): string {
   const known = layers.filter((layer): layer is MixLayer & { soundId: SoundId } =>
     isSoundId(layer.soundId),
@@ -19,19 +19,19 @@ export function mixLayerNames(t: TranslateFn, layers: readonly MixLayer[]): stri
   return known.length === 0 ? t('sounds.mix.unknown') : layerNames(t, known);
 }
 
-/** "Çalıyor · Beyaz gürültü + Yağmur", "Duraklatıldı", "Durdu" or "Ses kesildi" (R14). */
+/** sounds.status.playing ("Playing · White noise + Rain"), .paused, .stopped or .interrupted (R14). */
 export function statusText(t: TranslateFn, state: Pick<EngineState, 'status' | 'layers'>): string {
   if (state.status === 'playing')
     return t('sounds.status.playing', { names: layerNames(t, state.layers) });
   return t(`sounds.status.${state.status}`);
 }
 
-/** "24 dk kaldı" while a timer counts down, otherwise null. */
+/** sounds.remaining ("24 minutes left") while a timer counts down, otherwise null. */
 export function remainingText(t: TranslateFn, endsAt: number | null, now: number): string | null {
   return endsAt === null ? null : t('sounds.remaining', { m: minutesLeft(endsAt, now) });
 }
 
-/** What the app remembers of the Sesler tab: the selection, the master slider and the chip; never the playing state. */
+/** What the app remembers of the Sounds tab: the selection, the master slider and the chip; never the playing state. */
 export function lastSoundOf(state: Pick<EngineState, 'layers' | 'master' | 'timer'>): LastSound {
   return {
     layers: state.layers.map((layer) => ({ soundId: layer.soundId, level: layer.level })),

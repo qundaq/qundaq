@@ -20,7 +20,7 @@ export interface ImportSource {
 export interface ImportChoices {
   mode: ImportMode;
   /**
-   * Device babies the user said are NOT the same child as the other baby of that name: an "Aynı bebek" pair
+   * Device babies the user said are NOT the same child as the other baby of that name: a same-baby pair
    * left unpaired, or a baby the backup deletes whose entries stay with it (ImportOptions.keepApart).
    */
   notSame: Id[];

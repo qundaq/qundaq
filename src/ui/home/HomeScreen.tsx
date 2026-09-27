@@ -1,11 +1,13 @@
 import { useRef, useState } from 'react';
 import { backupReminder, snoozeUntil } from '../../backup/reminder';
 import { listBabies } from '../../db/babies';
-import { hasLiveEvents, listRecentEvents, stopEvent, switchBreastSide } from '../../db/events';
+import { hasLiveEvents, listRecentEvents, stopTimer, switchBreastSide } from '../../db/events';
 import { db } from '../../db/instance';
 import type { Settings } from '../../db/settings';
+import { dayWindow } from '../../domain/days';
 import { forgottenTimer } from '../../domain/health';
 import { babyStatus } from '../../domain/status';
+import { dailyTotals } from '../../domain/summary';
 import { DAY } from '../../domain/time';
 import type { Id, TrackerEvent } from '../../domain/types';
 import { BabyFormDialog } from '../babies/BabyFormDialog';
@@ -17,10 +19,11 @@ import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { EditSheet } from '../history/EditSheet';
 import { BabyCard } from './BabyCard';
-import { QuickActions } from './QuickActions';
+import { LiveStrip } from './LiveStrip';
 import { useT } from '../app/I18nProvider';
-import type { SheetKind } from '../log/drafts';
+import type { LogRequest } from '../log/drafts';
 import { LogSheet } from '../log/LogSheet';
+import { useUndoToast } from '../log/useUndoToast';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
 import styles from './Home.module.css';
@@ -49,11 +52,13 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
     reportLoadError,
   );
   const hasEvents = useLiveQuery(() => hasLiveEvents(db), [], reportLoadError);
-  const [sheet, setSheet] = useState<SheetKind | null>(null);
+  const [request, setRequest] = useState<LogRequest | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<TrackerEvent | null>(null);
   // Timer buttons already in flight, per event: a double tap must not run the same action twice.
   const busy = useRef<Set<Id>>(new Set());
+  const nameOf = (id: Id) => babies?.find((b) => b.id === id)?.name ?? '';
+  const undoToast = useUndoToast(nameOf);
 
   // Nothing shows until the banner decision is known too, so the cards never appear without it first.
   if (babies === undefined || events === undefined || hasEvents === undefined)
@@ -67,6 +72,7 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   // eslint-disable-next-line react-hooks/purity
   const now = Math.max(tick, Date.now());
   const byId = new Map(events.map((event) => [event.id, event]));
+  const { from, to } = dayWindow(now);
 
   const act = (eventId: Id, action: () => Promise<unknown>) => {
     if (busy.current.has(eventId)) return;
@@ -75,6 +81,9 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
       .catch((error: unknown) => report(error))
       .finally(() => busy.current.delete(eventId));
   };
+
+  const stop = (eventId: Id) =>
+    act(eventId, () => stopTimer(db, eventId).then((change) => change && undoToast([change])));
 
   /** Under a timer that has run suspiciously long: opens it in the edit sheet to end it at the right time. */
   const forgotHint = (babyName: string, eventId: Id) => {
@@ -96,15 +105,6 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   return (
     <section>
       <VisuallyHidden as="h1">{t('tab.home')}</VisuallyHidden>
-      {reminder.show && (
-        <BackupBanner
-          daysSince={reminder.daysSince}
-          onBackup={onBackup}
-          onSnooze={() =>
-            void onSettingsChange({ backupReminderSnoozedUntil: snoozeUntil(Date.now()) })
-          }
-        />
-      )}
       {babies.length === 0 ? (
         <Card className={styles.empty}>
           <p>{t('home.empty')}</p>
@@ -116,60 +116,56 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
           <RestoreButton onFile={onImportFile} />
         </Card>
       ) : (
-        <>
-          {babies.map((baby) => {
-            const status = babyStatus(events, baby.id);
-            const running = status.runningFeed;
-            const asleep = status.sleep.state === 'asleep' ? status.sleep : null;
-            return (
-              <BabyCard key={baby.id} baby={baby} status={status} now={now}>
-                {(running || asleep) && (
-                  <div className={styles.timerActions}>
-                    {running && (
-                      <>
-                        <div className={styles.timerRow} data-testid="timer-row">
-                          <Button
-                            aria-label={`${baby.name}: ${t('timer.switchSide')}`}
-                            onClick={() =>
-                              act(running.eventId, () => switchBreastSide(db, running.eventId))
-                            }
-                          >
-                            {t('timer.switchSide')}
-                          </Button>
-                          <Button
-                            variant="primary"
-                            aria-label={`${baby.name}: ${t('timer.stopFeed')}`}
-                            onClick={() =>
-                              act(running.eventId, () => stopEvent(db, running.eventId))
-                            }
-                          >
-                            {t('timer.stopFeed')}
-                          </Button>
-                        </div>
-                        {forgotHint(baby.name, running.eventId)}
-                      </>
-                    )}
-                    {asleep && (
-                      <>
-                        <div className={styles.timerRow} data-testid="timer-row">
-                          <Button
-                            variant="primary"
-                            aria-label={`${baby.name}: ${t('timer.wakeUp')}`}
-                            onClick={() => act(asleep.eventId, () => stopEvent(db, asleep.eventId))}
-                          >
-                            {t('timer.wakeUp')}
-                          </Button>
-                        </div>
-                        {forgotHint(baby.name, asleep.eventId)}
-                      </>
-                    )}
-                  </div>
-                )}
-              </BabyCard>
-            );
-          })}
-          <QuickActions onPick={setSheet} />
-        </>
+        babies.map((baby) => {
+          const status = babyStatus(events, baby.id);
+          const today = dailyTotals(events, baby.id, from, to, now);
+          const running = status.runningFeed;
+          const asleep = status.sleep.state === 'asleep' ? status.sleep : null;
+          const live = (
+            <>
+              {asleep && (
+                <LiveStrip
+                  kind="sleep"
+                  name={baby.name}
+                  since={asleep.since}
+                  onStop={() => stop(asleep.eventId)}
+                  hint={forgotHint(baby.name, asleep.eventId)}
+                />
+              )}
+              {running && (
+                <LiveStrip
+                  kind="breastfeed"
+                  name={baby.name}
+                  since={running.startAt}
+                  side={running.side}
+                  onSwitch={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}
+                  onStop={() => stop(running.eventId)}
+                  hint={forgotHint(baby.name, running.eventId)}
+                />
+              )}
+            </>
+          );
+          return (
+            <BabyCard
+              key={baby.id}
+              baby={baby}
+              status={status}
+              today={today}
+              now={now}
+              live={live}
+              onPick={(kind) => setRequest({ kind, babyId: baby.id })}
+            />
+          );
+        })
+      )}
+      {babies.length > 0 && reminder.show && (
+        <BackupBanner
+          daysSince={reminder.daysSince}
+          onBackup={onBackup}
+          onSnooze={() =>
+            void onSettingsChange({ backupReminderSnoozedUntil: snoozeUntil(Date.now()) })
+          }
+        />
       )}
       <BabyFormDialog
         open={adding}
@@ -177,11 +173,10 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
         onClose={() => setAdding(false)}
       />
       <LogSheet
-        kind={sheet}
+        request={request}
         babies={babies}
-        defaultBabyIds={settings.lastBabyIds}
-        onClose={() => setSheet(null)}
-        onLogged={(ids) => void onSettingsChange({ lastBabyIds: ids })}
+        events={events}
+        onClose={() => setRequest(null)}
       />
       <EditSheet event={editing} babies={babies} onClose={() => setEditing(null)} />
     </section>

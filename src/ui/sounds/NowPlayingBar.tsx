@@ -7,7 +7,7 @@ import { useRemaining } from './useRemaining';
 
 interface Props {
   state: EngineState;
-  /** Opens the Sesler tab. */
+  /** Opens the sounds tab. */
   onOpen: () => void;
   onPlay: () => void;
   onPause: () => void;

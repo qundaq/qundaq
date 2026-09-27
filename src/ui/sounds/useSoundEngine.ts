@@ -12,7 +12,7 @@ let engine: SoundEngine | null = null;
 
 /**
  * The app's one engine, created on first use and kept for the session, so playback goes on across tab
- * switches; the Sesler tab is only a view of it. Tests build their own with createSoundEngine (R19).
+ * switches; the sounds tab is only a view of it. Tests build their own with createSoundEngine (R19).
  */
 export function getSoundEngine(): SoundEngine {
   if (engine) return engine;

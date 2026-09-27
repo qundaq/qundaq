@@ -115,14 +115,14 @@ export function ImportForm({
   if (!result.ok) {
     return (
       <div ref={root}>
-        <SheetMessage message={t(`import.error.${result.error}`)} onClose={onClose} />
+        <SheetMessage message={t(`import.error.${result.error}`)} />
       </div>
     );
   }
   if (phase === 'failed' || plan === 'failed') {
     return (
       <div ref={root}>
-        <SheetMessage message={t('import.failed')} onClose={onClose} />
+        <SheetMessage message={t('import.failed')} />
       </div>
     );
   }

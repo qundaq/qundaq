@@ -9,7 +9,7 @@ import styles from './Settings.module.css';
 const SAVE_AFTER_MS = 300;
 
 /**
- * Ayarlar → Ses güvenlik sınırı: the upper bound of the Sesler tab's volume (a slider value in 0.2–1).
+ * Settings → volume safety cap (settings.cap.title): the upper bound of the Sounds tab's volume (a slider value in 0.2–1).
  * Above the default the safety advice stays in view (R12). Saving goes through Shell, which hands the
  * new cap to the engine; the engine never gets louder for it (R1).
  */

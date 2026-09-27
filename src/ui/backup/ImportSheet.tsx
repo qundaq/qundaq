@@ -11,7 +11,7 @@ export interface Props {
   source: ImportSource | null; // null: closed
   choices: ImportChoices;
   onChoicesChange: (next: ImportChoices) => void;
-  /** "Önce bu cihazın yedeğini al": Shell swaps to the export sheet and comes back here afterwards. */
+  /** import.backupFirst ("back up this device first"): Shell swaps to the export sheet and comes back here afterwards. */
   onBackupFirst: () => void;
   onSettingsReplaced: (next: Settings) => void;
   /** The import was written (before the settings are read back), so Shell can start a crashed screen over. */
@@ -33,7 +33,6 @@ export function ImportSheet({ source, onClose, onImported, ...rest }: Props) {
           fallback={() => (
             <SheetMessage
               message={t(committed.current === session.id ? 'import.failedAfter' : 'import.failed')}
-              onClose={onClose}
             />
           )}
         >

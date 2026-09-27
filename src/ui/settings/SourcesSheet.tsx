@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useT } from '../app/I18nProvider';
-import { Button } from '../shared/Button';
 import { Sheet } from '../shared/Sheet';
 import styles from './Settings.module.css';
 
@@ -10,7 +9,7 @@ export const SOURCES_PATH = 'sounds/SOURCES.md';
 type Loaded = { state: 'loading' } | { state: 'ready'; text: string } | { state: 'failed' };
 
 /**
- * Ayarlar → Hakkında → Ses kaynakları: shows public/sounds/SOURCES.md as preformatted text. A fetch, not
+ * Settings → About → sound sources (settings.about.title, settings.sources): shows public/sounds/SOURCES.md as preformatted text. A fetch, not
  * a navigation: the service worker answers every navigation with index.html, and a home-screen app has
  * no back button (R9). The fetch is same-origin and comes from the cache, so it works in airplane mode.
  */
@@ -50,9 +49,6 @@ export function SourcesSheet({ open, onClose }: { open: boolean; onClose: () => 
         </p>
       )}
       {loaded.state === 'ready' && <pre className={styles.sources}>{loaded.text}</pre>}
-      <div className={styles.actions}>
-        <Button onClick={onClose}>{t('common.dismiss')}</Button>
-      </div>
     </Sheet>
   );
 }

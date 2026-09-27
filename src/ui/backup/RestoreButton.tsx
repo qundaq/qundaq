@@ -2,7 +2,7 @@ import { useT } from '../app/I18nProvider';
 import styles from './Backup.module.css';
 
 /**
- * "Yedekten geri yükle": a label styled as a button around a transparent file input, because iOS opens its
+ * import.title ("restore from backup"): a label styled as a button around a transparent file input, because iOS opens its
  * picker only on a real tap on the input. No `accept`: iOS greys out files whose type it cannot map, and
  * the validator decides anyway. The value is reset after each pick, so the same file can be picked again.
  */

@@ -11,7 +11,7 @@ import { countsAsBackup, fileSize } from './text';
 /** Files ready to share, prepared before the share tap: async work inside the tap would lose its user activation. */
 export interface Prepared {
   files: File[];
-  summary: string; // "2 bebek · 1.234 kayıt · 180 KB"
+  summary: string; // export.contents: "2 babies · 1,234 records · 180 KB"
   countsAsBackup: boolean; // only a JSON backup sets lastBackupAt
 }
 

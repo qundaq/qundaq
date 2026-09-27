@@ -14,7 +14,7 @@ import { statusText } from './text';
 import { useRemaining } from './useRemaining';
 import { useSoundEngine } from './useSoundEngine';
 
-/** The Sesler tab: a view over the engine's snapshot. Every tap that can start sound calls the engine synchronously (R6). */
+/** The sounds tab: a view over the engine's snapshot. Every tap that can start sound calls the engine synchronously (R6). */
 export function SoundsScreen() {
   const t = useT();
   const { engine, state } = useSoundEngine();

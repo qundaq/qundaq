@@ -1,80 +1,43 @@
 import type { ReactNode } from 'react';
+import { babyAge } from '../../domain/age';
 import type { BabyStatus } from '../../domain/status';
+import type { DailyTotals } from '../../domain/summary';
 import type { Baby } from '../../domain/types';
 import { resolveBabyColor } from '../babies/colors';
+import { useLocale, useT } from '../app/I18nProvider';
+import type { SheetKind } from '../log/drafts';
 import { Card } from '../shared/Card';
-import { formatAgo, formatDuration } from '../shared/format';
-import { useT } from '../app/I18nProvider';
+import { CardActions } from './CardActions';
+import { ageText, statTiles, todayLine } from './cardModel';
+import { StatTiles } from './StatTiles';
 import styles from './Home.module.css';
 
 interface Props {
   baby: Baby;
   status: BabyStatus;
+  today: DailyTotals;
   now: number;
-  children?: ReactNode; // timer controls
+  /** The live strips of the baby's running timers. */
+  live?: ReactNode;
+  onPick: (kind: SheetKind) => void;
 }
 
-export function BabyCard({ baby, status, now, children }: Props) {
+export function BabyCard({ baby, status, today, now, live, onPick }: Props) {
   const t = useT();
-
-  let feed: ReactNode = t('status.none');
-  if (status.runningFeed) {
-    feed = (
-      <span className={styles.live} data-testid="live-text">
-        {t('status.feeding', {
-          side: t(`side.${status.runningFeed.side}`),
-          duration: formatDuration(t, now - status.runningFeed.startAt),
-        })}
-      </span>
-    );
-  } else if (status.lastFeed) {
-    const detail =
-      status.lastFeed.kind === 'breastfeed'
-        ? t(`side.${status.lastFeed.side}`)
-        : t('status.bottleMl', { ml: status.lastFeed.ml });
-    feed = `${formatAgo(t, now - status.lastFeed.at)} · ${detail}`;
-  }
-
-  let sleep: ReactNode = t('status.none');
-  if (status.sleep.state === 'asleep')
-    sleep = (
-      <span className={styles.live} data-testid="live-text">
-        {t('status.asleep', { duration: formatDuration(t, now - status.sleep.since) })}
-      </span>
-    );
-  else if (status.sleep.since !== null)
-    sleep = t('status.awake', { duration: formatDuration(t, now - status.sleep.since) });
-
-  let diaper = t('status.none');
-  if (status.lastDiaper) {
-    const { wet, dirty, at } = status.lastDiaper;
-    const kind = wet && dirty ? t('diaper.both') : dirty ? t('diaper.dirty') : t('diaper.wet');
-    diaper = `${formatAgo(t, now - at)} · ${kind}`;
-  }
-
+  const locale = useLocale();
+  const color = resolveBabyColor(baby.color);
+  const age = ageText(t, babyAge(baby.birthDate, now));
   return (
-    <Card
-      as="article"
-      accent={resolveBabyColor(baby.color)}
-      aria-label={baby.name}
-      className={styles.babyCard}
-    >
-      <h2 className={styles.babyName}>{baby.name}</h2>
-      <dl className={styles.status}>
-        <div>
-          <dt>{t('status.feed')}</dt>
-          <dd>{feed}</dd>
-        </div>
-        <div>
-          <dt>{t('status.sleep')}</dt>
-          <dd>{sleep}</dd>
-        </div>
-        <div>
-          <dt>{t('status.diaper')}</dt>
-          <dd>{diaper}</dd>
-        </div>
-      </dl>
-      {children}
+    <Card as="article" accent={color} aria-label={baby.name} className={styles.babyCard}>
+      <h2 className={styles.babyHeader}>
+        <span className={styles.babyDot} style={{ background: color }} aria-hidden="true" />
+        <span className={styles.babyName}>{baby.name}</span>
+        {age && <span className={styles.babyAge}>{age}</span>}
+      </h2>
+      {live}
+      <StatTiles tiles={statTiles(t, locale, status, now)} />
+      <p className={styles.today}>{todayLine(t, today)}</p>
+      <CardActions name={baby.name} onPick={onPick} />
     </Card>
   );
 }
