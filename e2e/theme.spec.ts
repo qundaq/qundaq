@@ -1,16 +1,17 @@
 import { expect, test } from '@playwright/test';
+import { t } from './support/i18n';
 import { openTab } from './support/tracking';
 
 test('the first paint uses the stored hint before settings load', async ({ page }) => {
   await page.goto('/');
-  await openTab(page, 'Ayarlar');
+  await openTab(page, t('tab.settings'));
   await page
-    .getByRole('group', { name: 'Tema' })
-    .getByRole('button', { name: 'Açık', exact: true })
+    .getByRole('group', { name: t('settings.theme.title') })
+    .getByRole('button', { name: t('settings.theme.light'), exact: true })
     .click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('qundaq.theme'))).toBe('light');
-  const nightSwitch = page.getByRole('switch', { name: /Gece modu/ });
+  const nightSwitch = page.getByRole('switch', { name: new RegExp(t('settings.nightMode')) });
   await nightSwitch.click();
   await expect(nightSwitch).toBeChecked();
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
@@ -42,7 +43,7 @@ test('a storage that throws does not break start-up', async ({ page }) => {
     });
   });
   await page.goto('/');
-  await expect(page.getByRole('navigation', { name: 'Ana gezinme' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: t('nav.label') })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(
     await page.evaluate(() => {

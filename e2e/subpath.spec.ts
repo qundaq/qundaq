@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { addBabyInSettings, babyCard, openTab, quick } from './support/tracking';
+import { t } from './support/i18n';
+import { addBabyInSettings, babyCard, openTab, cardAction } from './support/tracking';
 
 // The site is published at https://qundaq.github.io/qundaq/. This serves one build under /qundaq/ on its
 // own port with its own request log, so the test can prove that the app asks for nothing outside it.
@@ -22,8 +23,9 @@ test('served from /qundaq/, the app loads, caches only its own paths and works o
   await servedPaths(request); // start from an empty log
 
   await page.goto(APP);
-  await openTab(page, 'Ayarlar');
-  await expect(page.getByText(/Çevrimdışı hazır/)).toBeVisible({ timeout: 20_000 });
+  await openTab(page, t('tab.settings'));
+  const offlineReady = t('settings.offline.ready').split('(')[0]!.trim();
+  await expect(page.getByText(new RegExp(offlineReady))).toBeVisible({ timeout: 20_000 });
   const installed = await servedPaths(request);
   expect(installed).toContain('/qundaq/sw.js');
   expect(
@@ -45,18 +47,18 @@ test('served from /qundaq/, the app loads, caches only its own paths and works o
   });
   const fresh = await context.newPage();
   await fresh.goto(APP);
-  await expect(fresh.getByRole('navigation', { name: 'Ana gezinme' })).toBeVisible();
+  await expect(fresh.getByRole('navigation', { name: t('nav.label') })).toBeVisible();
   expect(await fresh.evaluate(() => navigator.serviceWorker.controller?.scriptURL)).toBe(
     `${APP}sw.js`,
   );
   await addBabyInSettings(fresh, 'Ada');
-  await openTab(fresh, 'Ana');
-  await quick(fresh, 'Bez').click();
+  await openTab(fresh, t('tab.home'));
+  await cardAction(fresh, 'diaper').click();
   await fresh
-    .getByRole('dialog', { name: 'Bez' })
-    .getByRole('button', { name: 'Kaydet', exact: true })
+    .getByRole('dialog', { name: t('sheet.diaper.title') })
+    .getByRole('button', { name: t('common.save'), exact: true })
     .click();
-  await expect(babyCard(fresh, 'Ada')).toContainText('ıslak');
+  await expect(babyCard(fresh, 'Ada')).toContainText(t('diaper.wet'));
 
   expect(leaked).toEqual([]);
   // The browser's own sw.js update check may reach the server (it bypasses route()); nothing else may.

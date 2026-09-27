@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { t } from './support/i18n';
 import { fakeAudio, soundStatus, tile } from './support/audio';
 import {
   downloadedText,
@@ -8,7 +9,16 @@ import {
   stubShare,
   takeBackup,
 } from './support/backup';
-import { addBabyInSettings, babyCard, logRows, openRow, openTab } from './support/tracking';
+import {
+  addBabyInSettings,
+  babyCard,
+  cardAction,
+  feedTile,
+  logRows,
+  openOther,
+  openRow,
+  openTab,
+} from './support/tracking';
 
 // The browser may re-check the app's own sw.js for updates on navigation. That is the single request
 // MANIFESTO.md documents as outside the app's control; it carries no user data. Anything else counts
@@ -22,8 +32,9 @@ const WEBKIT_SKIP =
 
 async function installAndWaitForOfflineReady(page: Page) {
   await page.goto('./');
-  await page.getByRole('button', { name: 'Ayarlar', exact: true }).click();
-  await expect(page.getByText(/Çevrimdışı hazır/)).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: t('tab.settings'), exact: true }).click();
+  const offlineReady = t('settings.offline.ready').split('(')[0]!.trim();
+  await expect(page.getByText(new RegExp(offlineReady))).toBeVisible({ timeout: 20_000 });
 }
 
 test('shows "offline ready" once the service worker has cached the app', async ({ page }) => {
@@ -36,7 +47,7 @@ test('cold-starts with the network disabled', async ({ page, context, browserNam
   await context.setOffline(true);
   const fresh = await context.newPage();
   await fresh.goto('./');
-  await expect(fresh.getByRole('navigation', { name: 'Ana gezinme' })).toBeVisible();
+  await expect(fresh.getByRole('navigation', { name: t('nav.label') })).toBeVisible();
 });
 
 test('makes no network requests after the first load', async ({ page, context, browserName }) => {
@@ -56,108 +67,118 @@ test('makes no network requests after the first load', async ({ page, context, b
   await stubShare(page); // installed by the reload below
   await fakeAudio(page);
   await page.reload();
-  const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
-  for (const name of ['Günlük', 'Özet', 'Sesler', 'Ana', 'Ayarlar']) {
+  const nav = page.getByRole('navigation', { name: t('nav.label') });
+  for (const name of [
+    t('tab.log'),
+    t('tab.summary'),
+    t('tab.sounds'),
+    t('tab.home'),
+    t('tab.settings'),
+  ]) {
     await nav.getByRole('button', { name, exact: true }).click();
   }
 
   // The tracking flows must stay on the device too.
   await addBabyInSettings(page, 'Ada');
-  await openTab(page, 'Ana');
+  await openTab(page, t('tab.home'));
   const card = babyCard(page, 'Ada');
-  const quick = (name: string) =>
-    page.getByRole('group', { name: 'Hızlı kayıt' }).getByRole('button', { name, exact: true });
 
-  await quick('Bez').click();
-  const diaper = page.getByRole('dialog', { name: 'Bez' });
-  await diaper.getByRole('button', { name: 'Kirli', exact: true }).click();
-  await diaper.getByRole('radio', { name: 'Sarı', exact: true }).click();
-  await diaper.getByRole('button', { name: 'Kaydet', exact: true }).click();
-  await expect(card).toContainText('ıslak + kirli');
+  await cardAction(page, 'diaper').click();
+  const diaper = page.getByRole('dialog', { name: t('sheet.diaper.title') });
+  await diaper.getByRole('radio', { name: t('diaper.both.button'), exact: true }).click();
+  await diaper.getByRole('radio', { name: t('stool.color.yellow'), exact: true }).click();
+  await diaper.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(card).toContainText(t('diaper.both'));
 
-  await quick('Emzir').click();
+  await cardAction(page, 'breastfeed').click();
   await page
-    .getByRole('dialog', { name: 'Emzirme' })
-    .getByRole('button', { name: 'Başlat', exact: true })
+    .getByRole('dialog', { name: t('sheet.breastfeed.title') })
+    .getByRole('button', { name: t('side.L.button'), exact: true })
     .click();
-  await expect(card).toContainText('Emziriyor');
-  await card.getByRole('button', { name: /Emzirmeyi bitir/ }).click();
-  await expect(card.getByRole('button', { name: /Emzirmeyi bitir/ })).toHaveCount(0);
+  const feedingHeadline = t('strip.feeding', { side: '' }).split(' ·')[0]!;
+  await expect(card).toContainText(feedingHeadline);
+  await card.getByRole('button', { name: new RegExp(t('timer.stopFeed')) }).click();
+  await expect(card.getByRole('button', { name: new RegExp(t('timer.stopFeed')) })).toHaveCount(0);
 
-  await quick('Biberon').click();
-  const bottle = page.getByRole('dialog', { name: 'Biberon' });
-  await bottle.getByRole('button', { name: '90 ml', exact: true }).click();
-  await bottle.getByRole('button', { name: 'Kaydet', exact: true }).click();
-  await expect(card).toContainText('biberon 90 ml');
+  await cardAction(page, 'bottle').click();
+  const bottle = page.getByRole('dialog', { name: t('sheet.bottle.title') });
+  await bottle.getByRole('radio', { name: t('unit.ml', { ml: 90 }), exact: true }).click();
+  await bottle.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(feedTile(page, 'Ada')).toContainText('90 ml');
 
-  // History, editing, "Diğer" and the summary stay on the device as well.
-  await quick('Diğer').click();
-  const other = page.getByRole('dialog', { name: 'İlaç' });
-  await other.getByLabel('İlaç / vitamin').fill('D vitamini');
-  await other.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  // History, editing, the "Other" sheet and the summary stay on the device as well.
+  const other = await openOther(page, 'medication');
+  await other.getByLabel(t('medication.name')).fill('Vitamin D');
+  await other.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(other).toBeHidden();
 
-  await openTab(page, 'Günlük');
-  await openRow(page, 'Biberon');
-  const edit = page.getByRole('dialog', { name: 'Kaydı düzenle · Biberon' });
-  await edit.getByLabel('Miktar (ml)').fill('120');
-  await edit.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await openTab(page, t('tab.log'));
+  await openRow(page, t('sheet.bottle.title'));
+  const edit = page.getByRole('dialog', {
+    name: `${t('edit.title')} · ${t('sheet.bottle.title')}`,
+  });
+  await edit.getByLabel(t('sheet.amount')).fill('120');
+  await edit.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(logRows(page).filter({ hasText: '120 ml' })).toHaveCount(1);
-  await expect(logRows(page).filter({ hasText: 'D vitamini' })).toHaveCount(1);
+  await expect(logRows(page).filter({ hasText: 'Vitamin D' })).toHaveCount(1);
 
-  await openTab(page, 'Özet');
-  await expect(page.getByRole('table', { name: 'Son 7 gün' })).toBeVisible();
+  await openTab(page, t('tab.summary'));
+  await expect(page.getByRole('table', { name: t('summary.week') })).toBeVisible();
 
   // Sounds are generated on the device, and the source list comes from the cache.
-  await openTab(page, 'Sesler');
-  await tile(page, 'Beyaz gürültü').click();
-  await tile(page, 'Kalp atışı').click();
-  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Kalp atışı · 60 dk kaldı');
+  await openTab(page, t('tab.sounds'));
+  await tile(page, t('sound.white')).click();
+  await tile(page, t('sound.heartbeat')).click();
+  await expect(soundStatus(page)).toHaveText(
+    `${t('sounds.status.playing', { names: `${t('sound.white')} + ${t('sound.heartbeat')}` })} · ${t('sounds.remaining', { m: 60 })}`,
+  );
 
   // Saving and playing a mix from the list also stay on the device.
-  await page.getByRole('button', { name: 'Karışımı kaydet', exact: true }).click();
-  const mixSheet = page.getByRole('dialog', { name: 'Karışımı kaydet' });
-  await mixSheet.getByLabel('Karışımın adı').fill('Gece');
-  await mixSheet.getByRole('button', { name: 'Kaydet', exact: true }).click();
+  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
+  const mixSheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
+  await mixSheet.getByLabel(t('sounds.mix.name')).fill('Night');
+  await mixSheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(mixSheet).toBeHidden();
-  const mixRow = page.getByRole('listitem').filter({ hasText: 'Gece' });
-  await mixRow.getByRole('button', { name: 'Gece karışımını çal', exact: true }).click();
-  await expect(soundStatus(page)).toHaveText('Çalıyor · Beyaz gürültü + Kalp atışı · 60 dk kaldı');
+  const mixRow = page.getByRole('listitem').filter({ hasText: 'Night' });
+  await mixRow
+    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
+    .click();
+  await expect(soundStatus(page)).toHaveText(
+    `${t('sounds.status.playing', { names: `${t('sound.white')} + ${t('sound.heartbeat')}` })} · ${t('sounds.remaining', { m: 60 })}`,
+  );
 
-  await openTab(page, 'Ayarlar');
-  await page.getByRole('button', { name: 'Ses kaynakları', exact: true }).click();
-  const sources = page.getByRole('dialog', { name: 'Ses kaynakları' });
-  await expect(sources).toContainText('| white | Beyaz gürültü / White noise |');
-  await sources.getByRole('button', { name: 'Kapat', exact: true }).click();
+  await openTab(page, t('tab.settings'));
+  await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
+  const sources = page.getByRole('dialog', { name: t('settings.sources') });
+  await expect(sources).toContainText(`| white | ${t('sound.white')} / White noise |`);
+  await sources.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   await expect(sources).toBeHidden();
 
   // Backup, CSV, the download fallback and restoring stay on the device too: a file goes only where the
   // user's share sheet sends it.
   const backup = await takeBackup(page);
-  await page.getByRole('button', { name: 'CSV olarak dışa aktar', exact: true }).click();
-  const csv = page.getByRole('dialog', { name: 'CSV olarak dışa aktar' });
-  await csv.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
-  await csv.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await page.getByRole('button', { name: t('csv.title'), exact: true }).click();
+  const csv = page.getByRole('dialog', { name: t('csv.title') });
+  await csv.getByRole('button', { name: t('export.share'), exact: true }).click();
+  await csv.getByRole('button', { name: t('common.ok'), exact: true }).click();
   const exportSheet = await openExport(page);
   await failNextShare(page, 'DataError');
-  await exportSheet
-    .getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true })
-    .click();
+  await exportSheet.getByRole('button', { name: t('export.share'), exact: true }).click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    exportSheet.getByRole('button', { name: 'Dosyayı indir', exact: true }).click(),
+    exportSheet.getByRole('button', { name: t('export.download'), exact: true }).click(),
   ]);
   expect(JSON.parse(await downloadedText(download))).toMatchObject({ app: 'qundaq' });
-  await exportSheet.getByRole('button', { name: 'Evet', exact: true }).click();
-  await exportSheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await exportSheet.getByRole('button', { name: t('common.yes'), exact: true }).click();
+  await exportSheet.getByRole('button', { name: t('common.ok'), exact: true }).click();
   const restore = await pickBackupFile(page, backup);
-  await restore.getByRole('button', { name: 'Geri yükle', exact: true }).click();
+  await restore.getByRole('button', { name: t('import.applyMerge'), exact: true }).click();
   await expect(restore.getByRole('status')).toHaveText(
-    'Geri yüklendi: 0 kayıt eklendi, 0 güncellendi, 0 silindi, 0 taşındı.',
+    t('import.done.merge', { added: 0, updated: 0, removed: 0, moved: 0 }),
   );
-  await restore.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await restore.getByRole('button', { name: t('common.ok'), exact: true }).click();
 
-  await openTab(page, 'Ayarlar');
+  await openTab(page, t('tab.settings'));
   const nightSwitch = page.getByRole('switch');
   await nightSwitch.click();
   await expect(nightSwitch).toBeChecked();

@@ -1,9 +1,11 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { escapeRegExp, t } from './support/i18n';
 
 // Proves MANIFESTO.md commitment 5: a new version is downloaded only after the user taps
 // "Check for updates". Uses e2e/support/two-build-server.mjs, which serves build v1 or v2 on one URL.
 const APP = 'http://localhost:4174/';
-const READY = /Çevrimdışı hazır \(([0-9a-f]+)\)/;
+const offlineReadyPrefix = escapeRegExp(t('settings.offline.ready').split('(')[0]!.trim());
+const READY = new RegExp(`${offlineReadyPrefix} \\(([0-9a-f]+)\\)`);
 
 async function switchTo(request: APIRequestContext, build: 'v1' | 'v2') {
   expect((await request.get(`${APP}__switch?to=${build}`)).ok()).toBe(true);
@@ -15,8 +17,8 @@ async function servedPaths(request: APIRequestContext): Promise<string[]> {
 
 async function offlineReadyVersion(page: Page): Promise<string> {
   await page
-    .getByRole('navigation', { name: 'Ana gezinme' })
-    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .getByRole('navigation', { name: t('nav.label') })
+    .getByRole('button', { name: t('tab.settings'), exact: true })
     .click();
   const ready = page.getByText(READY);
   await expect(ready).toBeVisible({ timeout: 20_000 });
@@ -77,10 +79,10 @@ test('a new version is downloaded only after the user asks for it', async ({
   expect(await offlineReadyVersion(reopened)).toBe(v1);
 
   // Only the user's tap downloads v2, and "Restart" starts it.
-  await reopened.getByRole('button', { name: 'Güncellemeleri kontrol et', exact: true }).click();
-  await expect(reopened.getByText('Yeni sürüm hazır.')).toBeVisible({ timeout: 30_000 });
+  await reopened.getByRole('button', { name: t('settings.update.check'), exact: true }).click();
+  await expect(reopened.getByText(t('settings.update.ready'))).toBeVisible({ timeout: 30_000 });
   const reloaded = reopened.waitForEvent('load');
-  await reopened.getByRole('button', { name: 'Yeniden başlat', exact: true }).click();
+  await reopened.getByRole('button', { name: t('settings.update.apply'), exact: true }).click();
   await reloaded;
   const after = await offlineReadyVersion(reopened);
   expect(after).not.toBe(v1);

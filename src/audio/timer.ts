@@ -14,7 +14,7 @@ export function timerEndsAt(now: number, minutes: TimerMinutes): number {
   return now + minutes * MINUTE;
 }
 
-/** Whole minutes left, rounded up ("24 dk kaldı"); 0 once the timer has ended. */
+/** Whole minutes left, rounded up (sounds.remaining, "{m} minutes left"); 0 once the timer has ended. */
 export function minutesLeft(endsAt: number, now: number): number {
   return Math.max(0, Math.ceil((endsAt - now) / MINUTE));
 }

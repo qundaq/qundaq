@@ -1,5 +1,8 @@
 import { chromium, devices, expect, test } from '@playwright/test';
+import { escapeRegExp, t } from './support/i18n';
 import { addBabyInSettings, babyCard, openTab } from './support/tracking';
+
+const OFFLINE_READY = new RegExp(escapeRegExp(t('settings.offline.ready').split('(')[0]!.trim()));
 
 const APP = 'http://localhost:4173/';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
@@ -22,7 +25,7 @@ test('the app opens from a closed browser with the network off, data included', 
     const page = first.pages()[0] ?? (await first.newPage());
     await page.goto(APP);
     await addBabyInSettings(page, 'Ada');
-    await expect(page.getByText(/Çevrimdışı hazır/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(OFFLINE_READY)).toBeVisible({ timeout: 20_000 });
   } finally {
     await first.close();
   }
@@ -31,8 +34,8 @@ test('the app opens from a closed browser with the network off, data included', 
   try {
     const page = second.pages()[0] ?? (await second.newPage());
     await page.goto(APP);
-    await expect(page.getByRole('navigation', { name: 'Ana gezinme' })).toBeVisible();
-    await openTab(page, 'Ana');
+    await expect(page.getByRole('navigation', { name: t('nav.label') })).toBeVisible();
+    await openTab(page, t('tab.home'));
     await expect(babyCard(page, 'Ada')).toBeVisible();
   } finally {
     await second.close();

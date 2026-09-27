@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { Download, Page } from '@playwright/test';
+import { t } from './i18n';
 
 export interface SharedFile {
   name: string;
@@ -82,14 +83,20 @@ export async function downloadedText(download: Download): Promise<string> {
   return readFile(await download.path(), 'utf8');
 }
 
-/** Ayarlar → Yedek al; returns the open export sheet. */
+/** Settings → back up (export.title); returns the open export sheet. */
 export async function openExport(page: Page) {
   await page
-    .getByRole('navigation', { name: 'Ana gezinme' })
-    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .getByRole('navigation', { name: t('nav.label') })
+    .getByRole('button', { name: t('tab.settings'), exact: true })
     .click();
-  await page.getByRole('button', { name: 'Yedek al', exact: true }).click();
-  return page.getByRole('dialog', { name: 'Yedek al' });
+  await page.getByRole('button', { name: t('export.title'), exact: true }).click();
+  return page.getByRole('dialog', { name: t('export.title') });
+}
+
+/** The fixed start of backup.last ("Last backup: <today's word> (") up to the opening parenthesis. */
+export function lastBackupPrefix(): string {
+  const full = t('backup.last', { ago: t('backup.today'), date: '' });
+  return full.slice(0, full.indexOf('(') + 1);
 }
 
 /** Writes a row straight into IndexedDB, past the app and its checks, as a bug or a bad import could. */
@@ -139,12 +146,12 @@ export function babyIdOf(page: Page, name: string): Promise<string> {
   );
 }
 
-/** Ayarlar → Yedek al → share (the stub must be installed); returns the JSON text of the backup. */
+/** Settings → back up → share (the stub must be installed); returns the JSON text of the backup. */
 export async function takeBackup(page: Page): Promise<string> {
   const before = (await sharedFiles(page)).length;
   const sheet = await openExport(page);
-  await sheet.getByRole('button', { name: "Dosyalar'a kaydet / paylaş", exact: true }).click();
-  await sheet.getByRole('button', { name: 'Tamam', exact: true }).click();
+  await sheet.getByRole('button', { name: t('export.share'), exact: true }).click();
+  await sheet.getByRole('button', { name: t('common.ok'), exact: true }).click();
   const files = await sharedFiles(page);
   if (files.length !== before + 1)
     throw new Error(`expected one new shared file, got ${files.length - before}`);
@@ -171,14 +178,14 @@ export async function clearAppData(page: Page) {
   await page.goto('./');
 }
 
-/** Ayarlar → Yedekten geri yükle with a file holding `text`; returns the import sheet. */
+/** Settings → restore from backup (import.title) with a file holding `text`; returns the import sheet. */
 export async function pickBackupFile(page: Page, text: string, name = 'qundaq-backup.json') {
   await page
-    .getByRole('navigation', { name: 'Ana gezinme' })
-    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .getByRole('navigation', { name: t('nav.label') })
+    .getByRole('button', { name: t('tab.settings'), exact: true })
     .click();
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(text) });
-  return page.getByRole('dialog', { name: 'Yedekten geri yükle' });
+  return page.getByRole('dialog', { name: t('import.title') });
 }

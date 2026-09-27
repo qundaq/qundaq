@@ -19,7 +19,7 @@ describe('dictionaries', () => {
 
 describe('translate', () => {
   it('returns the string for the locale', () => {
-    expect(translate('tr', 'tab.settings')).toBe('Ayarlar');
+    expect(translate('tr', 'tab.settings')).toBe(tr['tab.settings']);
     expect(translate('en', 'tab.settings')).toBe('Settings');
   });
 
@@ -32,6 +32,21 @@ describe('translate', () => {
   it('leaves unknown placeholders intact', () => {
     expect(translate('en', 'settings.about.version', { version: '1.2.3' })).toBe(
       'Version 1.2.3 ({commit})',
+    );
+  });
+});
+
+describe('English copy', () => {
+  it('the sheet close button reads "Close" (spec §5.1)', () => {
+    expect(translate('en', 'common.dismiss')).toBe('Close');
+  });
+
+  it('the one-timer notes read the same for one baby and for two', () => {
+    expect(translate('en', 'conflict.sleepEnds', { names: 'Ada, Cal' })).toBe(
+      'Asleep: Ada, Cal. Starting the feed ends the sleep then.',
+    );
+    expect(translate('en', 'conflict.feedEnds', { names: 'Ada' })).toBe(
+      'Feeding: Ada. Starting the sleep ends the feed then.',
     );
   });
 });
