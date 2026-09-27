@@ -12,6 +12,9 @@ import {
 } from '../backup/importFile';
 import { ImportSheet } from '../backup/ImportSheet';
 import { ErrorProvider, useReportError } from '../shared/ErrorBanner';
+import { ToastProvider } from '../shared/ToastBanner';
+import styles from './App.module.css';
+import { Brand, BrandDate } from './Brand';
 import { ErrorBoundary } from './ErrorBoundary';
 import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from '../history/LogScreen';
 import { I18nProvider, useT } from './I18nProvider';
@@ -30,6 +33,7 @@ import {
 } from '../sounds/text';
 import { useMediaSession, useSoundEngine } from '../sounds/useSoundEngine';
 import { DEFAULT_SUMMARY_VIEW, SummaryScreen, type SummaryView } from '../summary/SummaryScreen';
+import { useApplyTheme } from './useTheme';
 
 const fallbackLocale = detectLocale(navigator.language);
 
@@ -48,7 +52,6 @@ export function App() {
   useEffect(() => {
     if (!settings) return;
     document.documentElement.lang = settings.locale;
-    document.documentElement.dataset.night = String(settings.nightMode);
   }, [settings]);
 
   if (!settings) return null;
@@ -56,7 +59,9 @@ export function App() {
   return (
     <I18nProvider locale={settings.locale}>
       <ErrorProvider>
-        <Shell settings={settings} onSettingsReplaced={setSettings} />
+        <ToastProvider>
+          <Shell settings={settings} onSettingsReplaced={setSettings} />
+        </ToastProvider>
       </ErrorProvider>
     </I18nProvider>
   );
@@ -81,6 +86,7 @@ function Shell({
   settings: Settings;
   onSettingsReplaced: (next: Settings) => void;
 }) {
+  useApplyTheme(settings);
   const t = useT();
   const report = useReportError();
   const [tab, setTab] = useState<Tab>('home');
@@ -186,7 +192,12 @@ function Shell({
 
   return (
     <>
-      <main className="screen">
+      <Brand
+        context={
+          tab === 'home' || tab === 'summary' ? <BrandDate locale={settings.locale} /> : undefined
+        }
+      />
+      <main className={styles.screen}>
         {/* Keyed by tab and import: a crash on one screen never blocks the others, and switching tabs or
             restoring a backup starts over. */}
         <ErrorBoundary

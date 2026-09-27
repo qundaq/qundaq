@@ -10,7 +10,7 @@ test('shows five tabs and switches screens', async ({ page }) => {
     await expect(nav.getByRole('button', { name, exact: true })).toBeVisible();
   }
   await nav.getByRole('button', { name: 'Ayarlar', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ayarlar' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ayarlar' })).toBeAttached();
   await expect(nav.getByRole('button', { name: 'Ayarlar', exact: true })).toHaveAttribute(
     'aria-current',
     'page',
@@ -34,4 +34,53 @@ test('night mode persists across reloads', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
+});
+
+test('theme: light and system are chosen in Ayarlar, persist, and night mode wins', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .click();
+  const theme = page.getByRole('group', { name: 'Tema' });
+  await theme.getByRole('button', { name: 'Açık', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#f3f5f8');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page
+    .getByRole('navigation', { name: 'Ana gezinme' })
+    .getByRole('button', { name: 'Ayarlar', exact: true })
+    .click();
+  // A settings toggle saves through an async IndexedDB round trip (like every setting), so its checked
+  // state settles a beat after the click; toBeChecked()/not.toBeChecked() retry until it does, unlike
+  // check()/uncheck(), which verify only once, right after the click, and would flake on that gap.
+  const nightSwitch = page.getByRole('switch', { name: /Gece modu/ });
+  await nightSwitch.click();
+  await expect(nightSwitch).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-night', 'true');
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#000000');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await nightSwitch.click();
+  await expect(nightSwitch).not.toBeChecked();
+  await theme.getByRole('button', { name: 'Sistem', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+});
+
+test('every screen starts with the brand row and the tab bar has five labelled icons', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('banner').getByText('Qundaq')).toBeVisible();
+  const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
+  await expect(nav.getByRole('button')).toHaveCount(5);
+  await expect(nav.locator('svg')).toHaveCount(5);
+  for (const name of ['Günlük', 'Özet', 'Sesler', 'Ayarlar']) {
+    await nav.getByRole('button', { name, exact: true }).click();
+    await expect(page.getByRole('banner').getByText('Qundaq')).toBeVisible();
+  }
 });
