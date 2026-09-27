@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { translate } from '../../src/i18n';
 import { HOUR, MINUTE } from '../../src/domain/time';
-import { formatAgo, formatDuration } from '../../src/ui/shared/format';
+import { brandDate, formatAgo, formatDuration } from '../../src/ui/shared/format';
 
 const tr = (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) =>
   translate('tr', key, vars);
@@ -33,5 +33,13 @@ describe('formatAgo', () => {
   it('otherwise says "<duration> ago"', () => {
     expect(formatAgo(tr, 10 * MINUTE)).toBe('10 dk önce');
     expect(formatAgo(en, HOUR)).toBe('1 h 0 min ago');
+  });
+});
+
+describe('brandDate', () => {
+  it('shows the weekday and the short date', () => {
+    const sat = new Date(2026, 8, 26, 10).getTime();
+    expect(brandDate('tr', sat)).toBe('Cumartesi, 26 Eyl');
+    expect(brandDate('en', sat)).toBe('Saturday, Sep 26');
   });
 });
