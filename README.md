@@ -45,6 +45,8 @@ Your entries live only on your phone, and iOS may delete a home-screen app's sto
 
 - **Multiple babies**, each with their own name and color
 - **Quick logging** built for one-handed use: sleep, breastfeeding (left/right timer), bottle, diapers, pumping, growth, temperature, medication, notes
+- **Every entry and every stop can be undone for a few seconds.**
+- **A baby is never asleep and feeding at once: starting one ends the other.**
 - **Log for all babies at once** (e.g. a diaper round)
 - **Timeline and daily summaries**, a 7-day overview and a growth chart
 - **Stool color card** with a warning for pale/white/clay colors, an early sign of biliary atresia, one of the few things this app will ever nudge you about
@@ -142,6 +144,8 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 
 - Birden çok bebek
 - Tek elle hızlı kayıt: uyku, emzirme, biberon, bez, kaka rengi, sağım, büyüme, sağlık
+- **Her kayıt ve durdurma birkaç saniye içinde geri alınabilir.**
+- **Bir bebek aynı anda hem uyuyor hem emiyor görünmez: biri başlayınca diğeri biter.**
 - Kaydı tüm bebeklere birden işleme
 - Günlük, özet ve büyüme grafiği
 - Uyarılı kaka renk kartı
