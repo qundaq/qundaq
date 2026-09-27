@@ -69,7 +69,7 @@ export interface MixLayer {
   gain: number;
 }
 
-/** A saved sound mix (Sesler → Karışımı kaydet). Stores neither the master level nor the timer. */
+/** A saved sound mix (Sounds tab → save mix). Stores neither the master level nor the timer. */
 export interface Mix {
   id: Id;
   name: string;

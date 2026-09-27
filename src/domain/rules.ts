@@ -6,6 +6,7 @@ export type RuleViolation =
   | 'in-future'
   | 'end-before-start'
   | 'already-running'
+  | 'running-overlap'
   | 'segments-invalid'
   | 'amount-invalid'
   | 'diaper-empty'
@@ -105,13 +106,13 @@ export function validateEvent(
   if (draft.note !== undefined && draft.note.length > TEXT_LIMITS.note)
     violations.add('text-too-long');
 
+  // One running timer per baby: a sleep and a breastfeed never run at once for the same child (Plan 8 §6.3).
   if (isOpen(draft)) {
     const clash = others.some(
       (other) =>
         other.id !== selfId &&
         other.deletedAt === undefined &&
         other.babyId === draft.babyId &&
-        other.type === draft.type &&
         isOpen(other),
     );
     if (clash) violations.add('already-running');
@@ -173,7 +174,7 @@ export function validateBabyName(name: string): RuleViolation[] {
   return name.trim() === '' ? ['name-required'] : [];
 }
 
-/** A saved mix's name: trimmed, 1–40 characters. Duplicates are allowed (two phones' "Gece" both survive a merge). */
+/** A saved mix's name: trimmed, 1–40 characters. Duplicates are allowed (two phones' same-named mix both survive a merge). */
 export function validateMixName(name: string): RuleViolation[] {
   const trimmed = name.trim();
   if (trimmed === '') return ['name-required'];

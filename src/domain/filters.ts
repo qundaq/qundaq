@@ -31,13 +31,8 @@ export function matchesFilters(
   return type === 'all' || TYPES[type].includes(event.type);
 }
 
-/** The chosen baby if still live, else the first live one of `preferred` (last used), else the first baby. */
-export function pickBaby(
-  babies: readonly { id: Id }[],
-  chosen: Id | null,
-  preferred: readonly Id[],
-): Id | null {
-  const live = new Set(babies.map((baby) => baby.id));
-  if (chosen !== null && live.has(chosen)) return chosen;
-  return preferred.find((id) => live.has(id)) ?? babies[0]?.id ?? null;
+/** The chosen baby if still live, else the first baby. */
+export function pickBaby(babies: readonly { id: Id }[], chosen: Id | null): Id | null {
+  if (chosen !== null && babies.some((baby) => baby.id === chosen)) return chosen;
+  return babies[0]?.id ?? null;
 }

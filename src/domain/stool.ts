@@ -13,6 +13,12 @@ export const STOOL_COLORS: readonly { id: StoolColor; hex: string }[] = [
   { id: 'black', hex: '#1c1c1c' },
 ];
 
+/** The colour card's two groups: the usual colours, and the ones a doctor should hear about (stoolAlert). */
+export const STOOL_GROUPS: { usual: readonly StoolColor[]; doctor: readonly StoolColor[] } = {
+  usual: ['yellow', 'mustard', 'green', 'brown'],
+  doctor: ['pale-yellow', 'clay', 'white', 'red', 'black'],
+};
+
 export type StoolAlert = 'pale' | 'blood' | 'black';
 
 /** Pale/white/clay stool can signal biliary atresia; red can be blood; black is normal only as meconium. */

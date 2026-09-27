@@ -17,7 +17,7 @@ export function isSoundId(value: unknown): value is SoundId {
   return typeof value === 'string' && (SOUND_IDS as readonly string[]).includes(value);
 }
 
-/** Layers that play at once: the Sesler tiles, a saved mix, the last selection and a backup's mixes. */
+/** Layers that play at once: the sounds tab's tiles, a saved mix, the last selection and a backup's mixes. */
 export const MAX_LAYERS = 6;
 
 /** The sleep timer's chips: 15, 30 or 60 minutes, or ∞ (null: no timer). */
@@ -32,7 +32,7 @@ export function isTimerChoice(value: unknown): value is TimerChoice {
   return value === null || (TIMER_MINUTES as readonly unknown[]).includes(value);
 }
 
-/** Ayarlar → Ses güvenlik sınırı: the cap's range and default, as slider values (the gain is the square). */
+/** Settings → volume safety cap (settings.cap.title): the cap's range and default, as slider values (the gain is the square). */
 export const MIN_CAP = 0.2;
 export const DEFAULT_CAP = 0.5;
 
@@ -48,7 +48,7 @@ export function readVolumeCap(value: unknown): number {
   return isUnit(value) && value >= MIN_CAP ? value : DEFAULT_CAP;
 }
 
-/** What the Sesler tab remembers between launches: the selection, never the playing state. */
+/** What the sounds tab remembers between launches: the selection, never the playing state. */
 export interface LastSound {
   layers: { soundId: SoundId; level: number }[];
   master: number;

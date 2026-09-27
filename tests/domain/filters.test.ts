@@ -36,10 +36,10 @@ describe('matchesFilters', () => {
 describe('pickBaby', () => {
   const babies = [{ id: 'a' }, { id: 'b' }];
 
-  it('keeps a live choice, else the first live last-used baby, else the first baby', () => {
-    expect(pickBaby(babies, 'b', ['a'])).toBe('b');
-    expect(pickBaby(babies, 'gone', ['gone', 'b'])).toBe('b');
-    expect(pickBaby(babies, null, [])).toBe('a');
-    expect(pickBaby([], null, ['a'])).toBeNull();
+  it('keeps a live choice, else the first baby (Settings.lastBabyIds is never read, spec §8)', () => {
+    expect(pickBaby(babies, 'b')).toBe('b');
+    expect(pickBaby(babies, 'gone')).toBe('a');
+    expect(pickBaby(babies, null)).toBe('a');
+    expect(pickBaby([], null)).toBeNull();
   });
 });

@@ -99,7 +99,28 @@ describe('validateEvent — running timers', () => {
     };
     expect(validateEvent(draft, [openFeedA], NOW)).toEqual(['already-running']);
     expect(validateEvent({ ...draft, babyId: 'b' }, [openFeedA], NOW)).toEqual([]);
-    expect(validateEvent(draft, [openSleepA], NOW)).toEqual([]);
+    expect(validateEvent(draft, [openSleepA], NOW)).toEqual(['already-running']);
+  });
+
+  it('one running timer per baby: a sleep refuses a running feed, a pump is never affected', () => {
+    const openFeedA = saved(
+      {
+        type: 'breastfeed',
+        babyId: 'a',
+        startAt: NOW - 10 * MINUTE,
+        segments: [{ side: 'L', start: NOW - 10 * MINUTE }],
+      },
+      'feeding',
+    );
+    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW }, [openFeedA], NOW)).toEqual([
+      'already-running',
+    ]);
+    expect(validateEvent({ type: 'sleep', babyId: 'b', startAt: NOW }, [openFeedA], NOW)).toEqual(
+      [],
+    );
+    expect(
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60 }, [openFeedA], NOW),
+    ).toEqual([]);
   });
 
   it('ignores finished, deleted and self events', () => {
@@ -380,7 +401,7 @@ describe('validateEvent — temperature, medication and notes', () => {
     ).toEqual(['note-required']);
     expect(
       validateEvent(
-        { type: 'healthNote', babyId: 'a', startAt: NOW, note: 'Aşı yapıldı' },
+        { type: 'healthNote', babyId: 'a', startAt: NOW, note: 'Vaccine given' },
         [],
         NOW,
       ),
@@ -407,7 +428,7 @@ describe('ValidationError — babyIds', () => {
 
 describe('validateMixName', () => {
   it('needs a name of at most 40 characters after trimming', () => {
-    expect(validateMixName('Gece')).toEqual([]);
+    expect(validateMixName('Night')).toEqual([]);
     expect(validateMixName('   ')).toEqual(['name-required']);
     expect(validateMixName(` ${'x'.repeat(MIX_NAME_MAX)} `)).toEqual([]);
     expect(validateMixName('x'.repeat(MIX_NAME_MAX + 1))).toEqual(['text-too-long']);
