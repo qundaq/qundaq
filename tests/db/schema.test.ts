@@ -23,6 +23,7 @@ describe('schema', () => {
     expect(await loadSettings(db, 'tr')).toEqual({
       locale: 'en',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
     expect(await db.babies.count()).toBe(0);
@@ -103,6 +104,7 @@ describe('schema', () => {
     expect(await loadSettings(db, 'en')).toEqual({
       locale: 'tr',
       nightMode: true,
+      theme: 'dark',
       lastBabyIds: [],
     });
     await db.mixes.add({

@@ -1,0 +1,92 @@
+/* Qundaq design tokens. Dark is the default; light overrides through data-theme; night overrides both.
+   Every colour the app uses is here (baby colours included); components never hold a hex. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1420;
+  --surface: #161d2c;
+  --surface-2: #1f283a;
+  --border: #293349;
+  --text: #e8ecf4;
+  --muted: #8e98b0;
+  --primary: #f2eee6;
+  --on-primary: #0e1420;
+  --live: #e0b660;
+  --info: #5cc0d2;
+  --danger: #ff7a7a;
+  --ok: #6fd39a;
+  --baby-blue: #5cc0d2;
+  --baby-pink: #f08ab5;
+  --baby-green: #8fd68f;
+  --baby-yellow: #f2c561;
+  --baby-purple: #b49cf5;
+  --baby-orange: #ff9f6e;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --tap: 48px;
+  --tabbar-h: 64px;
+  --nowplaying-h: 0px;
+  --z-alert: 10;
+  --z-sheet: 20;
+  --z-toast: 30;
+  --font-display: 700 30px/1.1 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-title: 700 20px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 600 15px/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 400 15px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-caption: 400 12.5px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--info);
+  --shadow-toast: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #e8ecf2;
+  --border: #d8dee8;
+  --text: #1c2230;
+  --muted: #5f6983;
+  --primary: #1c2230;
+  --on-primary: #ffffff;
+  --live: #855d10;
+  --info: #146a79;
+  --danger: #a83732;
+  --ok: #237148;
+  --baby-blue: #2c8ca0;
+  --baby-pink: #d9548a;
+  --baby-green: #3f9a52;
+  --baby-yellow: #b8841a;
+  --baby-purple: #7a5fd6;
+  --baby-orange: #d9702f;
+  --shadow-toast: 0 8px 24px rgb(20 30 50 / 0.18);
+}
+
+/* Night: one brick/amber band on black, on purpose low brightness. Wins over either theme. */
+:root[data-night='true'] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #0c0a12;
+  --surface-2: #160f1c;
+  --border: #241a2c;
+  --text: #d27a6a;
+  --muted: #7d4a44;
+  --primary: #d47a57;
+  --on-primary: #000000;
+  --live: #e08a5a;
+  --info: #8c4e46;
+  --danger: #ff5252;
+  --ok: #a35a2f;
+  --baby-blue: #a76d5a;
+  --baby-pink: #db7c78;
+  --baby-green: #b98a62;
+  --baby-yellow: #dc8f5b;
+  --baby-purple: #c48472;
+  --baby-orange: #e9865e;
+}

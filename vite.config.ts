@@ -16,5 +16,9 @@ export default defineConfig({
     sourcemap: false,
   },
   preview: { port: 4173, strictPort: true },
-  test: { include: ['tests/**/*.test.ts'], environment: 'node' },
+  test: {
+    include: ['tests/**/*.test.{ts,tsx}'],
+    environment: 'node',
+    css: { modules: { classNameStrategy: 'non-scoped' } },
+  },
 });
