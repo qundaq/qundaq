@@ -32,8 +32,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ## Names
 
-`house`, `list`, `chart-column`, `audio-lines`, `sliders-horizontal`, `heart`, `milk`, `moon`,
-`baby`, `ellipsis`, `droplets`, `ruler`, `thermometer`, `pill`, `notebook-pen`, `plus`, `pencil`,
+`house`, `list`, `chart-column`, `audio-lines`, `arrow-left-right`, `sliders-horizontal`, `heart`, `milk`, `moon`,
+`baby`, `ellipsis`, `droplets`, `ruler`, `thermometer`, `pill`, `notebook-pen`, `plus`, `minus`, `pencil`,
 `trash-2`, `check`, `x`, `chevron-left`, `chevron-right`, `calendar`, `undo-2`, `play`, `pause`,
 `volume-2`, `download`, `upload`, `triangle-alert`, `info`
 

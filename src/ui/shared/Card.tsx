@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from 'react';
+import { cx } from './cx';
 import styles from './Card.module.css';
 
 export interface CardProps extends HTMLAttributes<HTMLElement> {
@@ -16,14 +17,12 @@ export function Card({
   children,
   ...rest
 }: CardProps) {
-  const classes = [
+  const classes = cx(
     styles.card,
     accent ? styles.accent : '',
     tone !== 'default' ? styles[tone] : '',
     className ?? '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  );
   return (
     <Tag
       className={classes}

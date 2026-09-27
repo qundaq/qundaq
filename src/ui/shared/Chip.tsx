@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { cx } from './cx';
 import { Icon } from './Icon';
 import type { IconName } from './icons';
 import styles from './Chip.module.css';
@@ -16,9 +17,7 @@ export function Chip({ selected, mode = 'toggle', icon, className, children, ...
   return (
     <button
       type="button"
-      className={[styles.chip, selected ? styles.selected : '', className ?? '']
-        .filter(Boolean)
-        .join(' ')}
+      className={cx(styles.chip, selected ? styles.selected : '', className ?? '')}
       {...a11y}
       {...rest}
     >

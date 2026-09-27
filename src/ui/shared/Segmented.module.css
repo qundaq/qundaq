@@ -1,0 +1,47 @@
+.field {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.label {
+  font: var(--font-caption);
+  color: var(--muted);
+}
+/* Visually hidden, still read (same technique as VisuallyHidden). */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.group {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.segment {
+  min-height: var(--tap);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font: var(--font-body);
+  cursor: pointer;
+}
+.checked {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+.segment:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}

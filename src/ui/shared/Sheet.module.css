@@ -20,7 +20,37 @@
   border-radius: 2px;
   background: var(--border);
 }
-.title {
-  font: var(--font-title);
+.grab {
+  touch-action: none; /* the header area belongs to the swipe, never to page scrolling */
+  cursor: grab;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin-bottom: var(--space-3);
+}
+.title {
+  flex: 1;
+  min-width: 0;
+  font: var(--font-title);
+}
+.headerButton {
+  flex: none;
+  width: var(--tap);
+  padding: 0;
+  color: var(--muted);
+}
+.footer {
+  position: sticky;
+  bottom: calc(-1 * (var(--space-4) + env(safe-area-inset-bottom)));
+  margin: var(--space-4) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-3) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet:not(.dragging) {
+    transition: transform 160ms ease-out;
+  }
 }

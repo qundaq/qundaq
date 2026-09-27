@@ -24,6 +24,9 @@
 .check {
   color: var(--ok);
 }
+.info {
+  color: var(--muted);
+}
 .message {
   flex: 1;
   min-width: 0;

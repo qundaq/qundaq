@@ -22,11 +22,14 @@ export function messageFor(
 ): string {
   const first = error instanceof ValidationError ? error.violations[0] : undefined;
   if (!first) return t('error.saveFailed');
-  if (first === 'already-running' && error instanceof ValidationError) {
+  if (
+    (first === 'already-running' || first === 'running-overlap') &&
+    error instanceof ValidationError
+  ) {
     const names = error.babyIds
       .map((id) => babies.find((baby) => baby.id === id)?.name)
       .filter((name): name is string => name !== undefined);
-    if (names.length > 0) return t('rule.already-running.named', { names: names.join(', ') });
+    if (names.length > 0) return t(`rule.${first}.named`, { names: names.join(', ') });
   }
   return t(`rule.${first}`);
 }
