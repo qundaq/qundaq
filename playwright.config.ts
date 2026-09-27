@@ -1,3 +1,9 @@
+// Several specs call the app's own date formatters (shortDate, clockTime) directly in Node to build
+// their expected strings, alongside `test.use({ timezoneId: 'Europe/Istanbul' })` for the browser
+// context. Intl in Node reads the OS timezone unless TZ is set; GitHub Actions runners default to UTC,
+// which would make the two sides disagree by the UTC+3 offset. Set before any spec or helper is loaded.
+process.env.TZ = 'Europe/Istanbul';
+
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({

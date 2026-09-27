@@ -85,6 +85,9 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-1);
+  /* The five-button row is allowed a little more width than the rest of the card, so the longest
+     action label (quick.breastfeed) still fits one line at 320px on every font a browser falls back to. */
+  margin: 0 calc(-1 * var(--space-2));
 }
 .action {
   display: flex;
@@ -109,6 +112,7 @@
 }
 .actionLabel {
   font: var(--font-label);
+  letter-spacing: -0.2px;
 }
 .empty {
   display: grid;
