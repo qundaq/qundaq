@@ -23,7 +23,7 @@ export interface ImportOptions {
    * other is deleted.
    */
   sameBabies: readonly SameBabyPair[];
-  /** Stop the file's stale running timers at the time of the backup ("Yedeğin alındığı anda durdur"). */
+  /** Stop the file's stale running timers at the time of the backup (import.stopStale). */
   stopStale: boolean;
   /**
    * Merge: device babies of `ImportPlan.follows` whose entries the user chose to leave with them (hidden,
@@ -47,9 +47,10 @@ export interface FollowingBaby {
 /**
  * Counts of the file's rows by outcome. `remove`: the file's newer deletion of a row that is live on the
  * device (an update that makes it disappear). `deleted`: tombstones that change nothing the user sees.
- * Merge with "Aynı bebek": the file's baby of a pair counts as `same`, not `add`, whether the pairing
- * deletes it or keeps it (the device ends with as many babies either way); a file entry that the pairing
- * moves is counted in `ImportPlan.moves` only, so every file row is counted exactly once.
+ * Merge with the "same baby?" pairing (import.sameBabyTitle): the file's baby of a pair counts as `same`,
+ * not `add`, whether the pairing deletes it or keeps it (the device ends with as many babies either way);
+ * a file entry that the pairing moves is counted in `ImportPlan.moves` only, so every file row is counted
+ * exactly once.
  */
 export interface TableStats {
   add: number;
@@ -94,8 +95,9 @@ export interface ImportPlan {
   /** Merge: names of the device's live babies that the file deletes. */
   removedBabies: string[];
   /**
-   * Merge: "Aynı bebek" moves, per surviving baby (the device's or the backup's, whichever the pair keeps,
-   * or the one a deleted baby's entries follow to), its name and how many live entries move onto it.
+   * Merge: same-baby pairing (import.sameBabyTitle) moves, per surviving baby (the device's or the
+   * backup's, whichever the pair keeps, or the one a deleted baby's entries follow to), its name and how
+   * many live entries move onto it.
    */
   moves: { name: string; events: number }[];
   /**
@@ -283,11 +285,11 @@ function mergePlan(
     (baby) => isLive(baby) && babies.writes.has(baby.id) && !isLive(babies.writes.get(baby.id)!),
   );
 
-  // "Aynı bebek": one of the pair survives and the other is deleted, with its entries moved to the
-  // survivor. Both phones must agree on the survivor without negotiating, so it is picked by a rule that
-  // only looks at the two baby records themselves (both phones can see both): the earlier createdAt, ties
-  // broken by the smaller id. Whichever phone's baby loses keeps working exactly like before; whichever
-  // phone's baby wins now also absorbs the other side's history.
+  // The same-baby pairing (import.sameBabyTitle): one of the pair survives and the other is deleted,
+  // with its entries moved to the survivor. Both phones must agree on the survivor without negotiating,
+  // so it is picked by a rule that only looks at the two baby records themselves (both phones can see
+  // both): the earlier createdAt, ties broken by the smaller id. Whichever phone's baby loses keeps
+  // working exactly like before; whichever phone's baby wins now also absorbs the other side's history.
   const rename = new Map<Id, Id>();
   for (const pair of options.sameBabies) {
     const mine = babies.result.get(pair.localId);

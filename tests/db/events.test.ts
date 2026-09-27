@@ -204,7 +204,7 @@ describe('timers', () => {
     expect(await stopEvent(db, sleep!.id, NOW)).toBe(true);
   });
 
-  it('stopping an already finished event is a no-op (double tap on "Emzirmeyi bitir" or "Uyandı")', async () => {
+  it('stopping an already finished event is a no-op (double tap on the "end breastfeed"/"woke up" button, timer.stopFeed/timer.wakeUp)', async () => {
     const db = freshDb();
     const [sleep] = await logEvents(
       db,
@@ -239,7 +239,7 @@ describe('timers', () => {
     expect(await switchBreastSide(db, feed!.id, NOW)).toBe(true);
   });
 
-  it('a second switch within SWITCH_DEBOUNCE_MS is ignored (double tap on "Taraf değiştir")', async () => {
+  it('a second switch within SWITCH_DEBOUNCE_MS is ignored (double tap on the "switch side" button, timer.switchSide)', async () => {
     expect(SWITCH_DEBOUNCE_MS).toBe(2000);
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
@@ -286,11 +286,12 @@ describe('timers', () => {
   it('switchBreastSide still refuses a missing, deleted or non-breastfeed event', async () => {
     const db = freshDb();
     const start = NOW - 10 * MINUTE;
+    // Two babies: a running sleep and a running feed for the same baby is refused since Plan 8 §6.3.
     const [feed, sleep] = await logEvents(
       db,
       [
         { type: 'breastfeed', babyId: 'a', startAt: start, segments: [{ side: 'L', start }] },
-        { type: 'sleep', babyId: 'a', startAt: start },
+        { type: 'sleep', babyId: 'b', startAt: start },
       ],
       start,
     );

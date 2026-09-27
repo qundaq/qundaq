@@ -13,6 +13,9 @@ import {
 } from '../../src/backup/csv';
 import { MINUTE } from '../../src/domain/time';
 import type { Baby, EventDraft, TrackerEvent } from '../../src/domain/types';
+import { translate, type MessageKey } from '../../src/i18n';
+
+const t = (key: MessageKey) => translate('tr', key);
 
 let previousTz: string | undefined;
 beforeEach(() => {
@@ -39,19 +42,17 @@ const baby = (id: string, name: string, extra: Partial<Baby> = {}): Baby => ({
 });
 const TEXT: CsvText = {
   headers: [
-    'Tarih',
-    'Başlangıç',
-    'Bitiş tarihi',
-    'Bitiş saati',
-    'Süre (dk)',
-    'Tür',
-    'Ayrıntı',
-    'Not',
+    t('csv.col.date'),
+    t('csv.col.start'),
+    t('csv.col.endDate'),
+    t('csv.col.endTime'),
+    t('csv.col.minutes'),
+    t('csv.col.type'),
+    t('csv.col.detail'),
+    t('csv.col.note'),
   ],
-  typeLabel: (type) =>
-    ({ sleep: 'Uyku', breastfeed: 'Emzirme', diaper: 'Bez', pump: 'Sağım' })[type as string] ??
-    type,
-  describe: (e) => (e.type === 'diaper' ? 'Islak' : ''),
+  typeLabel: (type) => t(`sheet.${type}.title` as MessageKey),
+  describe: (e) => (e.type === 'diaper' ? t('diaper.wet.button') : ''),
 };
 
 describe('cells and files', () => {
@@ -73,7 +74,7 @@ describe('cells and files', () => {
   it('keeps a spreadsheet from running a text cell as a formula', () => {
     for (const text of ['=SUM(A1)', '+90', '-5', '@cmd', '\tx', '\rx'])
       expect(guardFormula(text)).toBe(`'${text}`);
-    expect(guardFormula('Islak')).toBe('Islak');
+    expect(guardFormula('Wet')).toBe('Wet');
     expect(guardFormula('')).toBe('');
   });
 
@@ -100,7 +101,7 @@ describe('eventsToCsvRows', () => {
           startAt: at(26, 9, 5),
           wet: true,
           dirty: false,
-          note: '=kontrol',
+          note: '=check',
         }),
         event('s', { type: 'sleep', babyId: 'a', startAt: at(25, 22, 10), endAt: at(26, 6, 40) }),
         event('gone', { type: 'sleep', babyId: 'a', startAt: at(25, 1) }, { deletedAt: 1 }),
@@ -109,8 +110,17 @@ describe('eventsToCsvRows', () => {
     );
     expect(rows).toEqual([
       TEXT.headers,
-      ['2026-09-25', '22:10', '2026-09-26', '06:40', '510', 'Uyku', '', ''],
-      ['2026-09-26', '09:05', '', '', '', 'Bez', 'Islak', "'=kontrol"],
+      ['2026-09-25', '22:10', '2026-09-26', '06:40', '510', t('sheet.sleep.title'), '', ''],
+      [
+        '2026-09-26',
+        '09:05',
+        '',
+        '',
+        '',
+        t('sheet.diaper.title'),
+        t('diaper.wet.button'),
+        "'=check",
+      ],
     ]);
   });
 
@@ -132,7 +142,7 @@ describe('eventsToCsvRows', () => {
       ],
       TEXT,
     );
-    expect(rows[1]).toEqual(['2026-09-26', '08:00', '', '', '', 'Uyku', '', '']);
+    expect(rows[1]).toEqual(['2026-09-26', '08:00', '', '', '', t('sheet.sleep.title'), '', '']);
     expect(rows[2]!.slice(2, 5)).toEqual(['2026-09-26', '08:25', '20']);
   });
 
@@ -145,7 +155,7 @@ describe('eventsToCsvRows', () => {
     };
     expect(
       eventsToCsvRows([event('x', { type: 'sleep', babyId: 'a', startAt: at(26, 8) })], broken)[1],
-    ).toEqual(['2026-09-26', '08:00', '', '', '', 'Uyku', '', '']);
+    ).toEqual(['2026-09-26', '08:00', '', '', '', t('sheet.sleep.title'), '', '']);
   });
 
   it('a malformed note (not text) is left empty instead of breaking the file', () => {
@@ -155,20 +165,29 @@ describe('eventsToCsvRows', () => {
       { note: 42 as unknown as string },
     );
     const rows = eventsToCsvRows([odd], TEXT);
-    expect(rows[1]).toEqual(['2026-09-26', '08:00', '', '', '', 'Bez', 'Islak', '']);
+    expect(rows[1]).toEqual([
+      '2026-09-26',
+      '08:00',
+      '',
+      '',
+      '',
+      t('sheet.diaper.title'),
+      t('diaper.wet.button'),
+      '',
+    ]);
     expect(() => toCsv(rows, ';')).not.toThrow();
   });
 });
 
 describe('file names', () => {
   it('replaces characters no file system takes, trims, and stops at 40 characters', () => {
-    expect(sanitizeFileName(' Ada/Nur: "1" ')).toBe('Ada-Nur- -1-');
+    expect(sanitizeFileName(' Ada/Nora: "1" ')).toBe('Ada-Nora- -1-');
     expect(sanitizeFileName('a\u0000b|c')).toBe('a-b-c');
     expect(sanitizeFileName('x'.repeat(50))).toHaveLength(40);
   });
 
   it('numbers names that are the same when case is ignored', () => {
-    expect(uniqueNames(['Ada', 'ada', 'Can', 'ADA'])).toEqual(['Ada', 'ada-2', 'Can', 'ADA-3']);
+    expect(uniqueNames(['Ada', 'ada', 'Cal', 'ADA'])).toEqual(['Ada', 'ada-2', 'Cal', 'ADA-3']);
   });
 });
 
@@ -178,8 +197,8 @@ describe('buildCsvFiles', () => {
     events: [],
     now: at(26, 12),
     separator: ';',
-    pumpLabel: 'Sağım',
-    fallbackLabel: 'bebek',
+    pumpLabel: t('sheet.pump.title'),
+    fallbackLabel: t('csv.fallbackName'),
     text: TEXT,
     ...parts,
   });
@@ -190,7 +209,7 @@ describe('buildCsvFiles', () => {
         babies: [
           baby('a', 'Ada'),
           baby('b', 'Ada'),
-          baby('c', 'Can'),
+          baby('c', 'Cal'),
           baby('d', 'Deleted', { deletedAt: 1 }),
           baby('e', 'Old', { archived: true }),
         ],
@@ -211,10 +230,10 @@ describe('buildCsvFiles', () => {
     expect(files.map((file) => file.name)).toEqual([
       'qundaq-Ada-2026-09-26.csv',
       'qundaq-Ada-2-2026-09-26.csv',
-      'qundaq-Sağım-2026-09-26.csv',
+      `qundaq-${t('sheet.pump.title')}-2026-09-26.csv`,
     ]);
     expect(files[0]!.text).toBe(
-      '\uFEFFTarih;Başlangıç;Bitiş tarihi;Bitiş saati;Süre (dk);Tür;Ayrıntı;Not\r\n2026-09-26;09:00;;;;Bez;Islak;\r\n',
+      `\uFEFF${TEXT.headers.join(';')}\r\n2026-09-26;09:00;;;;${t('sheet.diaper.title')};${t('diaper.wet.button')};\r\n`,
     );
   });
 
@@ -225,7 +244,9 @@ describe('buildCsvFiles', () => {
         events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })],
       }),
     );
-    expect(files.map((file) => file.name)).toEqual(['qundaq-bebek-2026-09-26.csv']);
+    expect(files.map((file) => file.name)).toEqual([
+      `qundaq-${t('csv.fallbackName')}-2026-09-26.csv`,
+    ]);
   });
 
   it('a malformed baby whose name is not text gets the fallback label instead of breaking the export', () => {
@@ -236,6 +257,8 @@ describe('buildCsvFiles', () => {
         events: [event('1', { type: 'sleep', babyId: 'a', startAt: at(26, 1) })],
       }),
     );
-    expect(files.map((file) => file.name)).toEqual(['qundaq-bebek-2026-09-26.csv']);
+    expect(files.map((file) => file.name)).toEqual([
+      `qundaq-${t('csv.fallbackName')}-2026-09-26.csv`,
+    ]);
   });
 });

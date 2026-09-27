@@ -7,19 +7,20 @@ import type { TrackerDb } from './db';
 export interface Settings {
   locale: Locale;
   nightMode: boolean;
+  /** Unused since the log sheet opens from a baby's card (Plan 8); kept so older backups and phones still validate. */
   lastBabyIds: Id[];
-  /** Ayarlar → Tema. Never exported: a display preference of this device. */
+  /** Settings → Theme. Never exported: a display preference of this device. */
   theme: ThemeChoice;
   /** When this device last saved a JSON backup (a completed share, or a download the user confirmed). Never exported. */
   lastBackupAt?: number;
-  /** Home's backup reminder stays hidden until then ("Yarın hatırlat"). Never exported. */
+  /** Home's backup reminder stays hidden until then (the "remind me tomorrow" snooze, reminder.snooze). Never exported. */
   backupReminderSnoozedUntil?: number;
   /**
-   * Ayarlar → Ses güvenlik sınırı, a slider value in 0.2–1 (absent: the default, 0.5). Never exported: a
-   * restore must never raise another phone's safety limit.
+   * Settings → volume safety cap (settings.cap.title), a slider value in 0.2–1 (absent: the default, 0.5).
+   * Never exported: a restore must never raise another phone's safety limit.
    */
   volumeCap?: number;
-  /** The Sesler tab's last selection, restored at launch without playing. Never exported. */
+  /** The Sounds tab's last selection, restored at launch without playing. Never exported. */
   lastSound?: LastSound;
 }
 

@@ -109,7 +109,7 @@ describe('schema', () => {
     });
     await db.mixes.add({
       id: 'm1',
-      name: 'Gece',
+      name: 'Night',
       layers: [{ soundId: 'white', gain: 0.7 }],
       createdAt: 1,
       updatedAt: 1,

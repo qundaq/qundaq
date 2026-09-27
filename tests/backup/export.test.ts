@@ -21,7 +21,7 @@ function snapshot(): Snapshot {
       { updatedAt: T, name: 'Ada', id: 'b1', createdAt: T, archived: false, color: '#7cb7ff' },
       {
         id: 'b2',
-        name: 'Can',
+        name: 'Cal',
         color: '#ff9ecb',
         archived: false,
         createdAt: T,
@@ -59,13 +59,13 @@ function snapshot(): Snapshot {
       {
         updatedAt: T,
         layers: [{ gain: 0.7, soundId: 'white' }],
-        name: 'Gece',
+        name: 'Night',
         id: 'm1',
         createdAt: T,
       },
       {
         id: 'm2',
-        name: 'Eski',
+        name: 'Old',
         layers: [{ soundId: 'pink', gain: 0.5 }],
         createdAt: T,
         updatedAt: T + 1,

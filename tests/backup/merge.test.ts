@@ -44,7 +44,7 @@ const event = (
     ...extra,
   }) as TrackerEvent;
 
-const mix = (id: string, name = 'Gece', extra: Partial<Mix> = {}): Mix => ({
+const mix = (id: string, name = 'Night', extra: Partial<Mix> = {}): Mix => ({
   id,
   name,
   layers: [{ soundId: 'white', gain: 0.7 }],
@@ -141,7 +141,7 @@ describe('planImport: merge', () => {
         ],
       }),
       backup({
-        babies: [baby('a', 'Ada'), baby('c', 'Can')],
+        babies: [baby('a', 'Ada'), baby('c', 'Cal')],
         events: [
           event('same'),
           event('older', {}, { updatedAt: T + 5 }),
@@ -220,13 +220,13 @@ describe('planImport: merge', () => {
   it('babies follow the same rules: a newer edit updates, an older one keeps, a newer deletion removes', () => {
     const plan = planImport(
       local({
-        babies: [baby('a', 'Ada'), baby('b', 'Bora', { updatedAt: T + 5 }), baby('c', 'Cem')],
+        babies: [baby('a', 'Ada'), baby('b', 'Ben', { updatedAt: T + 5 }), baby('c', 'Sam')],
       }),
       backup({
         babies: [
-          baby('a', 'Ada Nur', { updatedAt: T + 1 }),
-          baby('b', 'Bora B', { updatedAt: T + 1 }),
-          baby('c', 'Cem', { deletedAt: T + 2, updatedAt: T + 2 }),
+          baby('a', 'Ada Nora', { updatedAt: T + 1 }),
+          baby('b', 'Ben B', { updatedAt: T + 1 }),
+          baby('c', 'Sam', { deletedAt: T + 2, updatedAt: T + 2 }),
         ],
       }),
       MERGE,
@@ -241,7 +241,7 @@ describe('planImport: merge', () => {
       deleted: 0,
     });
     expect(plan.babies.map((row) => row.id).sort()).toEqual(['a', 'c']);
-    expect(plan.removedBabies).toEqual(['Cem']);
+    expect(plan.removedBabies).toEqual(['Sam']);
   });
 
   it('a live file row that revives one deleted on the device counts as an add, not an update', () => {
@@ -272,19 +272,31 @@ describe('planImport: merge', () => {
 });
 
 describe('the same baby added again', () => {
-  it('pairs live babies with the same name (İ/ı and case alike) but different ids', () => {
+  it('pairs live babies with the same name (Turkish dotted/dotless i and case alike) but different ids', () => {
+    // \u015e/\u015f is the Turkish S-cedilla pair, \u0131 the dotless lowercase i: "I\u015eIK"/"I\u015f\u0131k" is
+    // the same word in each case.
     const pairs = findSameBabies(
       [
         baby('new-ada', 'ada'),
-        baby('new-isik', 'IŞIK'),
-        baby('shared', 'Bora'),
-        baby('old', 'Cem', { deletedAt: T }),
+        baby('new-isik', 'I\u015eIK'),
+        baby('shared', 'Ben'),
+        baby('old', 'Sam', { deletedAt: T }),
       ],
-      [baby('old-ada', 'Ada'), baby('old-isik', 'Işık'), baby('shared', 'Bora'), baby('x', 'Cem')],
+      [
+        baby('old-ada', 'Ada'),
+        baby('old-isik', 'I\u015f\u0131k'),
+        baby('shared', 'Ben'),
+        baby('x', 'Sam'),
+      ],
     );
     expect(pairs).toEqual([
       { localId: 'new-ada', incomingId: 'old-ada', name: 'Ada', localName: 'ada' },
-      { localId: 'new-isik', incomingId: 'old-isik', name: 'Işık', localName: 'IŞIK' },
+      {
+        localId: 'new-isik',
+        incomingId: 'old-isik',
+        name: 'I\u015f\u0131k',
+        localName: 'I\u015eIK',
+      },
     ]);
   });
 
@@ -433,11 +445,11 @@ describe('the same baby added again', () => {
       settings: { locale: 'tr', nightMode: false, lastBabyIds: ['ada-1'] },
     });
     const file = backup({
-      babies: [baby('ada-2', 'ADA', { createdAt: T + HOUR }), baby('c', 'Can')],
+      babies: [baby('ada-2', 'ADA', { createdAt: T + HOUR }), baby('c', 'Cal')],
       events: [
         event('theirs', { babyId: 'ada-2' }),
         event('theirs-deleted', { babyId: 'ada-2' }, { deletedAt: T + 1, updatedAt: T + 1 }),
-        event('can', { babyId: 'c' }),
+        event('cal', { babyId: 'c' }),
       ],
     });
     const plan = planImport(
@@ -449,14 +461,14 @@ describe('the same baby added again', () => {
     expect(plan.babies).toEqual(
       expect.arrayContaining([
         baby('ada-2', 'ADA', { createdAt: T + HOUR, deletedAt: NOW, updatedAt: NOW }),
-        baby('c', 'Can'),
+        baby('c', 'Cal'),
       ]),
     );
     expect(plan.events).toEqual(
       expect.arrayContaining([
         event('theirs', { babyId: 'ada-1' }, { updatedAt: NOW }),
         event('theirs-deleted', { babyId: 'ada-1' }, { deletedAt: T + 1, updatedAt: NOW }),
-        event('can', { babyId: 'c' }),
+        event('cal', { babyId: 'c' }),
       ]),
     );
     expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]); // named after the survivor, as this device spells it
@@ -469,7 +481,7 @@ describe('the same baby added again', () => {
       keep: 0,
       deleted: 0,
     });
-    // Each file entry is counted once: 'theirs' in moves only, 'can' as an add, the tombstone as deleted.
+    // Each file entry is counted once: 'theirs' in moves only, 'cal' as an add, the tombstone as deleted.
     expect(plan.stats.events).toEqual({
       add: 1,
       update: 0,
@@ -635,26 +647,26 @@ describe('the same baby: a later exchange after one phone paired them', () => {
   });
 
   it('with no single other baby of that name, nothing moves and the preview counts the entries to be hidden', () => {
-    const deleting = backup({ babies: [baby('c', 'Cem', { deletedAt: T + 1, updatedAt: T + 1 })] });
+    const deleting = backup({ babies: [baby('c', 'Sam', { deletedAt: T + 1, updatedAt: T + 1 })] });
     const alone = local({
-      babies: [baby('c', 'Cem')],
+      babies: [baby('c', 'Sam')],
       events: [event('c1', { babyId: 'c' }), event('c2', { babyId: 'c' })],
     });
     const plan = planImport(alone, deleting, MERGE, NOW);
     expect(plan.follows).toEqual([]);
     expect(plan.moves).toEqual([]);
-    expect(plan.hidden).toEqual([{ name: 'Cem', events: 2 }]);
+    expect(plan.hidden).toEqual([{ name: 'Sam', events: 2 }]);
 
-    // Two other live babies named "Cem": which one would it mean? Nothing is guessed.
+    // Two other live babies named "Sam": which one would it mean? Nothing is guessed.
     const twins = local({
-      babies: [...alone.babies, baby('c2', 'CEM'), baby('c3', 'cem')],
+      babies: [...alone.babies, baby('c2', 'SAM'), baby('c3', 'sam')],
       events: alone.events,
     });
     const ambiguous = planImport(twins, deleting, MERGE, NOW);
     expect(ambiguous.follows).toEqual([]);
-    expect(ambiguous.hidden).toEqual([{ name: 'Cem', events: 2 }]);
+    expect(ambiguous.hidden).toEqual([{ name: 'Sam', events: 2 }]);
     // A deleted baby with no live entries is not mentioned at all.
-    expect(planImport(local({ babies: [baby('c', 'Cem')] }), deleting, MERGE, NOW).hidden).toEqual(
+    expect(planImport(local({ babies: [baby('c', 'Sam')] }), deleting, MERGE, NOW).hidden).toEqual(
       [],
     );
   });
@@ -710,17 +722,17 @@ describe('saved mixes merge like babies', () => {
     const state = local({
       mixes: [
         mix('m1'),
-        mix('m2', 'Öğlen', { updatedAt: T + 5 }),
-        mix('m3', 'Eski'),
-        mix('m4', 'Gece'),
+        mix('m2', 'Afternoon', { updatedAt: T + 5 }),
+        mix('m3', 'Old'),
+        mix('m4', 'Night'),
       ],
     });
     const file = backup({
       mixes: [
-        mix('m1', 'Gece', { layers: [{ soundId: 'rain', gain: 0.4 }], updatedAt: T + 1 }), // newer: updates
-        mix('m2', 'Öğlen', { updatedAt: T + 1 }), // older: kept
-        mix('m3', 'Eski', { deletedAt: T + 2, updatedAt: T + 2 }), // deleted on the other phone: removed
-        mix('m5', 'Gece'), // new, with the same name as m4: both stay
+        mix('m1', 'Night', { layers: [{ soundId: 'rain', gain: 0.4 }], updatedAt: T + 1 }), // newer: updates
+        mix('m2', 'Afternoon', { updatedAt: T + 1 }), // older: kept
+        mix('m3', 'Old', { deletedAt: T + 2, updatedAt: T + 2 }), // deleted on the other phone: removed
+        mix('m5', 'Night'), // new, with the same name as m4: both stay
       ],
     });
     const plan = planImport(state, file, MERGE, NOW);
@@ -740,15 +752,15 @@ describe('saved mixes merge like babies', () => {
         .filter((row) => row.deletedAt === undefined)
         .map((row) => row.name)
         .sort(),
-    ).toEqual(['Gece', 'Gece', 'Gece', 'Öğlen']);
+    ).toEqual(['Afternoon', 'Night', 'Night', 'Night']);
     expect(after.mixes.find((row) => row.id === 'm1')?.layers).toEqual([
       { soundId: 'rain', gain: 0.4 },
     ]);
   });
 
   it('equal updatedAt with different layers: both phones converge on the same copy', () => {
-    const mine = mix('m1', 'Gece', { layers: [{ soundId: 'white', gain: 0.7 }] });
-    const theirs = mix('m1', 'Gece', { layers: [{ gain: 0.2, soundId: 'rain' }] });
+    const mine = mix('m1', 'Night', { layers: [{ soundId: 'white', gain: 0.7 }] });
+    const theirs = mix('m1', 'Night', { layers: [{ gain: 0.2, soundId: 'rain' }] });
     const fromA = applyPlan(
       local({ mixes: [mine] }),
       planImport(local({ mixes: [mine] }), backup({ mixes: [theirs] }), MERGE, NOW),
@@ -778,12 +790,12 @@ describe('saved mixes merge like babies', () => {
 describe('planImport: replace', () => {
   it("writes the file's mixes and counts the device's live mixes that go", () => {
     const plan = planImport(
-      local({ mixes: [mix('m1'), mix('m2', 'Eski', { deletedAt: T })] }),
-      backup({ mixes: [mix('m9', 'Yeni')] }),
+      local({ mixes: [mix('m1'), mix('m2', 'Old', { deletedAt: T })] }),
+      backup({ mixes: [mix('m9', 'New')] }),
       REPLACE,
       NOW,
     );
-    expect(plan.mixes).toEqual([mix('m9', 'Yeni')]);
+    expect(plan.mixes).toEqual([mix('m9', 'New')]);
     expect(plan.stats.mixes).toEqual({
       add: 1,
       update: 0,
@@ -854,9 +866,9 @@ describe('planImport: replace', () => {
       local({
         mixes: [
           mix('in-file'),
-          mix('changed-after', 'Gece', { updatedAt: T + 2 * HOUR }),
-          mix('new-here', 'Gece'),
-          mix('deleted-here', 'Eski', { deletedAt: T }),
+          mix('changed-after', 'Night', { updatedAt: T + 2 * HOUR }),
+          mix('new-here', 'Night'),
+          mix('deleted-here', 'Old', { deletedAt: T }),
         ],
       }),
       backup({ mixes: [mix('in-file'), mix('changed-after')] }),

@@ -73,7 +73,7 @@ export function serializeBackup(backup: BackupFile): string {
   );
 }
 
-/** Rows that are not deleted, for "2 bebek · 1.234 kayıt". */
+/** Rows that are not deleted, for the export.contents count ("2 babies · 1,234 records"). */
 export function countLive(rows: readonly object[]): number {
   return rows.filter((row) => (row as { deletedAt?: unknown }).deletedAt === undefined).length;
 }

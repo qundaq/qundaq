@@ -1,5 +1,6 @@
 import { newId } from '../domain/ids';
 import {
+  FUTURE_TOLERANCE_MS,
   ValidationError,
   isOpen,
   isTimedType,
@@ -85,13 +86,16 @@ export async function listGrowth(db: TrackerDb, babyId: Id): Promise<GrowthEvent
 export interface RecentMedication {
   name: string;
   dose?: string;
+  /** The latest use's startAt, for the Other list's medication caption (other.caption.medication). */
+  at: number;
 }
 
 export const RECENT_MEDICATION_WINDOW_MS = 60 * DAY;
 
 /**
- * Distinct medicine names used in the last 60 days, most recent first, each with the spelling and dose of
- * its latest use. Offered as chips in the "Diğer → İlaç" sheet.
+ * Distinct medicine names used in the last 60 days, most recent first, each with the spelling, dose and
+ * time of its latest use. Offered as chips in the Other → Medication sheet (other.chip.medication,
+ * sheet.medication.title); the first one is the Other list's medication caption (other.caption.medication).
  */
 export async function recentMedicationNames(
   db: TrackerDb,
@@ -114,44 +118,15 @@ export async function recentMedicationNames(
     const key = foldCase(name);
     if (name === '' || seen.has(key)) continue;
     seen.add(key);
-    recent.push({ name, ...(medication.dose ? { dose: medication.dose } : {}) });
+    recent.push({
+      name,
+      ...(medication.dose ? { dose: medication.dose } : {}),
+      at: medication.startAt,
+    });
     if (recent.length === limit) break;
   }
 
   return recent;
-}
-
-/** Validates every draft (against stored running events and each other) and stores all or none. */
-export async function logEvents(
-  db: TrackerDb,
-  drafts: readonly EventDraft[],
-  now = Date.now(),
-): Promise<TrackerEvent[]> {
-  if (drafts.length === 0) return [];
-  return db.transaction('rw', db.events, async () => {
-    const running = await listRunningEvents(db);
-    const groupId = drafts.length > 1 ? newId() : undefined;
-    const created: TrackerEvent[] = [];
-    const violations = new Set<RuleViolation>();
-    const clashing: Id[] = []; // babies whose draft hit 'already-running', so the message can name them
-
-    for (const draft of drafts) {
-      const found = validateEvent(draft, [...running, ...created], now);
-      for (const violation of found) violations.add(violation);
-      if (found.includes('already-running') && draft.babyId !== null) clashing.push(draft.babyId);
-      created.push({
-        ...draft,
-        id: newId(),
-        ...(groupId ? { groupId } : {}),
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    if (violations.size > 0) throw new ValidationError([...violations], clashing);
-    await db.events.bulkAdd(created);
-    return created;
-  });
 }
 
 /** A second "switch side" tap within this window is treated as the same tap. */
@@ -176,19 +151,164 @@ export function stoppedAt(event: TrackerEvent, now: number): TrackerEvent {
   };
 }
 
+/** One write's effect on one row; `before` is null for a row the write created. Undo hands these to restoreEvents. */
+export interface EventChange {
+  before: TrackerEvent | null;
+  after: TrackerEvent;
+}
+
+export interface RecordOptions {
+  /**
+   * Stops each drafted baby's other running timer (a sleep for a new feed, a feed for a new sleep) at the new
+   * timer's start, in the same transaction. A new start earlier than that timer's start or its current side's
+   * start is refused with 'running-overlap'.
+   */
+  endRunning?: boolean;
+}
+
+/** The earliest moment a running timer can end: its start, or the start of its current side. */
+function stopFloor(event: TrackerEvent): number {
+  if (event.type !== 'breastfeed') return event.startAt;
+  return Math.max(event.startAt, event.segments.at(-1)?.start ?? event.startAt);
+}
+
+/**
+ * Validates every draft (against running timers and each other) and stores all or none. Returns what changed:
+ * the timers it stopped (with endRunning) first, then the rows it created.
+ */
+export async function recordEvents(
+  db: TrackerDb,
+  drafts: readonly EventDraft[],
+  now = Date.now(),
+  options: RecordOptions = {},
+): Promise<EventChange[]> {
+  if (drafts.length === 0) return [];
+  return db.transaction('rw', db.events, async () => {
+    let running = await listRunningEvents(db);
+    const stops: EventChange[] = [];
+    const overlapping = new Set<Id>();
+    if (options.endRunning) {
+      for (const draft of drafts) {
+        if (!isOpen(draft) || draft.babyId === null) continue;
+        for (const other of running) {
+          if (other.babyId !== draft.babyId || other.type === draft.type || !isOpen(other))
+            continue;
+          if (draft.startAt < stopFloor(other)) {
+            overlapping.add(draft.babyId);
+            continue;
+          }
+          const after = { ...stoppedAt(other, draft.startAt), updatedAt: now };
+          stops.push({ before: other, after });
+          running = running.map((event) => (event.id === other.id ? after : event));
+        }
+      }
+    }
+    if (overlapping.size > 0) throw new ValidationError(['running-overlap'], [...overlapping]);
+
+    const groupId = drafts.length > 1 ? newId() : undefined;
+    const created: TrackerEvent[] = [];
+    const violations = new Set<RuleViolation>();
+    const clashing: Id[] = []; // babies whose draft hit 'already-running', so the message can name them
+
+    for (const draft of drafts) {
+      const found = validateEvent(draft, [...running, ...created], now);
+      for (const violation of found) violations.add(violation);
+      if (found.includes('already-running') && draft.babyId !== null) clashing.push(draft.babyId);
+      created.push({
+        ...draft,
+        id: newId(),
+        ...(groupId ? { groupId } : {}),
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    if (violations.size > 0) throw new ValidationError([...violations], clashing);
+    if (stops.length > 0) await db.events.bulkPut(stops.map((stop) => stop.after));
+    await db.events.bulkAdd(created);
+    return [...stops, ...created.map((after) => ({ before: null, after }))];
+  });
+}
+
+/** Validates every draft (against stored running events and each other) and stores all or none. */
+export async function logEvents(
+  db: TrackerDb,
+  drafts: readonly EventDraft[],
+  now = Date.now(),
+): Promise<TrackerEvent[]> {
+  return (await recordEvents(db, drafts, now)).map((change) => change.after);
+}
+
 async function getLive(db: TrackerDb, id: Id): Promise<TrackerEvent> {
   const event = await db.events.get(id);
   if (!event || event.deletedAt !== undefined) throw new Error(`Event ${id} not found`);
   return event;
 }
 
-/** Stops a running timer. Returns false (and changes nothing) if it has already been stopped. */
-export async function stopEvent(db: TrackerDb, id: Id, now = Date.now()): Promise<boolean> {
+/**
+ * Stops a running timer and returns the change for undo; null (nothing changed) if it has already been
+ * stopped. Without `at` it ends now. With `at` (the sheet's "End", edit.end), it ends then: never before
+ * the timer or its current side began, never in the future.
+ */
+export async function stopTimer(
+  db: TrackerDb,
+  id: Id,
+  now = Date.now(),
+  at?: number,
+): Promise<EventChange | null> {
   return db.transaction('rw', db.events, async () => {
     const event = await getLive(db, id);
     if (!isTimedType(event.type)) throw new Error(`Event ${id} is not a timer`);
-    if (!isOpen(event)) return false;
-    await db.events.put(stoppedAt(event, now));
+    if (!isOpen(event)) return null;
+    if (at !== undefined && at < stopFloor(event)) throw new ValidationError(['end-before-start']);
+    if (at !== undefined && at > now + FUTURE_TOLERANCE_MS)
+      throw new ValidationError(['in-future']);
+    const after = { ...stoppedAt(event, at ?? now), updatedAt: now };
+    await db.events.put(after);
+    return { before: event, after };
+  });
+}
+
+/** Stops a running timer. Returns false (and changes nothing) if it has already been stopped. */
+export async function stopEvent(db: TrackerDb, id: Id, now = Date.now()): Promise<boolean> {
+  return (await stopTimer(db, id, now)) !== null;
+}
+
+/**
+ * Undoes one write, all or nothing: a row it created is soft-deleted; a row it stopped runs again, provided
+ * it is still exactly as the write left it (same updatedAt) and no other timer of that baby runs now.
+ * Otherwise nothing changes and the result is false. Restored rows get a fresh updatedAt, so a later merge
+ * sees the undo as the newest change.
+ */
+export async function restoreEvents(
+  db: TrackerDb,
+  changes: readonly EventChange[],
+  now = Date.now(),
+): Promise<boolean> {
+  return db.transaction('rw', db.events, async () => {
+    const ids = changes.map((change) => change.after.id);
+    const stored = await db.events.bulkGet(ids);
+    const writes: TrackerEvent[] = [];
+    const reopened: TrackerEvent[] = [];
+    for (const [i, change] of changes.entries()) {
+      const row = stored[i];
+      if (change.before === null) {
+        if (row && row.deletedAt === undefined)
+          writes.push({ ...row, deletedAt: now, updatedAt: now });
+        continue;
+      }
+      if (!row || row.deletedAt !== undefined || row.updatedAt !== change.after.updatedAt)
+        return false;
+      reopened.push({ ...change.before, updatedAt: now });
+    }
+    const touched = new Set(ids);
+    const others = (await listRunningEvents(db)).filter((event) => !touched.has(event.id));
+    for (const row of reopened) {
+      const peers = reopened.filter((other) => other !== row);
+      if (validateEvent(row, [...others, ...peers], now, row.id).includes('already-running'))
+        return false;
+    }
+    await db.events.bulkPut([...writes, ...reopened]);
     return true;
   });
 }

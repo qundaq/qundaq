@@ -22,22 +22,23 @@ export function guardFormula(text: string): string {
   return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
 }
 
-/** UTF-8 with a byte order mark (so Excel shows ş, ğ, ı), CRLF line ends, a CRLF after the last row too. */
+/** UTF-8 with a byte order mark (so Excel shows accented letters correctly), CRLF line ends, a CRLF after the last row too. */
 export function toCsv(rows: readonly (readonly string[])[], separator: CsvSeparator): string {
   return `\uFEFF${rows.map((row) => row.map((cell) => quoteCell(cell, separator)).join(separator)).join('\r\n')}\r\n`;
 }
 
 export interface CsvText {
-  /** Tarih, Başlangıç, Bitiş tarihi, Bitiş saati, Süre (dk), Tür, Ayrıntı, Not: in the app's language. */
+  /** The csv.col.* headers (date, start, end date, end time, duration, type, detail, note) in the app's language. */
   headers: readonly string[];
   typeLabel: (type: EventType) => string;
-  /** The Günlük detail line. */
+  /** The log (history) detail line. */
   describe: (event: TrackerEvent) => string;
 }
 
 /**
- * Whole minutes of a finished timer. A breastfeed counts its sides only, pauses left out, as Özet's
- * breastfeeding time and the detail text ("Sol 10 dk · Sağ 10 dk") do; a sleep counts its whole length.
+ * Whole minutes of a finished timer. A breastfeed counts its sides only, pauses left out, as the
+ * summary tab's breastfeeding time and the detail text (side.L.button/side.R.button minutes) do;
+ * a sleep counts its whole length.
  */
 function durationMinutes(event: TrackerEvent, end: number): number {
   if (event.type === 'breastfeed' && Array.isArray(event.segments)) {
@@ -112,9 +113,9 @@ export interface CsvInput {
   /** The export time: the date in the file names. */
   now: number;
   separator: CsvSeparator;
-  /** File label for the pumping entries, which belong to no baby ("Sağım"). */
+  /** File label for the pumping entries, which belong to no baby (sheet.pump.title). */
   pumpLabel: string;
-  /** Used when a baby's name has no letter or digit left once cleaned ("bebek"). */
+  /** Used when a baby's name has no letter or digit left once cleaned (csv.fallbackName). */
   fallbackLabel: string;
   text: CsvText;
 }

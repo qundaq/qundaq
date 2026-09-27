@@ -23,7 +23,7 @@ export function withoutOpen(row: EventRow): TrackerEvent {
 export async function readSnapshot(db: TrackerDb, fallbackLocale: Locale): Promise<LocalData> {
   return db.transaction('r', db.babies, db.events, db.mixes, db.settings, async () => {
     // Sorted here, not through the createdAt index: a row whose createdAt is missing or not a valid key is
-    // left out of that index, and the backup must still carry it. Ordered as Ayarlar and Sesler list them.
+    // left out of that index, and the backup must still carry it. Ordered as Settings and the sounds tab list them.
     const byCreation = <T extends { createdAt: number }>(rows: T[]) =>
       rows.sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
     const babies = byCreation(await db.babies.toArray());
