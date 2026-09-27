@@ -1,4 +1,4 @@
-/* Sesler: the play button is the brightest element; tiles are toggle buttons with a level slider each. */
+/* The sounds tab: the play button is the brightest element; tiles are toggle buttons with a level slider each. */
 .playButton {
   min-height: 64px;
   font-size: 20px;
@@ -136,8 +136,8 @@
   white-space: nowrap;
 }
 /* Saved mixes: the name is the play button across the full row; rename and a two-step delete share the row
-   under it, 16px apart like .timerRow, so a sleepy thumb cannot hit the wrong one and the armed "Silmek için
-   tekrar dokunun" never squeezes the name, even at 320px. */
+   under it, 16px apart like .timerRow, so a sleepy thumb cannot hit the wrong one and the armed delete
+   confirm (edit.deleteConfirm) never squeezes the name, even at 320px. */
 .mixList {
   list-style: none;
   margin: 0;

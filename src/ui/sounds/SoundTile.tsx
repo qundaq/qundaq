@@ -17,7 +17,7 @@ export function SoundTile({ name, level, preparing, onToggle, onLevel }: Props) 
   const active = level !== undefined;
   return (
     <div className={styles.tileCell}>
-      {/* The name is the accessible name; the "Hazırlanıyor…" text is visual only, so the name never changes. */}
+      {/* The name is the accessible name; the "preparing" text (sounds.preparing) is visual only, so the name never changes. */}
       <button
         type="button"
         className={[styles.tile, active ? styles.tileOn : ''].join(' ')}

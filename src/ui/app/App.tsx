@@ -68,7 +68,7 @@ export function App() {
 }
 
 /**
- * The backup sheets. Only one <dialog> is open at a time: "Önce bu cihazın yedeğini al" swaps the import
+ * The backup sheets. Only one <dialog> is open at a time: "back up this device first" (import.backupFirst) swaps the import
  * sheet for the export sheet, and closing the export sheet brings the import back while `pending` is set.
  */
 interface BackupUi {
@@ -78,7 +78,7 @@ interface BackupUi {
 
 const NO_BACKUP_UI: BackupUi = { sheet: null, pending: null };
 
-/** `onSettingsReplaced` takes settings read back after a save, an export or an import, so Home and Ayarlar follow at once. */
+/** `onSettingsReplaced` takes settings read back after a save, an export or an import, so Home and Settings follow at once. */
 function Shell({
   settings,
   onSettingsReplaced,
@@ -100,7 +100,7 @@ function Shell({
   const [imports, setImports] = useState(0);
 
   // The sound engine outlives the tabs. The last selection and the cap reach it once at start (nothing
-  // plays until a tap, R6), then the cap again whenever Ayarlar saves it (R19).
+  // plays until a tap, R6), then the cap again whenever Settings saves it (R19).
   const { engine, state: sound } = useSoundEngine();
 
   // The stored selection as the latest commit has it, for a persist timer set in an earlier render.
@@ -176,7 +176,7 @@ function Shell({
         : ui,
     );
   const closeImport = () => setBackupUi((ui) => (ui.sheet === 'import' ? NO_BACKUP_UI : ui));
-  // The sheet opens at once and says "Yedek okunuyor…": reading 20 MB takes seconds on an older iPhone.
+  // The sheet opens at once and says "reading backup…" (import.loading): reading 20 MB takes seconds on an older iPhone.
   const pickImportFile = async (file: File) => {
     const loading: ImportSource = { fileName: file.name, result: null };
     setBackupUi({ sheet: 'import', pending: { source: loading, choices: DEFAULT_CHOICES } });
@@ -216,11 +216,7 @@ function Shell({
           ) : tab === 'log' ? (
             <LogScreen view={logView} onViewChange={setLogView} />
           ) : tab === 'summary' ? (
-            <SummaryScreen
-              view={summaryView}
-              onViewChange={setSummaryView}
-              lastBabyIds={settings.lastBabyIds}
-            />
+            <SummaryScreen view={summaryView} onViewChange={setSummaryView} />
           ) : tab === 'settings' ? (
             <SettingsScreen settings={settings} onChange={updateSettings} backup={backupActions} />
           ) : (
@@ -228,7 +224,7 @@ function Shell({
           )}
         </ErrorBoundary>
       </main>
-      {/* Outside the boundary: a crashed Sesler screen can still be paused from any tab. */}
+      {/* Outside the boundary: a crashed sounds screen can still be paused from any tab. */}
       {nowPlaying && (
         <NowPlayingBar
           state={sound}

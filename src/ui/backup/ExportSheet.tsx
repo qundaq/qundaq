@@ -46,10 +46,7 @@ export function ExportSheet({ kind, onClose, onBackedUp }: Props) {
     <Sheet open={kind !== null} title={t(text.title)} onClose={onClose}>
       {/* The sheet sits outside the screens' boundary: a render error here shows its failure, not a blank app. */}
       {session && (
-        <ErrorBoundary
-          key={session.id}
-          fallback={() => <SheetMessage message={t(text.failed)} onClose={onClose} />}
-        >
+        <ErrorBoundary key={session.id} fallback={() => <SheetMessage message={t(text.failed)} />}>
           <ExportForm kind={session.value} onClose={onClose} onBackedUp={onBackedUp} />
         </ErrorBoundary>
       )}
@@ -65,7 +62,7 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
   const [prepared, setPrepared] = useState<Prepared | 'failed' | null>(null);
   const [retry, setRetry] = useState(false); // the share was refused; another tap usually works
   const [shareFailed, setShareFailed] = useState(false); // sharing broke: offer the download instead
-  const [asking, setAsking] = useState(false); // after a download: "Dosya kaydedildi mi?"
+  const [asking, setAsking] = useState(false); // after a download: the "was the file saved?" question (export.savedQuestion)
   const [done, setDone] = useState<Done | null>(null);
   const [downloads] = useState(() => createDownloads(browserDownloadDeps()));
 
@@ -87,8 +84,7 @@ function ExportForm({ kind, onClose, onBackedUp }: Omit<Props, 'kind'> & { kind:
   useEffect(() => () => downloads.revokeAll(), [downloads]);
 
   if (prepared === null) return <p aria-busy="true">{t(TEXT[kind].preparing)}</p>;
-  if (prepared === 'failed')
-    return <SheetMessage message={t(TEXT[kind].failed)} onClose={onClose} />;
+  if (prepared === 'failed') return <SheetMessage message={t(TEXT[kind].failed)} />;
 
   const finish = (how: Done) => {
     if (prepared.countsAsBackup) onBackedUp(Date.now());

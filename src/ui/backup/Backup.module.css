@@ -1,10 +1,11 @@
 .row {
   display: flex;
+  justify-content: flex-end;
   gap: var(--space-4);
   margin-top: var(--space-3);
 }
-.row > * {
-  flex: 1;
+.reminderText {
+  font: var(--font-caption);
 }
 .actions {
   display: grid;

@@ -19,7 +19,7 @@ export function BackupBanner({ daysSince, onBackup, onSnooze }: Props) {
       tone={daysSince !== null && daysSince >= 14 ? 'danger' : 'info'}
       aria-label={t('reminder.label')}
     >
-      <p>
+      <p className={styles.reminderText}>
         {daysSince === null
           ? t('reminder.never')
           : t('reminder.since', { ago: backupAgo(t, daysSince) })}
@@ -28,7 +28,7 @@ export function BackupBanner({ daysSince, onBackup, onSnooze }: Props) {
         <Button variant="tertiary" onClick={onSnooze}>
           {t('reminder.snooze')}
         </Button>
-        <Button variant="primary" onClick={onBackup}>
+        <Button variant="secondary" onClick={onBackup}>
           {t('backup.export')}
         </Button>
       </div>

@@ -3,7 +3,7 @@ import { useT } from '../app/I18nProvider';
 import { Chip } from '../shared/Chip';
 import styles from './Sounds.module.css';
 
-/** 15 · 30 · 60 dk · ∞ as a radio group; ∞ means no timer (R15). */
+/** The three minute chips (sounds.timer.minutes) plus ∞ as a radio group; ∞ means no timer (R15). */
 export function TimerChips({
   value,
   onChange,

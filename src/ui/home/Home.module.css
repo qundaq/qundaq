@@ -1,43 +1,114 @@
 .babyCard {
-  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.babyHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font: var(--font-title);
+}
+.babyDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  align-self: center;
 }
 .babyName {
-  font: var(--font-title);
-  margin-bottom: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.status {
-  margin: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-.status div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.status dt {
+.babyAge {
+  font: var(--font-caption);
   color: var(--muted);
 }
-.status dd {
-  margin: 0;
-  text-align: right;
+.strip {
+  display: flex;
+  flex-wrap: wrap; /* on a narrow phone the controls move below the text instead of covering the clock */
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--live) 40%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--live) 12%, transparent);
+  color: var(--live);
+}
+.stripIcon {
+  flex: none;
+}
+.stripText {
+  flex: 1 1 auto;
+  min-width: min-content; /* never narrower than the h:mm:ss clock */
+  display: grid;
+}
+.stripCaption {
+  font: var(--font-caption);
+}
+.stripClock {
+  font: var(--font-clock);
   font-variant-numeric: tabular-nums;
 }
-.live {
-  color: var(--live);
-  font-weight: 600;
-}
-.timerActions {
-  display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-3);
-}
-.timerRow {
+.stripControls {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-2);
+  margin-left: auto;
 }
-.timerRow > * {
-  flex: 1;
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.tile {
+  min-width: 0;
+}
+.tileLabel,
+.tileCaption {
+  margin: 0;
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.tileValue {
+  margin: 0;
+  font: var(--font-stat);
+  font-variant-numeric: tabular-nums;
+}
+.today {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.action svg {
+  color: var(--primary);
+}
+.action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.actionLabel {
+  font: var(--font-label);
 }
 .empty {
   display: grid;
@@ -46,35 +117,4 @@
 .restoreHint {
   font: var(--font-caption);
   color: var(--muted);
-}
-.quickActions {
-  position: sticky;
-  bottom: calc(var(--tabbar-h) + var(--nowplaying-h) + env(safe-area-inset-bottom));
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  padding: var(--space-2) 0;
-  background: var(--bg);
-}
-@media (min-width: 360px) {
-  .quickActions {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-.quickActions .quick {
-  min-height: 64px;
-  padding: 0;
-  flex-direction: column;
-  gap: var(--space-1);
-  background: var(--surface);
-  border-color: var(--border);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.quickActions .quick svg {
-  color: var(--primary);
-}
-.quickLabel {
-  display: block;
 }

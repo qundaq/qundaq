@@ -56,7 +56,7 @@ export function FileSummary({ backup }: { backup: ParsedBackup }) {
 
 const SHOWN_SKIPPED = 5;
 
-/** "3 kayıt okunamadı ve atlanacak", with the first five named by date, time and type. */
+/** import.skipped ("3 records could not be read and will be skipped"), with the first five named by date, time and type. */
 export function SkippedList({ skipped }: { skipped: readonly SkippedRow[] }) {
   const t = useT();
   const locale = useLocale();

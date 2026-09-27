@@ -17,12 +17,12 @@ interface Props {
   onRename: (mix: Mix) => void;
 }
 
-/** The saved mixes, oldest first: tap to play, "Yeniden adlandır", and a two-step "Sil" (R18). */
+/** The saved mixes, oldest first: tap to play, rename (sounds.mix.rename), and a two-step delete (R18). */
 export function MixList({ onPlay, onRename }: Props) {
   const t = useT();
   const report = useReportError();
   const mixes = useLiveQuery(() => listMixes(db), [], useReportLoadError());
-  // The mix whose "Sil" was tapped once, and when; a second tap within the window deletes it.
+  // The mix whose delete button was tapped once, and when; a second tap within the window deletes it.
   const [armed, setArmed] = useState<{ id: Id; at: number } | null>(null);
 
   useEffect(() => {

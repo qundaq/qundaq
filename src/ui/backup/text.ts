@@ -14,7 +14,7 @@ export function fileSize(t: TranslateFn, locale: Locale, bytes: number): string 
   return t('unit.mb', { n: formatNumber(locale, bytes / MB, 1) });
 }
 
-/** "bugün", "dün", "3 gün önce". */
+/** backup.today, backup.yesterday, backup.daysAgo ("today", "yesterday", "3 days ago"). */
 export function backupAgo(t: TranslateFn, days: number): string {
   if (days === 0) return t('backup.today');
   if (days === 1) return t('backup.yesterday');
@@ -22,8 +22,8 @@ export function backupAgo(t: TranslateFn, days: number): string {
 }
 
 /**
- * "Son yedek: 3 gün önce (23 Eyl 21:40)" or "Henüz yedek alınmadı." A time more than a day ahead counts
- * as no backup, as for Home's reminder.
+ * backup.last ("last backup: 3 days ago (Sep 23 21:40)") or backup.never ("no backup yet"). A time more
+ * than a day ahead counts as no backup, as for Home's reminder.
  */
 export function lastBackupText(
   t: TranslateFn,

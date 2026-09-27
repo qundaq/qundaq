@@ -7,7 +7,7 @@ import { useT } from './I18nProvider';
 interface Props {
   error: Error;
   onBackup: () => void;
-  /** Restoring (after a backup) replaces bad rows, even when the crashed screen is Ayarlar itself. */
+  /** Restoring (after a backup) replaces bad rows, even when the crashed screen is Settings itself. */
   onRestore: (file: File) => void;
 }
 
