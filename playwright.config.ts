@@ -7,6 +7,8 @@ export default defineConfig({
   retries: 0,
   reporter: 'list',
   use: { baseURL: 'http://localhost:4173/', serviceWorkers: 'allow' },
+  snapshotPathTemplate: 'e2e/__screenshots__/{platform}/{arg}-{projectName}{ext}',
+  expect: { toHaveScreenshot: { animations: 'disabled', caret: 'hide' } },
   projects: [
     { name: 'webkit', use: { ...devices['iPhone 13'], locale: 'tr-TR' } },
     { name: 'chromium', use: { ...devices['Pixel 7'], locale: 'tr-TR' } },
