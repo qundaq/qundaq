@@ -1,0 +1,30 @@
+.region {
+  position: fixed;
+  z-index: var(--z-toast);
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: calc(
+    var(--tabbar-h) + var(--nowplaying-h) + env(safe-area-inset-bottom) + var(--space-3)
+  );
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-toast);
+  pointer-events: auto;
+}
+.check {
+  color: var(--ok);
+}
+.message {
+  flex: 1;
+  min-width: 0;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import styles from './Sheet.module.css';
 
 interface Props {
   open: boolean;
@@ -25,14 +26,17 @@ export function Sheet({ open, title, onClose, children }: Props) {
   return (
     <dialog
       ref={ref}
-      className="sheet"
+      className={styles.sheet}
       aria-labelledby={titleId}
       onClose={() => {
         setMounted(false);
         onClose();
       }}
     >
-      <h2 id={titleId}>{title}</h2>
+      <div className={styles.handle} aria-hidden="true" />
+      <h2 id={titleId} className={styles.title}>
+        {title}
+      </h2>
       {mounted && children}
     </dialog>
   );

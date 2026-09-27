@@ -1,0 +1,21 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.card h2 {
+  margin-bottom: var(--space-2);
+}
+.accent {
+  border-left-width: 4px;
+}
+.info {
+  border-left: 3px solid var(--info);
+  background: color-mix(in srgb, var(--info) 10%, var(--surface));
+}
+.danger {
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
