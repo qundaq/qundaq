@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { TrackerEvent } from '../../src/domain/types';
 import { translate, type MessageKey } from '../../src/i18n';
-import { dayLabelShort, filterSummary } from '../../src/ui/history/describe';
-import { pickedDay } from '../../src/ui/history/DayPicker';
+import { dayLabelShort, filterSummary, pickedDay } from '../../src/ui/history/describe';
 import { I18nProvider } from '../../src/ui/app/I18nProvider';
 import { BrandDayPicker } from '../../src/ui/history/BrandDayPicker';
 import { DayList } from '../../src/ui/history/LogScreen';
@@ -19,7 +18,11 @@ describe('dayLabelShort', () => {
     const yesterday = new Date(2026, 8, 26).getTime();
     expect(dayLabelShort(t, 'tr', yesterday, NOW)).toBe(t('day.yesterday'));
     const older = new Date(2026, 8, 20).getTime();
-    expect(dayLabelShort(t, 'tr', older, NOW)).toBe('20 Eyl');
+    const expectedShortDate = new Intl.DateTimeFormat('tr', {
+      day: 'numeric',
+      month: 'short',
+    }).format(older);
+    expect(dayLabelShort(t, 'tr', older, NOW)).toBe(expectedShortDate);
   });
 });
 
@@ -52,7 +55,7 @@ describe('filterSummary', () => {
     createdAt: 0,
     updatedAt: 0,
   };
-  it('reads "Hepsi" with nothing filtered, and joins whatever is filtered otherwise', () => {
+  it('reads sheet.all with nothing filtered, and joins whatever is filtered otherwise', () => {
     expect(filterSummary(t, [ada], null, 'all')).toBe(t('sheet.all'));
     expect(filterSummary(t, [ada], 'a', 'all')).toBe('Ada');
     expect(filterSummary(t, [ada], null, 'feeding')).toBe(t('log.type.feeding'));
@@ -114,5 +117,52 @@ describe('DayList hour headings', () => {
     expect(iThird).toBeLessThan(iSecond);
     expect(iSecond).toBeLessThan(iHeading08);
     expect(iHeading08).toBeLessThan(iFirst);
+  });
+});
+
+describe('DayList same-instant tie-break', () => {
+  const ada = {
+    id: 'a',
+    name: 'Ada',
+    color: '#5cc0d2',
+    archived: false,
+    createdAt: 0,
+    updatedAt: 0,
+  };
+  const note = (id: string, text: string, startAt: number): TrackerEvent => ({
+    id,
+    type: 'healthNote',
+    babyId: 'a',
+    startAt,
+    note: text,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  const day = new Date(2026, 8, 27).getTime();
+
+  it('orders two rows sharing the exact same startAt by id, not by array order', () => {
+    const startAt = new Date(2026, 8, 27, 9, 0).getTime();
+    // Array order deliberately contradicts id order: 'zzz-event' is listed first, but the correct,
+    // id-ascending order puts 'aaa-event' first. Without DayList's own compareIds tie-break, the stable
+    // sort would keep this array's order and render 'zzz-event' before 'aaa-event'.
+    const events = [note('zzz-event', 'zzz-note', startAt), note('aaa-event', 'aaa-note', startAt)];
+    const html = renderToStaticMarkup(
+      <I18nProvider locale="tr">
+        <DayList
+          events={events}
+          babies={[ada]}
+          day={day}
+          babyFilter={null}
+          typeFilter="all"
+          now={Date.now()}
+          onOpen={() => {}}
+        />
+      </I18nProvider>,
+    );
+    const iAaa = html.indexOf('aaa-note');
+    const iZzz = html.indexOf('zzz-note');
+    expect(iAaa).toBeGreaterThanOrEqual(0);
+    expect(iZzz).toBeGreaterThanOrEqual(0);
+    expect(iAaa).toBeLessThan(iZzz);
   });
 });

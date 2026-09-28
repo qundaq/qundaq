@@ -24,6 +24,36 @@ test('shows five tabs and switches screens', async ({ page }) => {
   );
 });
 
+test('the settings screen has five labelled sections, each holding its own cards', async ({
+  page,
+}) => {
+  await page
+    .getByRole('navigation', { name: t('nav.label') })
+    .getByRole('button', { name: t('tab.settings'), exact: true })
+    .click();
+  for (const key of ['babies', 'appearance', 'sound', 'device', 'about'] as const) {
+    // .first(): the "about" section's own heading and its "About" card's title happen to read the
+    // same in both locales; the section heading is the first of the two in DOM order.
+    await expect(
+      page.getByRole('heading', { name: t(`settings.section.${key}`), exact: true }).first(),
+    ).toBeVisible();
+  }
+  // Not just "present somewhere on the page": the theme card's own heading must be nested inside the
+  // appearance section, not some other one. Each SettingsSection <section> has its own label as a direct
+  // <h2> child (the whole screen is also a <section>, but its direct children are not an <h2>), so
+  // `section:has(> h2)` picks out one of the five labelled sections, disambiguated by its label text.
+  const sectionLabelled = (label: string) =>
+    page.locator('section:has(> h2)').filter({ hasText: label });
+  const appearanceSection = sectionLabelled(t('settings.section.appearance'));
+  await expect(
+    appearanceSection.getByRole('heading', { name: t('settings.theme.title'), exact: true }),
+  ).toBeVisible();
+  const deviceSection = sectionLabelled(t('settings.section.device'));
+  await expect(
+    deviceSection.getByRole('heading', { name: t('settings.theme.title'), exact: true }),
+  ).toHaveCount(0);
+});
+
 test('language choice persists across reloads', async ({ page }) => {
   await page.getByRole('button', { name: t('tab.settings'), exact: true }).click();
   await page.getByRole('button', { name: 'English', exact: true }).click();

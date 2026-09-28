@@ -59,6 +59,23 @@ test.describe('the log (history) list', () => {
     await expect(await filterGroup(page, 'baby')).toHaveCount(0);
   });
 
+  test('one hour heading per hour, in newest-first order, even when a third entry shares an hour', async ({
+    page,
+  }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await logDiaper(page, { at: '2026-09-25T08:15' });
+    await logDiaper(page, { at: '2026-09-25T09:05' });
+    await logDiaper(page, { at: '2026-09-25T09:45' }); // shares 09:xx with the previous entry
+
+    await openTab(page, t('tab.log'));
+    const headings = page.getByRole('heading', { level: 3 });
+    await expect(headings).toHaveCount(2);
+    // Newest first: 09:00 (covering both 09:05 and 09:45) before 08:00.
+    await expect(headings.nth(0)).toHaveText('09:00');
+    await expect(headings.nth(1)).toHaveText('08:00');
+  });
+
   test('previous and next day, the date field, and never the old day under the new heading', async ({
     page,
   }) => {
@@ -175,6 +192,36 @@ test.describe('the log (history) list', () => {
       .getByRole('button', { name: t('sheet.all'), exact: true })
       .click();
     await expect(logRows(page)).toHaveCount(3);
+  });
+
+  test('the filter trigger row summarizes the active baby and type filters', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await addBabyInSettings(page, 'Cal');
+    await openTab(page, t('tab.home'));
+    await logDiaper(page, { baby: 'Ada' });
+    await logDiaper(page, { baby: 'Cal' });
+
+    await openTab(page, t('tab.log'));
+    const trigger = page.getByRole('button', { name: t('log.filter.trigger') });
+    await expect(trigger).toContainText(t('sheet.all'));
+
+    await (
+      await filterGroup(page, 'baby')
+    )
+      .getByRole('button', { name: 'Ada', exact: true })
+      .click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: t('log.filter.trigger') })).toBeHidden();
+    await expect(trigger).toContainText('Ada');
+    await expect(trigger).not.toContainText(t('sheet.all'));
+
+    await (
+      await filterGroup(page, 'type')
+    )
+      .getByRole('button', { name: t('log.type.diaper'), exact: true })
+      .click();
+    await page.keyboard.press('Escape');
+    await expect(trigger).toContainText(`Ada · ${t('log.type.diaper')}`);
   });
 
   test('a sleep across midnight shows on both days with the other day marked', async ({ page }) => {

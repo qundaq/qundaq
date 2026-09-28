@@ -1,15 +1,8 @@
-import {
-  fromDateInputValue,
-  resolveDay,
-  startOfDay,
-  stepDay,
-  toDateInputValue,
-} from '../../domain/days';
+import { resolveDay, startOfDay, stepDay, toDateInputValue } from '../../domain/days';
 import { useLocale, useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
 import { useNow } from '../shared/useNow';
-import { pickedDay } from './DayPicker';
-import { dayLabelShort } from './describe';
+import { dayLabelShort, resolveDayInputChange } from './describe';
 import styles from './Log.module.css';
 
 /** The log (history) tab's day picker, living in the brand row instead of its own full-width block. Owns
@@ -27,8 +20,8 @@ export function BrandDayPicker({
   const shown = resolveDay(day, now);
   const today = startOfDay(now);
   const pick = (value: string) => {
-    if (fromDateInputValue(value) === null) return;
-    onChange(pickedDay(value, today));
+    const next = resolveDayInputChange(value, today);
+    if (next !== undefined) onChange(next);
   };
   return (
     <div className={styles.brandDayPicker} role="group" aria-label={t('day.label')}>

@@ -14,6 +14,7 @@ import {
 } from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
+import type { TrackerEvent } from '../../src/domain/types';
 
 const NOW = new Date(2026, 8, 25, 12, 0).getTime();
 const opened: TrackerDb[] = [];
@@ -360,42 +361,77 @@ describe('hasLiveEvents', () => {
 describe('listRecentEvents — same-instant ties', () => {
   it('a running event and a finished event at the same instant sort by id, not merge order', async () => {
     const db = freshDb();
-    // Log a finished sleep first, then a running sleep, both at NOW
-    const [finished] = await logEvents(
-      db,
-      [{ type: 'sleep', babyId: 'a', startAt: NOW, endAt: NOW + MINUTE }],
-      NOW,
-    );
-    const [running] = await logEvents(db, [{ type: 'sleep', babyId: 'b', startAt: NOW }], NOW);
+    // Fixed ids, deliberately contradicting the merge order: listRecentEvents iterates `running` (the
+    // open index) before `recent` (the startAt-indexed query). The running event is also captured by
+    // `recent` (its startAt satisfies it too), but a Map keeps a key's *first* insertion position, so
+    // without the tie-break the running event always ends up first, however its id compares to the
+    // finished one's. Naming the running event 'z-running' (sorts after 'a-finished') makes that wrong,
+    // merge-order-driven result observably differ from the correct, id-ascending one.
+    const running: TrackerEvent = {
+      id: 'z-running',
+      type: 'sleep',
+      babyId: 'a',
+      startAt: NOW,
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const finished: TrackerEvent = {
+      id: 'a-finished',
+      type: 'diaper',
+      babyId: 'b',
+      startAt: NOW,
+      wet: true,
+      dirty: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    await db.events.add(running);
+    await db.events.add(finished);
 
-    // listRecentEvents merges running (from the open index) and finished (from recent query).
-    // Without the tie-break, they'd be in merge order: [finished, running] (finished from recent query first, then running).
-    // With the tie-break, they must be sorted by id.
     const order = (await listRecentEvents(db, NOW - DAY)).map((e) => e.id);
-    const expected = [finished!.id, running!.id].sort();
-    expect(order).toEqual(expected);
+    expect(order).toEqual(['a-finished', 'z-running']);
   });
 });
 
 describe('listEventsOverlapping — same-instant ties', () => {
   it('two overlapping events at the same instant sort by id, not merge order', async () => {
     const db = freshDb();
-    // Create two events at NOW that both overlap a time window
-    const [first] = await logEvents(
-      db,
-      [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }],
-      NOW,
-    );
-    const [second] = await logEvents(
-      db,
-      [{ type: 'diaper', babyId: 'b', startAt: NOW, wet: true, dirty: false }],
-      NOW,
-    );
+    // Fixed, deliberately-contradicting ids: 'z-event' is stored first, 'a-event' second, so anything
+    // that fell back to insertion order (rather than id order) would list 'z-event' first.
+    //
+    // Note: unlike listRecentEvents, this cannot be forced to fail by id choice alone. Both events here
+    // share a startAt inside the query window, so both are found by the same single `startAt`-indexed
+    // "candidates" query, and fake-indexeddb (like the IndexedDB spec) already returns duplicate index
+    // keys from a single query in primary-key (id) order — before listEventsOverlapping's own sort ever
+    // runs. The only way to reach the `running` index at all is a startAt *outside* the candidates
+    // window, but then no second event can share that exact startAt and still appear in the results (it
+    // would need to be in `candidates` too, which requires being inside the window). So this test is kept
+    // as a real integration test of the full overlap contract; it does not by itself prove the compareIds
+    // tie-break is exercised — see the revert-and-rerun note in the fix report.
+    const first: TrackerEvent = {
+      id: 'z-event',
+      type: 'diaper',
+      babyId: 'a',
+      startAt: NOW,
+      wet: true,
+      dirty: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const second: TrackerEvent = {
+      id: 'a-event',
+      type: 'diaper',
+      babyId: 'b',
+      startAt: NOW,
+      wet: true,
+      dirty: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    await db.events.add(first);
+    await db.events.add(second);
 
-    // Query a window that includes both. Without the tie-break, merge order would dominate.
-    // With the tie-break, they must be sorted by id.
     const order = (await listEventsOverlapping(db, NOW - HOUR, NOW + HOUR, NOW)).map((e) => e.id);
-    const expected = [first!.id, second!.id].sort();
-    expect(order).toEqual(expected);
+    expect(order).toEqual(['a-event', 'z-event']);
   });
 });

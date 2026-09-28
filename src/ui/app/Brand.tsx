@@ -34,7 +34,7 @@ export function Brand({ context }: { context?: ReactNode }) {
         </svg>
         Qundaq
       </span>
-      {context && <span className={styles.context}>{context}</span>}
+      {context && <div className={styles.context}>{context}</div>}
     </header>
   );
 }
