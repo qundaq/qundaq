@@ -1,26 +1,13 @@
-import {
-  fromDateInputValue,
-  resolveDay,
-  startOfDay,
-  stepDay,
-  toDateInputValue,
-} from '../../domain/days';
+import { resolveDay, startOfDay, stepDay, toDateInputValue } from '../../domain/days';
 import { useLocale, useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
-import { dayLabel } from './describe';
+import { dayLabel, resolveDayInputChange } from './describe';
 import styles from './Log.module.css';
 
 interface Props {
   day: number | null; // null: today, which follows midnight
   now: number;
   onChange: (next: number | null) => void;
-}
-
-/** A date-input value, or null for an empty/unparseable value or for `today` itself (meaning "clear the override"). */
-export function pickedDay(value: string, today: number): number | null {
-  const picked = fromDateInputValue(value);
-  if (picked === null || picked >= today) return null;
-  return picked;
 }
 
 /**
@@ -34,9 +21,8 @@ export function DayPicker({ day, now, onChange }: Props) {
   const today = startOfDay(now);
 
   const pick = (value: string) => {
-    const parsed = fromDateInputValue(value);
-    if (parsed === null) return; // '' from the Clear button, or nothing parseable
-    onChange(pickedDay(value, today));
+    const next = resolveDayInputChange(value, today);
+    if (next !== undefined) onChange(next);
   };
 
   return (

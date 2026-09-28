@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import { BABY_NAME_MAX, addBaby, deleteBaby, listBabies, updateBaby } from '../../src/db/babies';
 import { logEvents } from '../../src/db/events';
-import { compareIds } from '../../src/domain/ids';
 import { ValidationError } from '../../src/domain/rules';
 import { MINUTE } from '../../src/domain/time';
 import type { TrackerEvent } from '../../src/domain/types';
@@ -164,33 +163,34 @@ describe('babies repository', () => {
     expect(await db.babies.get(ada.id)).toMatchObject({ name: 'Ada', updatedAt: 5000 });
   });
 
-  it('ties on createdAt are broken by id order (sort comparator unit test)', () => {
-    // IndexedDB's cursor iteration order may already be ID-ordered, so this is a unit test
-    // of the sort comparator expression in listBabies, verifying it produces ID order for ties.
+  it('ties on createdAt are broken by id order, not insertion order', async () => {
+    // Fixed ids, deliberately contradicting insertion order: 'z-baby' is stored first, so anything that
+    // fell back to insertion/cursor order would list it first too. The fix requires 'a-baby' first.
+    //
+    // Note: fake-indexeddb (unlike some real engines, e.g. older WebKit) already orders duplicate index
+    // keys by primary key, so this test cannot, by itself, fail if listBabies' compareIds tie-break were
+    // removed — the underlying query already comes back id-ordered here. It is kept as a real integration
+    // test of listBabies' full sort+filter contract (and would catch a broader regression, e.g. losing the
+    // createdAt ordering entirely), while the tie-break's defence against non-compliant engines is
+    // otherwise unverifiable in this environment.
+    const db = freshDb();
     const now = 1000;
-    const unsorted = [
-      {
-        id: 'z-baby',
-        name: 'Zara',
-        color: '#fff',
-        archived: false,
-        createdAt: now,
-        updatedAt: now,
-      },
-      { id: 'a-baby', name: 'Ada', color: '#fff', archived: false, createdAt: now, updatedAt: now },
-      {
-        id: 'm-baby',
-        name: 'Mira',
-        color: '#fff',
-        archived: false,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ];
-    // Simulate the sort that listBabies applies
-    unsorted.sort((a, b) => a.createdAt - b.createdAt || compareIds(a.id, b.id));
-
-    // All have the same createdAt, so sort must be by id
-    expect(unsorted.map((b) => b.id)).toEqual(['a-baby', 'm-baby', 'z-baby']);
+    await db.babies.add({
+      id: 'z-baby',
+      name: 'Zara',
+      color: '#fff',
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.babies.add({
+      id: 'a-baby',
+      name: 'Ada',
+      color: '#fff',
+      archived: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    expect((await listBabies(db)).map((b) => b.id)).toEqual(['a-baby', 'z-baby']);
   });
 });

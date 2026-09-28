@@ -11,6 +11,7 @@ import {
   pickTime,
   readEvents,
 } from './support/tracking';
+import { DELETE_CONFIRM_MAX_MS } from '../src/ui/shared/confirm';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('./');
@@ -77,6 +78,34 @@ test.describe('babies', () => {
     await openTab(page, t('tab.home'));
     await expect(babyCard(page, 'Ada Nora')).toBeVisible();
     await expect(babyCard(page, 'Cal')).toHaveCount(0);
+  });
+
+  test('an armed delete tap that times out does not delete the baby', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T10:00:00') });
+    await page.goto('./');
+    await addBabyInSettings(page, 'Ada');
+
+    const row = page.getByRole('listitem').filter({ hasText: 'Ada' });
+    await row.getByRole('button', { name: t('babies.edit') }).click();
+    const dialog = page.getByRole('dialog', { name: t('babies.formTitle.edit') });
+    const remove = dialog.getByRole('button', {
+      name: new RegExp(
+        `^(${escapeRegExp(t('babies.delete'))}|${escapeRegExp(t('babies.deleteConfirm'))})$`,
+      ),
+    });
+    await remove.click();
+    await expect(remove).toHaveText(t('babies.deleteConfirm'));
+
+    await page.clock.fastForward(DELETE_CONFIRM_MAX_MS + 1000);
+    await expect(remove).toHaveText(t('babies.delete'));
+
+    // The dialog is still open, nothing was deleted.
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: t('common.cancel'), exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(row).toBeVisible();
+    await openTab(page, t('tab.home'));
+    await expect(babyCard(page, 'Ada')).toBeVisible();
   });
 });
 

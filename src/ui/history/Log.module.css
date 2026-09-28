@@ -48,6 +48,9 @@
   position: relative;
   min-width: 64px;
   min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   font: var(--font-caption);
   color: var(--muted);
@@ -62,6 +65,10 @@
   opacity: 0;
   appearance: none;
   -webkit-appearance: none;
+}
+.brandDayCurrent:has(input:focus-visible) {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
 }
 .filterTrigger {
   display: flex;

@@ -1,4 +1,4 @@
-import { dayOffset } from '../../domain/days';
+import { dayOffset, fromDateInputValue } from '../../domain/days';
 import type { TypeFilter } from '../../domain/filters';
 import { temperatureAlert } from '../../domain/health';
 import { isTimedType } from '../../domain/rules';
@@ -42,6 +42,23 @@ export function weekdayShort(locale: Locale, ms: number): string {
   return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric' }).format(ms);
 }
 
+/** A date-input value, or null for an empty/unparseable value or for `today` itself (meaning "clear the override"). */
+export function pickedDay(value: string, today: number): number | null {
+  const picked = fromDateInputValue(value);
+  if (picked === null || picked >= today) return null;
+  return picked;
+}
+
+/**
+ * What a day picker's onChange should receive for a native date-input's raw `value`, or undefined when the
+ * change should be ignored entirely (an empty string from the Clear button, or otherwise unparseable).
+ * Shared by DayPicker and BrandDayPicker so each only wires it to its own onChange.
+ */
+export function resolveDayInputChange(value: string, today: number): number | null | undefined {
+  if (fromDateInputValue(value) === null) return undefined;
+  return pickedDay(value, today);
+}
+
 /** day.today ("Today"), day.yesterday ("Yesterday"), otherwise the weekday with the date. */
 export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: number): string {
   const daysAgo = dayOffset(dayStart, now);
@@ -52,8 +69,8 @@ export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: 
   );
 }
 
-/** Like dayLabel, but a short date ("26 Eyl") instead of the full weekday form for any other day — for
- * the brand row's tight width. */
+/** Like dayLabel, but a short locale-formatted date (day and abbreviated month, no year) instead of the
+ * full weekday form for any other day — for the brand row's tight width. */
 export function dayLabelShort(
   t: TranslateFn,
   locale: Locale,
@@ -89,7 +106,7 @@ export function timeRange(
   return `${start} – ${timeOnDay(t, locale, event.endAt, shownDay)}`;
 }
 
-/** "Hepsi", a baby's name, a type's name, or both joined — whatever the log's filter row shows as its summary. */
+/** sheet.all ("All"), a baby's name, a type's name, or both joined — whatever the log's filter row shows as its summary. */
 export function filterSummary(
   t: TranslateFn,
   babies: readonly Baby[],
