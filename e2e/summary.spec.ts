@@ -1,18 +1,21 @@
 import { expect, test, type Page } from '@playwright/test';
 import { t } from './support/i18n';
 import { formatDuration } from '../src/ui/shared/format';
-import { HOUR } from '../src/domain/time';
+import { HOUR, MINUTE } from '../src/domain/time';
 import {
   addBabyInSettings,
   dayPicker,
   enterDuration,
+  logDiaper,
   logRows,
   openOther,
   openRow,
   openTab,
   cardAction,
   pickTime,
-  summaryValue,
+  summaryCard,
+  summaryTileLines,
+  type SummaryTileKey,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -28,47 +31,321 @@ function growthMetric(page: Page, name: string) {
     .getByRole('button', { name, exact: true });
 }
 
-test('a sleep across midnight counts on both days; the week table has seven rows and fits 320px', async ({
+/** A tile reads exactly its label, its value and its diff line; without `diff`, the tile has no diff line. */
+async function expectTile(page: Page, key: SummaryTileKey, value: string, diff?: string) {
+  await expect(summaryTileLines(page, key)).toHaveText([
+    t(`summary.tile.${key}`),
+    value,
+    ...(diff === undefined ? [] : [diff]),
+  ]);
+}
+
+async function expectZeroTiles(page: Page) {
+  await expectTile(page, 'sleep', formatDuration(t, 0));
+  await expectTile(page, 'feeds', '0');
+  await expectTile(page, 'bottle', t('unit.ml', { ml: 0 }));
+  await expectTile(page, 'diapers', '0');
+}
+
+/** Logs a bottle from a card (the first card by default), now or at a picked time. */
+async function logBottle(page: Page, ml: number, options: { at?: string; baby?: string } = {}) {
+  await cardAction(page, 'bottle', options.baby).click();
+  const sheet = page.getByRole('dialog', { name: t('sheet.bottle.title') });
+  await sheet.getByRole('radio', { name: t('unit.ml', { ml }), exact: true }).click();
+  if (options.at) await pickTime(sheet, options.at);
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+}
+
+/** Logs a finished sleep of `minutes` that ends now or at a picked time. */
+async function logSleep(
+  page: Page,
+  minutes: number,
+  options: { end?: string; baby?: string } = {},
+) {
+  await cardAction(page, 'sleep', options.baby).click();
+  const sheet = page.getByRole('dialog', { name: t('sheet.sleep.title') });
+  await enterDuration(sheet, minutes);
+  if (options.end) await pickTime(sheet, options.end);
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+}
+
+/** Logs a finished right-side breastfeed of `minutes` that ends now. */
+async function logBreastfeed(page: Page, minutes: number) {
+  await cardAction(page, 'breastfeed').click();
+  const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+  await enterDuration(sheet, minutes);
+  await sheet.getByRole('radio', { name: t('side.R.button'), exact: true }).click();
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+}
+
+/** The day strip: a region whose accessible name is every baby's summary.dayStrip.summary, joined by " · ". */
+function dayStrip(page: Page, name: string) {
+  return page.getByRole('region', { name, exact: true });
+}
+
+function stepDay(page: Page, direction: 'previous' | 'next') {
+  return dayPicker(page)
+    .getByRole('button', { name: t(`day.${direction}`) })
+    .click();
+}
+
+function plus(kind: 'count' | 'ml' | 'duration', value: string | number) {
+  return t(`summary.diff.${kind}`, { sign: '+', value });
+}
+
+test("the tiles show the day's totals and their diffs; the day before reads zero; coming back restores them", async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, t('tab.home'));
-  await cardAction(page, 'sleep').click();
-  const sheet = page.getByRole('dialog', { name: t('sheet.sleep.title') });
-  await enterDuration(sheet, 180);
-  await pickTime(sheet, '2026-09-25T02:00');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
+  await logBottle(page, 90);
+  await logSleep(page, 40);
+  await logDiaper(page);
 
   await openTab(page, t('tab.summary'));
-  await expect(
-    page.getByRole('heading', {
-      name: t('summary.dayTitle', { name: 'Ada', day: t('day.today') }),
-    }),
-  ).toBeVisible();
-  // the sleep began yesterday: no count today, so the cell shows only the duration
-  await expect(summaryValue(page, t('summary.sleep'))).toHaveText(formatDuration(t, 2 * HOUR));
-  const week = page.getByRole('table', { name: t('summary.week') });
-  await expect(week.locator('tbody tr')).toHaveCount(7);
-  await expect(week.locator('tbody tr').nth(0)).toContainText(formatDuration(t, 2 * HOUR));
-  await expect(week.locator('tbody tr').nth(1)).toContainText(formatDuration(t, 1 * HOUR));
+  const today = async () => {
+    // Nothing was logged the day before, so each diff is the whole of today's value.
+    await expectTile(
+      page,
+      'sleep',
+      formatDuration(t, 40 * MINUTE),
+      plus('duration', formatDuration(t, 40 * MINUTE)),
+    );
+    // A bottle counts as a feed too.
+    await expectTile(page, 'feeds', '1', plus('count', 1));
+    await expectTile(
+      page,
+      'bottle',
+      t('unit.ml', { ml: 90 }),
+      plus('ml', t('unit.ml', { ml: 90 })),
+    );
+    await expectTile(page, 'diapers', '1', plus('count', 1));
+  };
+  await today();
 
-  await dayPicker(page)
-    .getByRole('button', { name: t('day.previous') })
-    .click();
-  await expect(
-    page.getByRole('heading', {
-      name: t('summary.dayTitle', { name: 'Ada', day: t('day.yesterday') }),
-    }),
-  ).toBeVisible();
-  await expect(summaryValue(page, t('summary.sleep'))).toHaveText(
-    t('summary.sleepValue', { duration: formatDuration(t, 1 * HOUR), count: 1 }),
+  // The day before and the one before it are both empty: every tile reads zero, with no diff line.
+  await stepDay(page, 'previous');
+  await expectZeroTiles(page);
+
+  await stepDay(page, 'next');
+  await today();
+});
+
+test('a tile diff reads up, down or the same against the day before', async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  // Yesterday: an hour of sleep, a 60 ml bottle, one diaper.
+  await logSleep(page, 60, { end: '2026-09-24T14:00' });
+  await logBottle(page, 60, { at: '2026-09-24T10:00' });
+  await logDiaper(page, { at: '2026-09-24T11:00' });
+  // Today: no sleep, a 90 ml bottle, two diapers.
+  await logBottle(page, 90);
+  await logDiaper(page);
+  await logDiaper(page);
+
+  await openTab(page, t('tab.summary'));
+  await expectTile(
+    page,
+    'sleep',
+    formatDuration(t, 0),
+    // a true minus sign (U+2212), as the tile writes it
+    t('summary.diff.duration', { sign: '−', value: formatDuration(t, HOUR) }),
+  );
+  await expectTile(page, 'feeds', '1', t('summary.diff.same.count', { value: '1' }));
+  await expectTile(page, 'bottle', t('unit.ml', { ml: 90 }), plus('ml', t('unit.ml', { ml: 30 })));
+  await expectTile(page, 'diapers', '2', plus('count', 1));
+});
+
+test('a sleep across midnight counts on both days; the week chart has seven bars and fits 320px', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  // Three hours ending at 02:00: one hour yesterday, two today.
+  await logSleep(page, 180, { end: '2026-09-25T02:00' });
+
+  await openTab(page, t('tab.summary'));
+  await expectTile(
+    page,
+    'sleep',
+    formatDuration(t, 2 * HOUR),
+    plus('duration', formatDuration(t, HOUR)),
+  );
+  const week = summaryCard(page, t('summary.week'));
+  const bars = week.getByTestId('week-bar');
+  await expect(bars).toHaveCount(7);
+  // Oldest first, on a nice ceiling above two hours (10,000,000 ms): today 72%, yesterday 36%, the rest empty.
+  await expect(bars.nth(6).locator('div')).toHaveAttribute('style', /height: 72%/);
+  await expect(bars.nth(5).locator('div')).toHaveAttribute('style', /height: 36%/);
+  await expect(bars.nth(4).locator('div')).toHaveAttribute('style', /height: 0%/);
+
+  await stepDay(page, 'previous');
+  await expectTile(
+    page,
+    'sleep',
+    formatDuration(t, HOUR),
+    plus('duration', formatDuration(t, HOUR)),
   );
 
   await page.setViewportSize({ width: 320, height: 700 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
+});
+
+test('the day strip shows sleep and feeds on one timeline per baby, with a now tick only today', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  await logSleep(page, 180, { end: '2026-09-25T05:00' }); // 02:00 to 05:00
+  await logBottle(page, 90, { at: '2026-09-25T06:00' });
+
+  // The installed clock ticks with real time; pin it back to 09:00 so the now tick sits at exactly
+  // 9/24 of the day, however long the steps above took. The summary reads "now" as it opens.
+  await page.clock.setFixedTime(new Date('2026-09-25T09:00:00+03:00'));
+  await openTab(page, t('tab.summary'));
+  const ada = t('summary.dayStrip.summary', {
+    name: 'Ada',
+    sleep: formatDuration(t, 3 * HOUR),
+    feeds: 1,
+  });
+  let strip = dayStrip(page, ada);
+  await expect(strip).toBeVisible();
+  await expect(
+    strip.getByRole('heading', { name: t('summary.dayStrip.title'), exact: true }),
+  ).toBeVisible();
+  // A single baby's row carries no name.
+  await expect(strip.getByText('Ada', { exact: true })).toHaveCount(0);
+  const sleep = strip.getByTestId('strip-sleep');
+  await expect(sleep).toHaveCount(1);
+  await expect(sleep).toHaveAttribute('style', /left: 8\.33\d*%; width: 12\.5%/);
+  const feed = strip.getByTestId('strip-feed');
+  await expect(feed).toHaveCount(1);
+  await expect(feed).toHaveAttribute('style', /left: 25%/);
+  await expect(strip.getByTestId('now-tick')).toHaveCount(1);
+  await expect(strip.getByTestId('now-tick')).toHaveAttribute('style', /left: 37\.5%/);
+  // Let time run again, from a later minute: a frozen clock would give the next baby the same
+  // created instant as Ada, and babies sharing one instant are ordered by their random ids.
+  await page.clock.setSystemTime(new Date('2026-09-25T09:01:00+03:00'));
+  // With one baby there is nothing to switch between.
+  await expect(page.getByRole('radiogroup', { name: t('summary.babySwitcher') })).toHaveCount(0);
+
+  await addBabyInSettings(page, 'Cal');
+  await openTab(page, t('tab.home'));
+  await logSleep(page, 60, { baby: 'Cal' });
+
+  await openTab(page, t('tab.summary'));
+  const cal = t('summary.dayStrip.summary', {
+    name: 'Cal',
+    sleep: formatDuration(t, HOUR),
+    feeds: 0,
+  });
+  // One region holds every baby's row, and its name summarises them all.
+  strip = dayStrip(page, `${ada} · ${cal}`);
+  await expect(strip).toBeVisible();
+  await expect(page.getByRole('region')).toHaveCount(1);
+  await expect(strip.getByText('Ada', { exact: true })).toBeVisible();
+  await expect(strip.getByText('Cal', { exact: true })).toBeVisible();
+  await expect(strip.getByTestId('strip-sleep')).toHaveCount(2);
+  await expect(strip.getByTestId('now-tick')).toHaveCount(2);
+
+  // The switcher picks whose tiles show; the strip stays shared.
+  const switcher = page.getByRole('radiogroup', { name: t('summary.babySwitcher'), exact: true });
+  await expect(switcher.getByRole('radio')).toHaveCount(2);
+  await expect(switcher.getByRole('radio', { name: 'Ada' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expectTile(
+    page,
+    'sleep',
+    formatDuration(t, 3 * HOUR),
+    plus('duration', formatDuration(t, 3 * HOUR)),
+  );
+  await switcher.getByRole('radio', { name: 'Cal' }).click();
+  await expect(switcher.getByRole('radio', { name: 'Cal' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expectTile(
+    page,
+    'sleep',
+    formatDuration(t, HOUR),
+    plus('duration', formatDuration(t, HOUR)),
+  );
+  await expectTile(page, 'feeds', '0');
+  await expect(strip).toBeVisible();
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+
+  // A past day has no "now", and nothing was logged on it.
+  await stepDay(page, 'previous');
+  const empty = (name: string) =>
+    t('summary.dayStrip.summary', { name, sleep: formatDuration(t, 0), feeds: 0 });
+  strip = dayStrip(page, `${empty('Ada')} · ${empty('Cal')}`);
+  await expect(strip).toBeVisible();
+  await expect(strip.getByTestId('now-tick')).toHaveCount(0);
+  await expect(strip.getByTestId('strip-sleep')).toHaveCount(0);
+});
+
+test('the week chart switches between sleep and feeding: empty on a fresh baby, dual bars on two axes once feeds exist', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.summary'));
+  const week = summaryCard(page, t('summary.week'));
+  const metric = week.getByRole('radiogroup', { name: t('summary.week.metric'), exact: true });
+  await expect(metric.getByRole('radio')).toHaveCount(2);
+  const sleepTab = metric.getByRole('radio', { name: t('summary.week.metric.sleep') });
+  const feedingTab = metric.getByRole('radio', { name: t('summary.week.metric.feeding') });
+  await expect(sleepTab).toHaveAttribute('aria-checked', 'true');
+  await expect(week.getByText(t('summary.week.empty'))).toBeVisible();
+  await feedingTab.click();
+  await expect(feedingTab).toHaveAttribute('aria-checked', 'true');
+  await expect(week.getByText(t('summary.week.empty'))).toBeVisible();
+  await expect(week.getByTestId('week-dual-bar')).toHaveCount(0);
+
+  await openTab(page, t('tab.home'));
+  await logBreastfeed(page, 15);
+  await logBottle(page, 90);
+
+  await openTab(page, t('tab.summary'));
+  await feedingTab.click();
+  await expect(week.getByText(t('summary.week.empty'))).toHaveCount(0);
+  const bars = week.getByTestId('week-dual-bar');
+  await expect(bars).toHaveCount(7);
+  // Minutes on the left (15 on a ceiling of 20), millilitres on the right (90 on a ceiling of 100),
+  // top tick first: the ceiling, half of it, zero — the three evenly-spaced tick positions.
+  await expect(week.getByTestId('week-axis-left').locator('span')).toHaveText(['20', '10', '0']);
+  await expect(week.getByTestId('week-axis-right').locator('span')).toHaveText(['100', '50', '0']);
+  const todayBars = bars.nth(6).locator('div');
+  await expect(todayBars).toHaveCount(2);
+  await expect(todayBars.nth(0)).toHaveAttribute('style', /height: 75%/);
+  await expect(todayBars.nth(1)).toHaveAttribute('style', /height: 90%/);
+  await expect(bars.nth(5).locator('div').nth(0)).toHaveAttribute('style', /height: 0%/);
+  // The bars read as one image whose name lists every day's breastfeed time and bottle ml.
+  await expect(week.getByRole('img')).toHaveAccessibleName(
+    new RegExp(`${formatDuration(t, 15 * MINUTE)} · ${t('unit.ml', { ml: 90 })}$`),
+  );
+
+  // The Feeding choice survives stepping to another day and back (the chart reloads each time).
+  await stepDay(page, 'previous');
+  await expect(feedingTab).toHaveAttribute('aria-checked', 'true');
+  await expect(week.getByText(t('summary.week.empty'))).toBeVisible();
+  await stepDay(page, 'next');
+  await expect(feedingTab).toHaveAttribute('aria-checked', 'true');
+  await expect(week.getByTestId('week-dual-bar')).toHaveCount(7);
+
+  // No sleep this week: the sleep side stays empty.
+  await sleepTab.click();
+  await expect(week.getByText(t('summary.week.empty'))).toBeVisible();
 });
 
 test('growth shows in the chart summary and the measurement table; the metric survives tab switches', async ({
@@ -122,7 +399,7 @@ test('every record type shows up in the log and the summary, without CSP violati
   page,
 }) => {
   test.slow(); // nine sheets in sequence: 12–26 s, close to the default 30 s timeout.
-  // The rows (React style dots), the edit sheet and the SVG chart must all stay inside the CSP.
+  // The rows (React style dots), the edit sheet, the day strip, the week bars and the SVG chart must all stay inside the CSP.
   await page.addInitScript(() => {
     const store: string[] = [];
     (window as unknown as { __cspViolations: string[] }).__cspViolations = store;
@@ -134,27 +411,12 @@ test('every record type shows up in the log and the summary, without CSP violati
   await addBabyInSettings(page, 'Ada');
   await openTab(page, t('tab.home'));
 
-  await cardAction(page, 'breastfeed').click();
-  let sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-  await enterDuration(sheet, 15);
-  await sheet.getByRole('radio', { name: t('side.R.button'), exact: true }).click();
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
-
-  await cardAction(page, 'bottle').click();
-  sheet = page.getByRole('dialog', { name: t('sheet.bottle.title') });
-  await sheet.getByRole('radio', { name: t('unit.ml', { ml: 90 }), exact: true }).click();
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
-
-  await cardAction(page, 'sleep').click();
-  sheet = page.getByRole('dialog', { name: t('sheet.sleep.title') });
-  await enterDuration(sheet, 60);
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
+  await logBreastfeed(page, 15);
+  await logBottle(page, 90);
+  await logSleep(page, 60);
 
   await cardAction(page, 'diaper').click();
-  sheet = page.getByRole('dialog', { name: t('sheet.diaper.title') });
+  let sheet = page.getByRole('dialog', { name: t('sheet.diaper.title') });
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
@@ -207,23 +469,29 @@ test('every record type shows up in the log and the summary, without CSP violati
   await expect(edit).toBeHidden();
 
   await openTab(page, t('tab.summary'));
-  await expect(summaryValue(page, t('summary.feeds'))).toHaveText('2');
-  await expect(summaryValue(page, t('summary.breast'))).toHaveText(
-    t('summary.breastValue', {
-      total: t('time.minutes', { m: 15 }),
-      sides: t('summary.breastSide.R', { duration: t('time.minutes', { m: 15 }) }),
-    }),
+  await expectTile(
+    page,
+    'sleep',
+    formatDuration(t, HOUR),
+    plus('duration', formatDuration(t, HOUR)),
   );
-  await expect(summaryValue(page, t('summary.bottle'))).toHaveText(
-    t('summary.bottleValue', { count: 1, ml: 90 }),
-  );
-  await expect(summaryValue(page, t('summary.sleep'))).toHaveText(
-    t('summary.sleepValue', { duration: formatDuration(t, HOUR), count: 1 }),
-  );
-  await expect(summaryValue(page, t('summary.diapers'))).toHaveText(
-    t('summary.diaperValue', { wet: 1, dirty: 0, total: 1 }),
-  );
+  // The breastfeed and the bottle.
+  await expectTile(page, 'feeds', '2', plus('count', 2));
+  await expectTile(page, 'bottle', t('unit.ml', { ml: 90 }), plus('ml', t('unit.ml', { ml: 90 })));
+  await expectTile(page, 'diapers', '1', plus('count', 1));
   await expect(page.getByTestId('summary-pump')).toContainText(t('summary.pumpTotal', { ml: 60 }));
+  // Every inline-styled piece of the dashboard is on screen for the CSP check.
+  const strip = dayStrip(
+    page,
+    t('summary.dayStrip.summary', { name: 'Ada', sleep: formatDuration(t, HOUR), feeds: 2 }),
+  );
+  await expect(strip.getByTestId('strip-sleep')).toHaveCount(1);
+  await expect(strip.getByTestId('strip-feed')).toHaveCount(2);
+  await expect(strip.getByTestId('now-tick')).toHaveCount(1);
+  const week = summaryCard(page, t('summary.week'));
+  await expect(week.getByTestId('week-bar')).toHaveCount(7);
+  await week.getByRole('radio', { name: t('summary.week.metric.feeding') }).click();
+  await expect(week.getByTestId('week-dual-bar')).toHaveCount(7);
   await expect(
     page.getByRole('img', {
       name: t('growth.summaryOne', { metric: t('growth.metric.weightG'), value: '3,45 kg' }),
@@ -237,5 +505,8 @@ test('every record type shows up in the log and the summary, without CSP violati
 test('without babies the summary tab only asks for one', async ({ page }) => {
   await openTab(page, t('tab.summary'));
   await expect(page.getByText(t('summary.noBabies'))).toBeVisible();
-  await expect(page.getByRole('table')).toHaveCount(0);
+  // No dashboard renders: no tiles, no day strip, no week chart.
+  await expect(page.locator('[data-testid^="summary-tile-"]')).toHaveCount(0);
+  await expect(page.getByRole('region')).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: t('summary.week.metric') })).toHaveCount(0);
 });

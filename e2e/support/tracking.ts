@@ -89,13 +89,16 @@ export async function openOther(page: Page, type: OtherEntry, baby?: string) {
   return sheet;
 }
 
-/** The value next to `label` in the summary tab's day card. */
-export function summaryValue(page: Page, label: string) {
-  return page
-    .getByTestId('summary-day')
-    .locator('dl > div')
-    .filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) })
-    .locator('dd');
+export type SummaryTileKey = 'sleep' | 'feeds' | 'bottle' | 'diapers';
+
+/** The lines of one of the summary tab's four hero tiles (summary.tile.*): its label, its value and, when there is one, its diff. */
+export function summaryTileLines(page: Page, key: SummaryTileKey) {
+  return page.getByTestId(`summary-tile-${key}`).locator(':scope > div');
+}
+
+/** A card of the summary tab that has no accessible name of its own (the week chart, summary.week), found by its h2 title. */
+export function summaryCard(page: Page, title: string) {
+  return page.getByRole('heading', { name: title, exact: true }).locator('..');
 }
 
 /** A baby card's feed tile (status.feed): scopes a bottle amount to it, so it is not confused with the today line, which shows the same ml total. */
