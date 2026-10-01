@@ -2,19 +2,19 @@ import { useState } from 'react';
 import { listBabies } from '../../db/babies';
 import { listEventsOverlapping } from '../../db/events';
 import { db } from '../../db/instance';
-import { addDays, resolveDay } from '../../domain/days';
+import { addDays, hourOf, resolveDay } from '../../domain/days';
 import { compareIds } from '../../domain/ids';
-import { TYPE_FILTERS, matchesFilters, visibleEvents, type TypeFilter } from '../../domain/filters';
+import { matchesFilters, visibleEvents, type TypeFilter } from '../../domain/filters';
 import type { Baby, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
-import { Chip } from '../shared/Chip';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
-import { DayPicker } from './DayPicker';
 import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
+import { filterSummary } from './describe';
+import { FilterSheet } from './FilterSheet';
 import styles from './Log.module.css';
 
 /** The log (history) tab's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
@@ -55,6 +55,7 @@ export function LogScreen({
   if (data && data.babies !== knownBabies) setKnownBabies(data.babies);
   const babies = data?.babies ?? knownBabies;
   const [editing, setEditing] = useState<TrackerEvent | null>(null);
+  const [filtering, setFiltering] = useState(false);
   const babyFilter =
     babies.length > 1 && view.babyId !== null && babies.some((baby) => baby.id === view.babyId)
       ? view.babyId
@@ -64,40 +65,21 @@ export function LogScreen({
   return (
     <section>
       <VisuallyHidden as="h1">{t('tab.log')}</VisuallyHidden>
-      <DayPicker day={view.day} now={tick} onChange={(next) => set({ day: next })} />
-      {babies.length > 1 && (
-        <fieldset className={styles.filter}>
-          <legend>{t('log.filter.baby')}</legend>
-          <div className={styles.chips}>
-            <Chip selected={babyFilter === null} onClick={() => set({ babyId: null })}>
-              {t('sheet.all')}
-            </Chip>
-            {babies.map((baby) => (
-              <Chip
-                key={baby.id}
-                selected={babyFilter === baby.id}
-                onClick={() => set({ babyId: baby.id })}
-              >
-                {baby.name}
-              </Chip>
-            ))}
-          </div>
-        </fieldset>
-      )}
-      <fieldset className={styles.filter}>
-        <legend>{t('log.filter.type')}</legend>
-        <div className={styles.chips}>
-          {TYPE_FILTERS.map((filter) => (
-            <Chip
-              key={filter}
-              selected={view.type === filter}
-              onClick={() => set({ type: filter })}
-            >
-              {t(`log.type.${filter}`)}
-            </Chip>
-          ))}
-        </div>
-      </fieldset>
+      <button type="button" className={styles.filterTrigger} onClick={() => setFiltering(true)}>
+        <span>{t('log.filter.trigger')}</span>
+        <span className={styles.filterSummary}>
+          {filterSummary(t, babies, babyFilter, view.type)}
+        </span>
+      </button>
+      <FilterSheet
+        open={filtering}
+        onClose={() => setFiltering(false)}
+        babies={babies}
+        babyId={babyFilter}
+        type={view.type}
+        onBabyChange={(babyId) => set({ babyId })}
+        onTypeChange={(type) => set({ type })}
+      />
       {data === undefined ? (
         <p className={styles.muted} aria-busy="true" />
       ) : (
@@ -118,7 +100,8 @@ export function LogScreen({
   );
 }
 
-interface DayListProps {
+/** Visible only for its own markup test; LogScreen is DayList's one real caller. */
+export interface DayListProps {
   events: readonly TrackerEvent[];
   babies: readonly Baby[];
   day: number;
@@ -128,7 +111,15 @@ interface DayListProps {
   onOpen: (event: TrackerEvent) => void;
 }
 
-function DayList({ events, babies, day, babyFilter, typeFilter, now, onOpen }: DayListProps) {
+export function DayList({
+  events,
+  babies,
+  day,
+  babyFilter,
+  typeFilter,
+  now,
+  onOpen,
+}: DayListProps) {
   const t = useT();
   const byId = new Map(babies.map((baby) => [baby.id, baby]));
   const rows = visibleEvents(events, new Set(byId.keys()))
@@ -143,17 +134,24 @@ function DayList({ events, babies, day, babyFilter, typeFilter, now, onOpen }: D
   }
   return (
     <ul className={styles.list} role="list" aria-label={t('log.list')} data-testid="log-list">
-      {rows.map((event) => (
-        <li key={event.id}>
-          <EventRow
-            event={event}
-            baby={event.babyId === null ? null : (byId.get(event.babyId) ?? null)}
-            day={day}
-            now={now}
-            onOpen={() => onOpen(event)}
-          />
-        </li>
-      ))}
+      {rows.map((event, i) => {
+        const hour = hourOf(event.startAt);
+        const showHeading = i === 0 || hour !== hourOf(rows[i - 1]!.startAt);
+        return (
+          <li key={event.id}>
+            {showHeading && (
+              <h3 className={styles.hourHeading}>{String(hour).padStart(2, '0')}:00</h3>
+            )}
+            <EventRow
+              event={event}
+              baby={event.babyId === null ? null : (byId.get(event.babyId) ?? null)}
+              day={day}
+              now={now}
+              onOpen={() => onOpen(event)}
+            />
+          </li>
+        );
+      })}
     </ul>
   );
 }

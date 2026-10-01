@@ -33,6 +33,60 @@
   outline: 2px solid var(--info);
   outline-offset: 2px;
 }
+.brandDayPicker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.brandDayButton {
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  color: var(--muted);
+}
+.brandDayCurrent {
+  position: relative;
+  min-width: 64px;
+  min-height: var(--tap);
+  text-align: center;
+  font: var(--font-caption);
+  color: var(--muted);
+  font-weight: 600;
+}
+.brandDayCurrent input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.filterTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  margin-bottom: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: var(--font-body);
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.filterSummary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  color: var(--muted);
+}
 .filter {
   margin-bottom: var(--space-2);
 }
@@ -61,6 +115,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
+}
+.hourHeading {
+  margin: var(--space-2) 0 2px;
+  font: var(--font-caption);
+  color: var(--muted);
 }
 .time {
   display: block;

@@ -24,8 +24,8 @@ test.beforeEach(async ({ page }) => {
   await page.goto('./');
 });
 
-const dayAndMonth = (day: number) =>
-  new Intl.DateTimeFormat('tr', { day: 'numeric', month: 'long' }).format(
+const shortDayAndMonth = (day: number) =>
+  new Intl.DateTimeFormat('tr', { day: 'numeric', month: 'short' }).format(
     new Date(2026, 8, day).getTime(),
   );
 const asleepHeadline = t('strip.asleep', { time: '' }).split(' ·')[0]!;
@@ -56,7 +56,7 @@ test.describe('the log (history) list', () => {
     await expect(rows.nth(1)).toContainText('09:40');
     await expect(rows.nth(1)).toContainText(t('diaper.wet.button'));
     // One baby: no baby filter.
-    await expect(filterGroup(page, 'baby')).toHaveCount(0);
+    await expect(await filterGroup(page, 'baby')).toHaveCount(0);
   });
 
   test('previous and next day, the date field, and never the old day under the new heading', async ({
@@ -111,7 +111,7 @@ test.describe('the log (history) list', () => {
     await expect(dayPicker(page)).toContainText(t('day.today'));
 
     await dayPicker(page).getByLabel(t('day.choose')).fill('2026-09-20');
-    await expect(dayPicker(page)).toContainText(dayAndMonth(20));
+    await expect(dayPicker(page)).toContainText(shortDayAndMonth(20));
     await expect(page.getByText(t('log.empty'))).toBeVisible();
     await dayPicker(page).getByLabel(t('day.choose')).fill('2026-09-30');
     await expect(dayPicker(page)).toContainText(t('day.today'));
@@ -131,30 +131,48 @@ test.describe('the log (history) list', () => {
 
     await openTab(page, t('tab.log'));
     await expect(logRows(page)).toHaveCount(3);
-    await filterGroup(page, 'baby').getByRole('button', { name: 'Ada', exact: true }).click();
+    await (
+      await filterGroup(page, 'baby')
+    )
+      .getByRole('button', { name: 'Ada', exact: true })
+      .click();
     await expect(logRows(page)).toHaveCount(2);
-    await filterGroup(page, 'type')
+    await (
+      await filterGroup(page, 'type')
+    )
       .getByRole('button', { name: t('log.type.diaper'), exact: true })
       .click();
     await expect(logRows(page)).toHaveCount(1);
-    await filterGroup(page, 'type')
+    await (
+      await filterGroup(page, 'type')
+    )
       .getByRole('button', { name: t('log.type.sleep'), exact: true })
       .click();
     await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
+    // The filter sheet is still open (live filtering, no auto-close); it must close before the tab switch.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: t('log.filter.trigger') })).toBeHidden();
 
     await openTab(page, t('tab.home'));
     await openTab(page, t('tab.log'));
     await expect(
-      filterGroup(page, 'baby').getByRole('button', { name: 'Ada', exact: true }),
+      (await filterGroup(page, 'baby')).getByRole('button', { name: 'Ada', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true');
     await expect(
-      filterGroup(page, 'type').getByRole('button', { name: t('log.type.sleep'), exact: true }),
+      (await filterGroup(page, 'type')).getByRole('button', {
+        name: t('log.type.sleep'),
+        exact: true,
+      }),
     ).toHaveAttribute('aria-pressed', 'true');
-    await filterGroup(page, 'baby')
+    await (
+      await filterGroup(page, 'baby')
+    )
       .getByRole('button', { name: t('sheet.all'), exact: true })
       .click();
-    await filterGroup(page, 'type')
-      .getByRole('button', { name: t('log.type.all'), exact: true })
+    await (
+      await filterGroup(page, 'type')
+    )
+      .getByRole('button', { name: t('sheet.all'), exact: true })
       .click();
     await expect(logRows(page)).toHaveCount(3);
   });
@@ -177,6 +195,41 @@ test.describe('the log (history) list', () => {
       .getByRole('button', { name: t('day.previous') })
       .click();
     await expect(logRows(page).first()).toContainText(`22:10 – 06:30 ${t('log.suffix.nextDay')}`);
+  });
+
+  test('the brand row\'s day picker fits at 320, 360 and 414 px, for "Today" and a longer date', async ({
+    page,
+  }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.log'));
+    const picker = dayPicker(page);
+    const label = page.getByTestId('day-current');
+    const check = async () => {
+      for (const width of [320, 360, 414]) {
+        await page.setViewportSize({ width, height: 800 });
+        for (const button of await picker.getByRole('button').all()) {
+          const box = await button.boundingBox();
+          expect(box!.width, `day button at ${width}px`).toBeGreaterThanOrEqual(48);
+          expect(box!.height, `day button at ${width}px`).toBeGreaterThanOrEqual(48);
+        }
+        const labelBox = await label.boundingBox();
+        expect(labelBox!.height, `day label height at ${width}px`).toBeGreaterThanOrEqual(48);
+        expect(
+          await label.evaluate((el) => el.scrollWidth <= el.clientWidth),
+          `day label clipped at ${width}px`,
+        ).toBe(true);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+          `page overflow at ${width}px`,
+        ).toBe(true);
+      }
+    };
+    await expect(picker).toContainText(t('day.today'));
+    await check();
+
+    await picker.getByLabel(t('day.choose')).fill('2026-09-20');
+    await expect(picker).toContainText(shortDayAndMonth(20));
+    await check();
   });
 });
 
