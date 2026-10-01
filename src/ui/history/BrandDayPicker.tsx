@@ -7,47 +7,40 @@ import {
 } from '../../domain/days';
 import { useLocale, useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
-import { dayLabel } from './describe';
+import { useNow } from '../shared/useNow';
+import { pickedDay } from './DayPicker';
+import { dayLabelShort } from './describe';
 import styles from './Log.module.css';
 
-interface Props {
-  day: number | null; // null: today, which follows midnight
-  now: number;
+/** The log (history) tab's day picker, living in the brand row instead of its own full-width block. Owns
+ * its own tick, like BrandDate, so the rest of the brand row does not re-render on it. */
+export function BrandDayPicker({
+  day,
+  onChange,
+}: {
+  day: number | null;
   onChange: (next: number | null) => void;
-}
-
-/** A date-input value, or null for an empty/unparseable value or for `today` itself (meaning "clear the override"). */
-export function pickedDay(value: string, today: number): number | null {
-  const picked = fromDateInputValue(value);
-  if (picked === null || picked >= today) return null;
-  return picked;
-}
-
-/**
- * "‹ Today ›" (day.today). The label is also a native date field: a transparent <input type="date"> covers it, because
- * iOS opens its picker only on a real tap on the input.
- */
-export function DayPicker({ day, now, onChange }: Props) {
+}) {
   const t = useT();
   const locale = useLocale();
+  const now = useNow();
   const shown = resolveDay(day, now);
   const today = startOfDay(now);
-
   const pick = (value: string) => {
-    const parsed = fromDateInputValue(value);
-    if (parsed === null) return; // '' from the Clear button, or nothing parseable
+    if (fromDateInputValue(value) === null) return;
     onChange(pickedDay(value, today));
   };
-
   return (
-    <div className={styles.dayPicker} role="group" aria-label={t('day.label')}>
+    <div className={styles.brandDayPicker} role="group" aria-label={t('day.label')}>
       <Button
+        variant="tertiary"
         icon="chevron-left"
+        className={styles.brandDayButton}
         aria-label={t('day.previous')}
         onClick={() => onChange(stepDay(day, now, -1))}
       />
-      <label className={styles.dayCurrent} data-testid="day-current">
-        <span>{dayLabel(t, locale, shown, now)}</span>
+      <label className={styles.brandDayCurrent} data-testid="day-current">
+        <span>{dayLabelShort(t, locale, shown, now)}</span>
         <input
           type="date"
           aria-label={t('day.choose')}
@@ -57,7 +50,9 @@ export function DayPicker({ day, now, onChange }: Props) {
         />
       </label>
       <Button
+        variant="tertiary"
         icon="chevron-right"
+        className={styles.brandDayButton}
         aria-label={t('day.next')}
         disabled={shown >= today}
         onClick={() => onChange(stepDay(day, now, 1))}

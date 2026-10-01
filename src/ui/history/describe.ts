@@ -1,9 +1,10 @@
 import { dayOffset } from '../../domain/days';
+import type { TypeFilter } from '../../domain/filters';
 import { temperatureAlert } from '../../domain/health';
 import { isTimedType } from '../../domain/rules';
 import { stoolAlert } from '../../domain/stool';
 import type { GrowthMetric } from '../../domain/summary';
-import type { EventType, Side, TrackerEvent } from '../../domain/types';
+import type { Baby, EventType, Id, Side, TrackerEvent } from '../../domain/types';
 import type { Locale } from '../../i18n';
 import { HOUR } from '../../domain/time';
 import { formatDuration } from '../shared/format';
@@ -51,6 +52,20 @@ export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: 
   );
 }
 
+/** Like dayLabel, but a short date ("26 Eyl") instead of the full weekday form for any other day — for
+ * the brand row's tight width. */
+export function dayLabelShort(
+  t: TranslateFn,
+  locale: Locale,
+  dayStart: number,
+  now: number,
+): string {
+  const daysAgo = dayOffset(dayStart, now);
+  if (daysAgo === 0) return t('day.today');
+  if (daysAgo === 1) return t('day.yesterday');
+  return shortDate(locale, dayStart);
+}
+
 /** A clock time, marked when it falls on another day than the one shown. */
 export function timeOnDay(t: TranslateFn, locale: Locale, ms: number, shownDay: number): string {
   const time = clockTime(locale, ms);
@@ -72,6 +87,19 @@ export function timeRange(
   if (!isTimedType(event.type)) return start;
   if (event.endAt === undefined) return t('log.range.running', { start });
   return `${start} – ${timeOnDay(t, locale, event.endAt, shownDay)}`;
+}
+
+/** "Hepsi", a baby's name, a type's name, or both joined — whatever the log's filter row shows as its summary. */
+export function filterSummary(
+  t: TranslateFn,
+  babies: readonly Baby[],
+  babyId: Id | null,
+  type: TypeFilter,
+): string {
+  const babyPart = babyId === null ? null : (babies.find((b) => b.id === babyId)?.name ?? null);
+  const typePart = type === 'all' ? null : t(`log.type.${type}`);
+  const parts = [babyPart, typePart].filter((part): part is string => part !== null);
+  return parts.length === 0 ? t('sheet.all') : parts.join(' · ');
 }
 
 export function typeLabel(t: TranslateFn, type: EventType): string {

@@ -88,7 +88,7 @@ test('weight and height for one baby, typed with a comma', async ({ page }) => {
   const row = logRows(page).filter({ hasText: t('sheet.growth.title') });
   await expect(row).toContainText('Cal');
   await expect(row).toContainText(`3,45 kg · ${t('describe.height', { value: '52,5' })}`);
-  await filterGroup(page, 'baby').getByRole('button', { name: 'Ada', exact: true }).click();
+  await (await filterGroup(page, 'baby')).getByRole('button', { name: 'Ada', exact: true }).click();
   await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
 });
 
@@ -130,7 +130,7 @@ test('pumping has no baby and shows under "all babies" only', async ({ page }) =
   const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
   await expect(row).toContainText(t('log.mother'));
   await expect(row).toContainText(`${t('side.L.button')} ${t('unit.ml', { ml: 60 })}`);
-  await filterGroup(page, 'baby').getByRole('button', { name: 'Ada', exact: true }).click();
+  await (await filterGroup(page, 'baby')).getByRole('button', { name: 'Ada', exact: true }).click();
   await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
 });
 

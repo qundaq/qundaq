@@ -44,8 +44,19 @@ export function dayPicker(page: Page) {
   return page.getByRole('group', { name: t('day.label'), exact: true });
 }
 
-export function filterGroup(page: Page, kind: 'baby' | 'type') {
-  return page.getByRole('group', { name: t(`log.filter.${kind}`), exact: true });
+/** Opens the log (history) tab's filter sheet, unless it is already open. */
+export async function openFilterSheet(page: Page) {
+  const sheet = page.getByRole('dialog', { name: t('log.filter.trigger') });
+  if (!(await sheet.isVisible())) {
+    await page.getByRole('button', { name: t('log.filter.trigger') }).click();
+  }
+  return sheet;
+}
+
+/** The baby or type fieldset inside the log tab's filter sheet, opening the sheet first if needed. */
+export async function filterGroup(page: Page, kind: 'baby' | 'type') {
+  const sheet = await openFilterSheet(page);
+  return sheet.getByRole('group', { name: t(`log.filter.${kind}`), exact: true });
 }
 
 /** Chooses "Pick a time…" in a log sheet and types a date and time ("2026-09-25T09:40"). */

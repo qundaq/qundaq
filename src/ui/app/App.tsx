@@ -16,6 +16,7 @@ import { ToastProvider } from '../shared/ToastBanner';
 import styles from './App.module.css';
 import { Brand, BrandDate } from './Brand';
 import { ErrorBoundary } from './ErrorBoundary';
+import { BrandDayPicker } from '../history/BrandDayPicker';
 import { DEFAULT_LOG_VIEW, LogScreen, type LogView } from '../history/LogScreen';
 import { I18nProvider, useT } from './I18nProvider';
 import { TabBar, type Tab } from './TabBar';
@@ -194,7 +195,14 @@ function Shell({
     <>
       <Brand
         context={
-          tab === 'home' || tab === 'summary' ? <BrandDate locale={settings.locale} /> : undefined
+          tab === 'home' || tab === 'summary' ? (
+            <BrandDate locale={settings.locale} />
+          ) : tab === 'log' ? (
+            <BrandDayPicker
+              day={logView.day}
+              onChange={(day) => setLogView((v) => ({ ...v, day }))}
+            />
+          ) : undefined
         }
       />
       <main className={styles.screen}>
