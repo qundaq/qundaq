@@ -43,6 +43,7 @@
   --font-caption: 400 12.5px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-stat: 600 17px/1.25 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-clock: 700 20px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-tile: 700 22px/1.25 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-label: 400 12px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--info);
   --shadow-toast: 0 8px 24px rgb(0 0 0 / 0.25);

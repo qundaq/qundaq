@@ -123,7 +123,7 @@ test('makes no network requests after the first load', async ({ page, context, b
   await expect(logRows(page).filter({ hasText: 'Vitamin D' })).toHaveCount(1);
 
   await openTab(page, t('tab.summary'));
-  await expect(page.getByRole('table', { name: t('summary.week') })).toBeVisible();
+  await expect(page.getByRole('heading', { name: t('summary.week') })).toBeVisible();
 
   // Sounds are generated on the device, and the source list comes from the cache.
   await openTab(page, t('tab.sounds'));

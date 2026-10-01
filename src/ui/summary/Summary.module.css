@@ -9,35 +9,12 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.day .status dd {
-  font-variant-numeric: tabular-nums;
-}
-.status {
-  margin: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-.status div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.status dt {
-  color: var(--muted);
-}
-.status dd {
-  margin: 0;
-  text-align: right;
-}
-.week,
 .growthTable {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
   font: var(--font-caption);
 }
-.week th,
-.week td,
 .growthTable th,
 .growthTable td {
   padding: var(--space-2) var(--space-1);
@@ -46,16 +23,10 @@
   overflow-wrap: anywhere;
   border-top: 1px solid var(--border);
 }
-.week thead th,
 .growthTable thead th {
   color: var(--muted);
   font-weight: 600;
   border-top: 0;
-}
-.weekDetail {
-  display: block;
-  color: var(--muted);
-  font: var(--font-caption);
 }
 .growthChart {
   display: block;
@@ -70,4 +41,295 @@
 .label {
   fill: var(--muted);
   font-size: 11px;
+}
+.babySwitcher {
+  margin-bottom: var(--space-3);
+}
+.hiddenLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.babySwitcherGroup {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.babySwitcherSegment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--muted);
+  font: var(--font-body);
+  cursor: pointer;
+  overflow: hidden;
+}
+.babySwitcherSegment span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.babySwitcherChecked {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+.babySwitcherSegment:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+.babyDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-width: 0;
+}
+.tileLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: var(--font-caption);
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+.tileLabel svg {
+  color: var(--primary);
+  flex: none;
+}
+.tileValue {
+  font: var(--font-tile);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.tileDiff {
+  margin-top: 2px;
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.cardTitle {
+  font: var(--font-heading);
+  margin-bottom: var(--space-2);
+}
+.stripRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.stripName {
+  flex: none;
+  width: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: var(--font-caption);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.strip {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.stripSleep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--live) 55%, transparent);
+}
+.stripFeed {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--info);
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+.stripNow {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1.5px;
+  background: var(--text);
+  opacity: 0.5;
+  transform: translateX(-50%);
+}
+.stripAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  font: var(--font-label);
+  color: var(--muted);
+}
+.stripAxisIndented {
+  margin-left: calc(56px + var(--space-2));
+}
+.stripLegend {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.stripLegendSleep::before,
+.stripLegendFeed::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.stripLegendSleep::before {
+  background: color-mix(in srgb, var(--live) 55%, transparent);
+}
+.stripLegendFeed::before {
+  background: var(--info);
+}
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  height: 78px;
+  margin-top: var(--space-2);
+}
+.bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: var(--space-1);
+}
+.barFill,
+.barFillToday {
+  width: 100%;
+  min-height: 2px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.barFill {
+  background: var(--info);
+}
+.barFillToday {
+  background: var(--live);
+}
+.barLabel,
+.barLabelToday {
+  font: var(--font-caption);
+  font-size: 10px;
+}
+.barLabel {
+  color: var(--muted);
+}
+.barLabelToday {
+  color: var(--text);
+  font-weight: 600;
+}
+.chartRow {
+  display: flex;
+  align-items: stretch;
+  height: 78px;
+  margin-top: var(--space-2);
+}
+.axisLeft,
+.axisRight {
+  width: 18px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 0;
+  font: var(--font-label);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.axisLeft {
+  color: var(--info);
+  align-items: flex-end;
+}
+.axisRight {
+  color: var(--live);
+  align-items: flex-start;
+}
+.dualBars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  height: 100%;
+  padding: 0 2px;
+}
+.dualBar {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+}
+.dualBarMinutes,
+.dualBarMl {
+  width: 7px;
+  border-radius: 3px 3px 0 0;
+}
+.dualBarMinutes {
+  background: var(--info);
+}
+.dualBarMl {
+  background: var(--live);
+}
+.dualLabels {
+  display: flex;
+  align-items: stretch;
+  margin-top: var(--space-1);
+}
+/* As wide as the axis above it, so the labels sit under the bars whichever axes are drawn. */
+.dualLabelsSpacer {
+  width: 18px;
+  flex: none;
+}
+.dualLabelsBars {
+  flex: 1;
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 2px;
+}
+.dualLabelsBars span {
+  flex: 1;
+  text-align: center;
 }
