@@ -59,3 +59,11 @@
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
+.editDelete {
+  margin-top: var(--space-5);
+}
+.hint {
+  font: var(--font-caption);
+  color: var(--muted);
+  margin-bottom: var(--space-2);
+}

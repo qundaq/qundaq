@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { deleteBaby, listBabies } from '../../db/babies';
+import { listBabies } from '../../db/babies';
 import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
-import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
+import { useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
 import { Card } from '../shared/Card';
@@ -14,20 +14,10 @@ import styles from './Babies.module.css';
 
 export function BabiesCard() {
   const t = useT();
-  const report = useReportError();
   const babies = useLiveQuery(() => listBabies(db), [], useReportLoadError()) ?? [];
   const [editing, setEditing] = useState<Baby | 'new' | null>(null);
   // While the dialog closes it keeps showing the baby that was being edited.
   const shown = useSheetSession(editing);
-
-  const remove = async (baby: Baby) => {
-    if (!window.confirm(t('babies.deleteConfirm', { name: baby.name }))) return;
-    try {
-      await deleteBaby(db, baby.id);
-    } catch (error) {
-      report(error);
-    }
-  };
 
   return (
     <Card>
@@ -43,9 +33,6 @@ export function BabiesCard() {
             <span className={styles.name}>{baby.name}</span>
             <Button icon="pencil" onClick={() => setEditing(baby)}>
               {t('babies.edit')}
-            </Button>
-            <Button variant="danger" icon="trash-2" onClick={() => void remove(baby)}>
-              {t('babies.delete')}
             </Button>
           </li>
         ))}

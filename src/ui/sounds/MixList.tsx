@@ -3,7 +3,7 @@ import { db } from '../../db/instance';
 import { deleteMix, listMixes } from '../../db/mixes';
 import type { Id, Mix } from '../../domain/types';
 import { useT } from '../app/I18nProvider';
-import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../history/confirm';
+import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../shared/confirm';
 import { Button } from '../shared/Button';
 import { Card } from '../shared/Card';
 import { useReportError, useReportLoadError } from '../shared/ErrorBanner';

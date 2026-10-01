@@ -1,5 +1,5 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
-import { BABY_NAME_MAX, addBaby, updateBaby } from '../../db/babies';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { BABY_NAME_MAX, addBaby, deleteBaby, updateBaby } from '../../db/babies';
 import { db } from '../../db/instance';
 import type { Baby } from '../../domain/types';
 import { messageFor } from '../shared/ErrorBanner';
@@ -7,6 +7,7 @@ import { useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
 import { Field } from '../shared/Field';
 import { Sheet } from '../shared/Sheet';
+import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../shared/confirm';
 import { BABY_COLORS, nextColor, resolveBabyColor } from './colors';
 import styles from './Babies.module.css';
 
@@ -46,6 +47,25 @@ function BabyForm({
   const [birthDate, setBirthDate] = useState(baby?.birthDate ?? '');
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
+  const [armedAt, setArmedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (armedAt === null) return;
+    const timer = window.setTimeout(() => setArmedAt(null), DELETE_CONFIRM_MAX_MS);
+    return () => window.clearTimeout(timer);
+  }, [armedAt]);
+
+  const tapDelete = async () => {
+    const tap = deleteTap(armedAt, Date.now());
+    setArmedAt(tap.armedAt);
+    if (!tap.confirmed || !baby) return;
+    try {
+      await deleteBaby(db, baby.id);
+      onDone();
+    } catch (failure) {
+      setError(messageFor(t, failure));
+    }
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -113,6 +133,14 @@ function BabyForm({
           {t('common.save')}
         </Button>
       </div>
+      {baby && (
+        <div className={styles.editDelete}>
+          <p className={styles.hint}>{t('babies.deleteHint')}</p>
+          <Button variant="danger" block armed={armedAt !== null} onClick={() => void tapDelete()}>
+            {t(armedAt === null ? 'babies.delete' : 'babies.deleteConfirm')}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

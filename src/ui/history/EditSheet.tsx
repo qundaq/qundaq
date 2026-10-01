@@ -13,7 +13,7 @@ import { NoteField } from '../log/forms/fields';
 import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from '../log/forms/other';
 import { EditTimeField, OptionalTimeField } from '../log/TimeField';
 import { Sheet, useSheetSession } from '../shared/Sheet';
-import { DELETE_CONFIRM_MAX_MS, deleteTap } from './confirm';
+import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../shared/confirm';
 import styles from './Log.module.css';
 import { SegmentsEditor } from './SegmentsEditor';
 

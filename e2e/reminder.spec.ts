@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { t } from './support/i18n';
 import { stubShare } from './support/backup';
-import { addBabyInSettings, logDiaper, openTab } from './support/tracking';
+import { addBabyInSettings, deleteBabyInSettings, logDiaper, openTab } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
@@ -56,13 +56,7 @@ test('deleting every baby hides the reminder again, even though their entries st
   await expect(banner).toBeVisible();
 
   await openTab(page, t('tab.settings'));
-  page.once('dialog', (confirm) => void confirm.accept());
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'Ada' })
-    .getByRole('button', { name: t('babies.delete') })
-    .click();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Ada' })).toHaveCount(0);
+  await deleteBabyInSettings(page, 'Ada', { fakeClock: true });
 
   await openTab(page, t('tab.home'));
   await expect(page.getByText(t('home.empty'))).toBeVisible();
