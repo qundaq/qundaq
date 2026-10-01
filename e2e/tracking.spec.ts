@@ -4,6 +4,7 @@ import {
   addBabyInSettings,
   babyCard,
   cardAction,
+  deleteBabyInSettings,
   enterDuration,
   logRows,
   openTab,
@@ -71,13 +72,7 @@ test.describe('babies', () => {
     await dialog.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(page.getByRole('listitem').filter({ hasText: 'Ada Nora' })).toBeVisible();
 
-    page.once('dialog', (confirm) => void confirm.accept());
-    await page
-      .getByRole('listitem')
-      .filter({ hasText: 'Cal' })
-      .getByRole('button', { name: t('babies.delete') })
-      .click();
-    await expect(page.getByRole('listitem').filter({ hasText: 'Cal' })).toHaveCount(0);
+    await deleteBabyInSettings(page, 'Cal');
 
     await openTab(page, t('tab.home'));
     await expect(babyCard(page, 'Ada Nora')).toBeVisible();

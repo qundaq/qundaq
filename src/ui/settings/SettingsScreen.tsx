@@ -13,6 +13,7 @@ import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { CapCard } from './CapCard';
 import { SourcesSheet } from './SourcesSheet';
 import { OfflineCard, StorageCard, UpdateCard } from './PlatformCards';
+import { SettingsSection } from './SettingsSection';
 import styles from './Settings.module.css';
 
 interface Props {
@@ -28,76 +29,86 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
     <section>
       <VisuallyHidden as="h1">{t('tab.settings')}</VisuallyHidden>
 
-      <BabiesCard />
-      <BackupCard lastBackupAt={settings.lastBackupAt} actions={backup} />
+      <SettingsSection label={t('settings.section.babies')}>
+        <BabiesCard />
+        <BackupCard lastBackupAt={settings.lastBackupAt} actions={backup} />
+      </SettingsSection>
 
-      <Card>
-        <h2>{t('settings.language')}</h2>
-        <div className={styles.segmented} role="group" aria-label={t('settings.language')}>
-          {LOCALES.map((locale) => (
-            <Chip
-              key={locale}
-              selected={settings.locale === locale}
-              onClick={() => void onChange({ locale })}
-            >
-              {t(`settings.language.${locale}`)}
-            </Chip>
-          ))}
-        </div>
-      </Card>
+      <SettingsSection label={t('settings.section.appearance')}>
+        <Card>
+          <h2>{t('settings.language')}</h2>
+          <div className={styles.segmented} role="group" aria-label={t('settings.language')}>
+            {LOCALES.map((locale) => (
+              <Chip
+                key={locale}
+                selected={settings.locale === locale}
+                onClick={() => void onChange({ locale })}
+              >
+                {t(`settings.language.${locale}`)}
+              </Chip>
+            ))}
+          </div>
+        </Card>
 
-      <Card>
-        <h2>{t('settings.theme.title')}</h2>
-        <div className={styles.segmented} role="group" aria-label={t('settings.theme.title')}>
-          {THEME_CHOICES.map((choice) => (
-            <Chip
-              key={choice}
-              selected={settings.theme === choice}
-              onClick={() => void onChange({ theme: choice })}
-            >
-              {t(`settings.theme.${choice}`)}
-            </Chip>
-          ))}
-        </div>
-      </Card>
+        <Card>
+          <h2>{t('settings.theme.title')}</h2>
+          <div className={styles.segmented} role="group" aria-label={t('settings.theme.title')}>
+            {THEME_CHOICES.map((choice) => (
+              <Chip
+                key={choice}
+                selected={settings.theme === choice}
+                onClick={() => void onChange({ theme: choice })}
+              >
+                {t(`settings.theme.${choice}`)}
+              </Chip>
+            ))}
+          </div>
+        </Card>
 
-      <Card>
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            role="switch"
-            checked={settings.nightMode}
-            onChange={(event) => void onChange({ nightMode: event.target.checked })}
-          />
-          <span>
-            <strong>{t('settings.nightMode')}</strong>
-            <br />
-            <span className={styles.hint}>{t('settings.nightMode.hint')}</span>
-          </span>
-        </label>
-      </Card>
+        <Card>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={settings.nightMode}
+              onChange={(event) => void onChange({ nightMode: event.target.checked })}
+            />
+            <span>
+              <strong>{t('settings.nightMode')}</strong>
+              <br />
+              <span className={styles.hint}>{t('settings.nightMode.hint')}</span>
+            </span>
+          </label>
+        </Card>
+      </SettingsSection>
 
-      <CapCard
-        cap={settings.volumeCap ?? DEFAULT_CAP}
-        onChange={(volumeCap) => void onChange({ volumeCap })}
-      />
+      <SettingsSection label={t('settings.section.sound')}>
+        <CapCard
+          cap={settings.volumeCap ?? DEFAULT_CAP}
+          onChange={(volumeCap) => void onChange({ volumeCap })}
+        />
+      </SettingsSection>
 
-      <OfflineCard />
-      <StorageCard />
-      <UpdateCard />
+      <SettingsSection label={t('settings.section.device')}>
+        <OfflineCard />
+        <StorageCard />
+        <UpdateCard />
+      </SettingsSection>
 
-      <Card>
-        <h2>{t('settings.privacy.title')}</h2>
-        <p>{t('settings.privacy.body')}</p>
-      </Card>
+      <SettingsSection label={t('settings.section.about')}>
+        <Card>
+          <h2>{t('settings.privacy.title')}</h2>
+          <p>{t('settings.privacy.body')}</p>
+        </Card>
 
-      <Card>
-        <h2>{t('settings.about.title')}</h2>
-        <p className={styles.hint} data-testid="app-version">
-          {t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}
-        </p>
-        <Button onClick={() => setSources(true)}>{t('settings.sources')}</Button>
-      </Card>
+        <Card>
+          <h2>{t('settings.about.title')}</h2>
+          <p className={styles.hint} data-testid="app-version">
+            {t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}
+          </p>
+          <Button onClick={() => setSources(true)}>{t('settings.sources')}</Button>
+        </Card>
+      </SettingsSection>
       <SourcesSheet open={sources} onClose={() => setSources(false)} />
     </section>
   );

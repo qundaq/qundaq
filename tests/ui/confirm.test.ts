@@ -3,7 +3,7 @@ import {
   DELETE_CONFIRM_MAX_MS,
   DELETE_CONFIRM_MIN_MS,
   deleteTap,
-} from '../../src/ui/history/confirm';
+} from '../../src/ui/shared/confirm';
 
 describe('deleteTap', () => {
   it('the first tap arms the button', () => {

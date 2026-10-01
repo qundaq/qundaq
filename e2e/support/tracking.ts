@@ -18,6 +18,34 @@ export async function addBabyInSettings(page: Page, name: string) {
   await expect(page.getByRole('listitem').filter({ hasText: name })).toBeVisible();
 }
 
+/**
+ * Deletes a baby from Settings: opens its edit dialog and taps the two-step delete button there
+ * (edit.deleteConfirm's pattern - `babies.delete`, then `babies.deleteConfirm`). Clearing the confirm
+ * window's 600 ms minimum needs `page.clock.fastForward` on a page whose clock is faked (a real wait
+ * would not move its frozen `Date.now()`), or a real wait otherwise.
+ */
+export async function deleteBabyInSettings(
+  page: Page,
+  name: string,
+  options: { fakeClock?: boolean } = {},
+) {
+  const row = page.getByRole('listitem').filter({ hasText: name });
+  await row.getByRole('button', { name: t('babies.edit') }).click();
+  const dialog = page.getByRole('dialog', { name: t('babies.formTitle.edit') });
+  const remove = dialog.getByRole('button', {
+    name: new RegExp(
+      `^(${escapeRegExp(t('babies.delete'))}|${escapeRegExp(t('babies.deleteConfirm'))})$`,
+    ),
+  });
+  await remove.click();
+  await expect(remove).toHaveText(t('babies.deleteConfirm'));
+  if (options.fakeClock) await page.clock.fastForward(700);
+  else await page.waitForTimeout(700);
+  await remove.click();
+  await expect(dialog).toBeHidden();
+  await expect(row).toHaveCount(0);
+}
+
 export function babyCard(page: Page, name: string) {
   return page.getByRole('article', { name });
 }
