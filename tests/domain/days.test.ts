@@ -4,6 +4,7 @@ import {
   dayOffset,
   dayWindow,
   fromDateInputValue,
+  hourOf,
   overlapMs,
   resolveDay,
   startOfDay,
@@ -85,5 +86,13 @@ describe('date input values', () => {
     expect(fromDateInputValue('2026-02-31')).toBeNull();
     expect(fromDateInputValue('2026-13-01')).toBeNull();
     expect(fromDateInputValue('yesterday')).toBeNull();
+  });
+});
+
+describe('hourOf', () => {
+  it('gives the local hour, 0-23', () => {
+    expect(hourOf(new Date(2026, 8, 27, 0, 0).getTime())).toBe(0);
+    expect(hourOf(new Date(2026, 8, 27, 9, 59).getTime())).toBe(9);
+    expect(hourOf(new Date(2026, 8, 27, 23, 0).getTime())).toBe(23);
   });
 });

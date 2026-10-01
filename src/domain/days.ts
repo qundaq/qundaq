@@ -56,3 +56,8 @@ export function fromDateInputValue(value: string): number | null {
   const date = new Date(year, month - 1, day);
   return date.getMonth() === month - 1 ? date.getTime() : null;
 }
+
+/** The local hour (0-23) `ms` falls in, for grouping a day's rows by hour. */
+export function hourOf(ms: number): number {
+  return new Date(ms).getHours();
+}

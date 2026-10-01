@@ -5,6 +5,7 @@ import {
   SWITCH_DEBOUNCE_MS,
   deleteEvent,
   hasLiveEvents,
+  listEventsOverlapping,
   listRecentEvents,
   listRunningEvents,
   logEvents,
@@ -353,5 +354,48 @@ describe('hasLiveEvents', () => {
     expect(await hasLiveEvents(db)).toBe(true);
     await deleteEvent(db, diaper!.id, NOW);
     expect(await hasLiveEvents(db)).toBe(false);
+  });
+});
+
+describe('listRecentEvents — same-instant ties', () => {
+  it('a running event and a finished event at the same instant sort by id, not merge order', async () => {
+    const db = freshDb();
+    // Log a finished sleep first, then a running sleep, both at NOW
+    const [finished] = await logEvents(
+      db,
+      [{ type: 'sleep', babyId: 'a', startAt: NOW, endAt: NOW + MINUTE }],
+      NOW,
+    );
+    const [running] = await logEvents(db, [{ type: 'sleep', babyId: 'b', startAt: NOW }], NOW);
+
+    // listRecentEvents merges running (from the open index) and finished (from recent query).
+    // Without the tie-break, they'd be in merge order: [finished, running] (finished from recent query first, then running).
+    // With the tie-break, they must be sorted by id.
+    const order = (await listRecentEvents(db, NOW - DAY)).map((e) => e.id);
+    const expected = [finished!.id, running!.id].sort();
+    expect(order).toEqual(expected);
+  });
+});
+
+describe('listEventsOverlapping — same-instant ties', () => {
+  it('two overlapping events at the same instant sort by id, not merge order', async () => {
+    const db = freshDb();
+    // Create two events at NOW that both overlap a time window
+    const [first] = await logEvents(
+      db,
+      [{ type: 'diaper', babyId: 'a', startAt: NOW, wet: true, dirty: false }],
+      NOW,
+    );
+    const [second] = await logEvents(
+      db,
+      [{ type: 'diaper', babyId: 'b', startAt: NOW, wet: true, dirty: false }],
+      NOW,
+    );
+
+    // Query a window that includes both. Without the tie-break, merge order would dominate.
+    // With the tie-break, they must be sorted by id.
+    const order = (await listEventsOverlapping(db, NOW - HOUR, NOW + HOUR, NOW)).map((e) => e.id);
+    const expected = [first!.id, second!.id].sort();
+    expect(order).toEqual(expected);
   });
 });

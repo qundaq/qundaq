@@ -206,4 +206,29 @@ describe('growthSeries', () => {
     ]);
     expect(growthSeries(events, 'headMm')).toEqual([{ at: at(9, 20, 9), value: 355 }]);
   });
+
+  it('two growth entries at the same instant always sort in the same, id-ordered, order', () => {
+    const atTime = Date.now();
+    const a = {
+      id: 'b',
+      type: 'growth' as const,
+      babyId: 'x',
+      startAt: atTime,
+      weightG: 3000,
+      createdAt: atTime,
+      updatedAt: atTime,
+    };
+    const b = {
+      id: 'a',
+      type: 'growth' as const,
+      babyId: 'x',
+      startAt: atTime,
+      weightG: 3100,
+      createdAt: atTime,
+      updatedAt: atTime,
+    };
+    expect(growthSeries([a, b], 'weightG').map((p) => p.value)).toEqual(
+      growthSeries([b, a], 'weightG').map((p) => p.value),
+    );
+  });
 });

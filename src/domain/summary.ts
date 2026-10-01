@@ -1,3 +1,4 @@
+import { compareIds } from './ids';
 import { addDays, overlapMs } from './days';
 import type { Id, Side, TrackerEvent } from './types';
 
@@ -124,12 +125,14 @@ export function weekTotals(
 
 /** The growth entries that have `metric`, as points, oldest first. */
 export function growthSeries(events: readonly TrackerEvent[], metric: GrowthMetric): GrowthPoint[] {
-  const points: GrowthPoint[] = [];
+  const points: Array<{ at: number; value: number; id: Id }> = [];
   for (const event of events) {
     if (event.type !== 'growth' || event.deletedAt !== undefined) continue;
     const value = event[metric];
     if (typeof value === 'number' && Number.isFinite(value))
-      points.push({ at: event.startAt, value });
+      points.push({ at: event.startAt, value, id: event.id });
   }
-  return points.sort((a, b) => a.at - b.at);
+  return points
+    .sort((a, b) => a.at - b.at || compareIds(a.id, b.id))
+    .map(({ at, value }) => ({ at, value }));
 }

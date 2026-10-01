@@ -1,4 +1,4 @@
-import { newId } from '../domain/ids';
+import { compareIds, newId } from '../domain/ids';
 import {
   FUTURE_TOLERANCE_MS,
   ValidationError,
@@ -31,7 +31,7 @@ export async function listRecentEvents(db: TrackerDb, since: number): Promise<Tr
   const byId = new Map<Id, TrackerEvent>();
   for (const event of [...running, ...recent])
     if (event.deletedAt === undefined) byId.set(event.id, event);
-  return [...byId.values()].sort((a, b) => a.startAt - b.startAt);
+  return [...byId.values()].sort((a, b) => a.startAt - b.startAt || compareIds(a.id, b.id));
 }
 
 /**
@@ -67,7 +67,7 @@ export async function listEventsOverlapping(
   for (const event of [...candidates, ...running]) {
     if (event.deletedAt === undefined && overlaps(event, from, to, now)) byId.set(event.id, event);
   }
-  return [...byId.values()].sort((a, b) => a.startAt - b.startAt);
+  return [...byId.values()].sort((a, b) => a.startAt - b.startAt || compareIds(a.id, b.id));
 }
 
 /**

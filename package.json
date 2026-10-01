@@ -20,8 +20,8 @@
     "e2e:visual": "QUNDAQ_SCREENSHOTS=1 playwright test e2e/visual.spec.ts",
     "e2e:visual:update": "QUNDAQ_SCREENSHOTS=1 playwright test e2e/visual.spec.ts --update-snapshots",
     "check:licenses": "node scripts/check-licenses.mjs",
-    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
-    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path \"$(git rev-parse --git-common-dir)/info/exclude\"",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path \"$(git rev-parse --git-common-dir)/info/exclude\"",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run check:licenses && npm run e2e"
   },
   "dependencies": {
