@@ -1,3 +1,5 @@
+import type { Id } from './types';
+
 export interface CryptoLike {
   getRandomValues: (array: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
   randomUUID?: () => string;
@@ -11,4 +13,9 @@ export function newId(cryptoImpl: CryptoLike = globalThis.crypto): string {
   bytes[8] = (bytes[8]! & 0x3f) | 0x80; // RFC 4122 variant
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/** A total order over ids: same input always sorts the same way, on every device. */
+export function compareIds(a: Id, b: Id): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }

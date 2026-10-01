@@ -1,4 +1,4 @@
-import { newId } from '../domain/ids';
+import { compareIds, newId } from '../domain/ids';
 import { BABY_NAME_MAX, ValidationError, isOpen, validateBabyName } from '../domain/rules';
 import type { Baby, Id } from '../domain/types';
 import type { TrackerDb } from './db';
@@ -35,6 +35,7 @@ export async function addBaby(db: TrackerDb, input: NewBaby, now = Date.now()): 
 
 export async function listBabies(db: TrackerDb): Promise<Baby[]> {
   const all = await db.babies.orderBy('createdAt').toArray();
+  all.sort((a, b) => a.createdAt - b.createdAt || compareIds(a.id, b.id));
   return all.filter((baby) => baby.deletedAt === undefined && !baby.archived);
 }
 

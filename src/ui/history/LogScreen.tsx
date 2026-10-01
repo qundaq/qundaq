@@ -3,6 +3,7 @@ import { listBabies } from '../../db/babies';
 import { listEventsOverlapping } from '../../db/events';
 import { db } from '../../db/instance';
 import { addDays, resolveDay } from '../../domain/days';
+import { compareIds } from '../../domain/ids';
 import { TYPE_FILTERS, matchesFilters, visibleEvents, type TypeFilter } from '../../domain/filters';
 import type { Baby, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
@@ -132,7 +133,7 @@ function DayList({ events, babies, day, babyFilter, typeFilter, now, onOpen }: D
   const byId = new Map(babies.map((baby) => [baby.id, baby]));
   const rows = visibleEvents(events, new Set(byId.keys()))
     .filter((event) => matchesFilters(event, babyFilter, typeFilter))
-    .sort((a, b) => b.startAt - a.startAt);
+    .sort((a, b) => b.startAt - a.startAt || compareIds(a.id, b.id));
   if (rows.length === 0) {
     return (
       <p className={styles.muted}>

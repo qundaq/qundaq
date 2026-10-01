@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newId } from '../../src/domain/ids';
+import { compareIds, newId } from '../../src/domain/ids';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const getRandomValues = <T extends ArrayBufferView>(array: T): T =>
@@ -23,5 +23,13 @@ describe('newId', () => {
 
   it('defaults to the global crypto', () => {
     expect(newId()).toMatch(UUID_V4);
+  });
+});
+
+describe('compareIds', () => {
+  it('is a total, stable order: equal, less, greater', () => {
+    expect(compareIds('a', 'a')).toBe(0);
+    expect(compareIds('a', 'b')).toBeLessThan(0);
+    expect(compareIds('b', 'a')).toBeGreaterThan(0);
   });
 });

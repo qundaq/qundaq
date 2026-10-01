@@ -8,3 +8,4 @@ playwright-report/
 # Baselines are Linux-rendered (fonts); local runs on macOS/Windows write here but never get committed.
 e2e/__screenshots__/darwin/
 e2e/__screenshots__/win32/
+.worktrees/
