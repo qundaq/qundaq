@@ -10,7 +10,7 @@ export function BrandDate({ locale }: { locale: Locale }) {
   return brandDate(locale, now);
 }
 
-/** The row every screen starts with: the mark, the name, and the screen's context (a date, a day) on the right. */
+/** The row every screen starts with: the mark, the name, and the screen's context (today's date, or the log's date range) on the right. */
 export function Brand({ context }: { context?: ReactNode }) {
   return (
     <header className={styles.brand}>

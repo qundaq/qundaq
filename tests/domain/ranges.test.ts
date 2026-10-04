@@ -5,7 +5,6 @@ import {
   customRange,
   isSingleDay,
   rangeDays,
-  rangeKey,
   resolveRange,
   stepRange,
 } from '../../src/domain/ranges';
@@ -144,17 +143,5 @@ describe('stepRange', () => {
       from: at(3, 30),
       to: at(3, 30),
     });
-  });
-});
-
-describe('rangeKey', () => {
-  it('is stable and tells presets from custom ranges and different bounds apart', () => {
-    const today = { kind: 'preset', preset: 'today' } as const;
-    expect(rangeKey(today)).toBe(rangeKey({ kind: 'preset', preset: 'today' }));
-    expect(rangeKey(today)).not.toBe(rangeKey({ kind: 'preset', preset: 'yesterday' }));
-    const a = { kind: 'custom', from: at(9, 1), to: at(9, 2) } as const;
-    expect(rangeKey(a)).toBe(rangeKey({ kind: 'custom', from: at(9, 1), to: at(9, 2) }));
-    expect(rangeKey(a)).not.toBe(rangeKey({ kind: 'custom', from: at(9, 1), to: at(9, 3) }));
-    expect(rangeKey(a)).not.toBe(rangeKey(today));
   });
 });

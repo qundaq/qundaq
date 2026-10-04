@@ -7,6 +7,8 @@
   padding: var(--space-2) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom));
   background: var(--surface);
   color: var(--text);
+  /* Its own text style too: a sheet opened from the brand row must not inherit that row's caption style. */
+  font: var(--font-body);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }

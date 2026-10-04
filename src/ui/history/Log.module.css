@@ -33,42 +33,59 @@
   outline: 2px solid var(--info);
   outline-offset: 2px;
 }
-.brandDayPicker {
+.brandRangePicker {
   display: flex;
   align-items: center;
   gap: 2px;
+  min-width: 0;
 }
-.brandDayButton {
+.brandStep {
+  flex: none;
   width: var(--tap);
   height: var(--tap);
   padding: 0;
   color: var(--muted);
 }
-.brandDayCurrent {
-  position: relative;
+/* The range's label is the button that opens the range sheet; a long label ends in an ellipsis rather than
+   pushing the brand row wider than the screen. */
+.brandRangeCurrent {
   min-width: 64px;
+  max-width: 100%;
   min-height: var(--tap);
+  padding: 0 var(--space-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
   font: var(--font-caption);
-  color: var(--muted);
   font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
 }
-.brandDayCurrent input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  appearance: none;
-  -webkit-appearance: none;
-}
-.brandDayCurrent:has(input:focus-visible) {
+.brandRangeCurrent:focus-visible {
   outline: 2px solid var(--info);
   outline-offset: 2px;
+}
+.brandRangeLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customRange {
+  margin-top: var(--space-4);
+}
+.rangeFields {
+  display: grid;
+  /* minmax(0, …): a date field's own minimum width must never push the second one off the sheet. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.rangeFields input {
+  width: 100%;
+  min-width: 0;
 }
 .filterTrigger {
   display: flex;
@@ -122,6 +139,15 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
+}
+/* A multi-day list's day heading: body text above the muted hour headings, with room above each new day. */
+.dayHeading {
+  margin: var(--space-4) 0 var(--space-1);
+  font: var(--font-heading);
+  color: var(--text);
+}
+li:first-child > .dayHeading {
+  margin-top: 0;
 }
 .hourHeading {
   margin: var(--space-2) 0 2px;

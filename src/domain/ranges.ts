@@ -45,9 +45,3 @@ export function stepRange(range: DayRange, delta: -1 | 1, now: number): RangeCho
   const day = Math.min(addDays(range.from, delta), startOfDay(now));
   return { kind: 'custom', from: day, to: day };
 }
-
-export function rangeKey(choice: RangeChoice): string {
-  return choice.kind === 'preset'
-    ? `preset:${choice.preset}`
-    : `custom:${choice.from}:${choice.to}`;
-}

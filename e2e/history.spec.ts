@@ -5,14 +5,16 @@ import { formatDuration } from '../src/ui/shared/format';
 import {
   addBabyInSettings,
   babyCard,
-  dayPicker,
   enterDuration,
   feedTile,
   filterGroup,
   logDiaper,
   logRows,
+  openRangeSheet,
   openRow,
   openTab,
+  rangeLabel,
+  rangePicker,
   cardAction,
   pickTime,
 } from './support/tracking';
@@ -44,8 +46,8 @@ test.describe('the log (history) list', () => {
     await expect(bottle).toBeHidden();
 
     await openTab(page, t('tab.log'));
-    await expect(dayPicker(page)).toContainText(t('day.today'));
-    await expect(dayPicker(page).getByRole('button', { name: t('day.next') })).toBeDisabled();
+    await expect(rangeLabel(page)).toHaveText(t('range.today'));
+    await expect(rangePicker(page).getByRole('button', { name: t('day.next') })).toBeDisabled();
     const rows = logRows(page);
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText('09:45');
@@ -76,7 +78,7 @@ test.describe('the log (history) list', () => {
     await expect(headings.nth(1)).toHaveText('08:00');
   });
 
-  test('previous and next day, the date field, and never the old day under the new heading', async ({
+  test('previous and next day, a picked day, and never the old day under the new heading', async ({
     page,
   }) => {
     await addBabyInSettings(page, 'Ada');
@@ -92,7 +94,7 @@ test.describe('the log (history) list', () => {
       const seen: string[] = [];
       (window as unknown as { __logStates: string[] }).__logStates = seen;
       new MutationObserver(() => {
-        const day = document.querySelector('[data-testid="day-current"]')?.textContent ?? '';
+        const day = document.querySelector('[data-testid="range-current"]')?.textContent ?? '';
         const rows = Array.from(
           document.querySelectorAll('[data-testid="log-list"] li'),
           (li) => li.textContent ?? '',
@@ -104,10 +106,10 @@ test.describe('the log (history) list', () => {
         characterData: true,
       });
     });
-    await dayPicker(page)
+    await rangePicker(page)
       .getByRole('button', { name: t('day.previous') })
       .click();
-    await expect(dayPicker(page)).toContainText(t('day.yesterday'));
+    await expect(rangeLabel(page)).toHaveText(t('day.yesterday'));
     await expect(logRows(page)).toHaveCount(1);
     await expect(logRows(page).first()).toContainText('21:00');
     const states = await page.evaluate(
@@ -122,16 +124,18 @@ test.describe('the log (history) list', () => {
       states.filter((state) => state.startsWith(yesterday) && state.includes('09:00')),
     ).toEqual([]);
 
-    await dayPicker(page)
+    await rangePicker(page)
       .getByRole('button', { name: t('day.next') })
       .click();
-    await expect(dayPicker(page)).toContainText(t('day.today'));
+    await expect(rangeLabel(page)).toHaveText(t('range.today'));
 
-    await dayPicker(page).getByLabel(t('day.choose')).fill('2026-09-20');
-    await expect(dayPicker(page)).toContainText(shortDayAndMonth(20));
+    const sheet = await openRangeSheet(page);
+    await sheet.getByLabel(t('range.from')).fill('2026-09-20');
+    await sheet.getByLabel(t('range.to')).fill('2026-09-20');
+    await expect(rangeLabel(page)).toHaveText(shortDayAndMonth(20));
     await expect(page.getByText(t('log.empty'))).toBeVisible();
-    await dayPicker(page).getByLabel(t('day.choose')).fill('2026-09-30');
-    await expect(dayPicker(page)).toContainText(t('day.today'));
+    await sheet.getByRole('button', { name: t('range.today'), exact: true }).click();
+    await expect(rangeLabel(page)).toHaveText(t('range.today'));
   });
 
   test('baby and type filters, kept across tab switches', async ({ page }) => {
@@ -238,32 +242,33 @@ test.describe('the log (history) list', () => {
     await expect(logRows(page).first()).toContainText(
       `22:10 ${t('log.suffix.previousDay')} – 06:30`,
     );
-    await dayPicker(page)
+    await rangePicker(page)
       .getByRole('button', { name: t('day.previous') })
       .click();
     await expect(logRows(page).first()).toContainText(`22:10 – 06:30 ${t('log.suffix.nextDay')}`);
   });
 
-  test('the brand row\'s day picker fits at 320, 360 and 414 px, for "Today" and a longer date', async ({
+  test("the brand row's range picker fits at 320, 360 and 414 px, for one day and for longer ranges", async ({
     page,
   }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, t('tab.log'));
-    const picker = dayPicker(page);
-    const label = page.getByTestId('day-current');
+    const picker = rangePicker(page);
+    const label = rangeLabel(page);
     const check = async () => {
       for (const width of [320, 360, 414]) {
         await page.setViewportSize({ width, height: 800 });
         for (const button of await picker.getByRole('button').all()) {
           const box = await button.boundingBox();
-          expect(box!.width, `day button at ${width}px`).toBeGreaterThanOrEqual(48);
-          expect(box!.height, `day button at ${width}px`).toBeGreaterThanOrEqual(48);
+          expect(box!.width, `range button at ${width}px`).toBeGreaterThanOrEqual(48);
+          expect(box!.height, `range button at ${width}px`).toBeGreaterThanOrEqual(48);
         }
-        const labelBox = await label.boundingBox();
-        expect(labelBox!.height, `day label height at ${width}px`).toBeGreaterThanOrEqual(48);
         expect(
-          await label.evaluate((el) => el.scrollWidth <= el.clientWidth),
-          `day label clipped at ${width}px`,
+          await label.evaluate((el) => {
+            const text = el.firstElementChild!;
+            return text.scrollWidth <= text.clientWidth;
+          }),
+          `range label clipped at ${width}px`,
         ).toBe(true);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
@@ -271,12 +276,120 @@ test.describe('the log (history) list', () => {
         ).toBe(true);
       }
     };
-    await expect(picker).toContainText(t('day.today'));
+    await expect(label).toHaveText(t('range.today'));
     await check();
 
-    await picker.getByLabel(t('day.choose')).fill('2026-09-20');
-    await expect(picker).toContainText(shortDayAndMonth(20));
+    const sheet = await openRangeSheet(page);
+    await sheet.getByLabel(t('range.from')).fill('2026-09-20');
+    await sheet.getByLabel(t('range.to')).fill('2026-09-20');
+    await expect(label).toHaveText(shortDayAndMonth(20));
+    await page.keyboard.press('Escape');
     await check();
+
+    await openRangeSheet(page);
+    await sheet.getByRole('button', { name: t('range.last30'), exact: true }).click();
+    await page.keyboard.press('Escape');
+    await expect(label).toHaveText(t('range.last30'));
+    await check();
+
+    await openRangeSheet(page);
+    await sheet.getByLabel(t('range.from')).fill('2026-09-12');
+    await sheet.getByLabel(t('range.to')).fill('2026-09-20');
+    await page.keyboard.press('Escape');
+    await expect(label).toHaveText(`${shortDayAndMonth(12)} – ${shortDayAndMonth(20)}`);
+    await check();
+
+    // The range sheet's two date fields sit side by side inside the sheet, even at 320 px.
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openRangeSheet(page);
+    const sheetBox = await sheet.boundingBox();
+    for (const field of [t('range.from'), t('range.to')]) {
+      const box = await sheet.getByLabel(field).boundingBox();
+      expect(box!.x + box!.width, `${field} field at 320px`).toBeLessThanOrEqual(
+        sheetBox!.x + sheetBox!.width,
+      );
+      expect(box!.height, `${field} field at 320px`).toBeGreaterThanOrEqual(48);
+    }
+  });
+
+  test('quick ranges, a custom range, day headings, and the one-day steps', async ({ page }) => {
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await logDiaper(page, { at: '2026-09-23T08:00' });
+    await logDiaper(page, { at: '2026-09-24T21:00' });
+    await logDiaper(page, { at: '2026-09-25T09:00' });
+    await openTab(page, t('tab.log'));
+    const picker = rangePicker(page);
+    const label = rangeLabel(page);
+    const dayHeadings = page.getByRole('list', { name: t('log.list') }).getByRole('heading', {
+      level: 3,
+    });
+    const hourHeadings = page.getByRole('list', { name: t('log.list') }).getByRole('heading', {
+      level: 4,
+    });
+
+    // Today: one row, hour headings only.
+    await expect(label).toHaveText(t('range.today'));
+    await expect(logRows(page)).toHaveCount(1);
+    await expect(logRows(page).first()).toContainText('09:00');
+    await expect(hourHeadings).toHaveCount(0);
+
+    const sheet = await openRangeSheet(page);
+    const chip = (key: 'range.today' | 'range.yesterday' | 'range.last7' | 'range.last30') =>
+      sheet.getByRole('button', { name: t(key), exact: true });
+    await expect(chip('range.today')).toHaveAttribute('aria-pressed', 'true');
+    await chip('range.yesterday').click();
+    await expect(label).toHaveText(t('range.yesterday'));
+    await expect(logRows(page)).toHaveCount(1);
+    await expect(logRows(page).first()).toContainText('21:00');
+
+    // Last 7 days: all three days, newest first, each under its own day heading.
+    await chip('range.last7').click();
+    await expect(label).toHaveText(t('range.last7'));
+    await expect(chip('range.last7')).toHaveAttribute('aria-pressed', 'true');
+    await expect(logRows(page)).toHaveCount(3);
+    const wednesday = new Intl.DateTimeFormat('tr', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }).format(new Date(2026, 8, 23));
+    await expect(dayHeadings).toHaveText([t('day.today'), t('day.yesterday'), wednesday]);
+    await expect(hourHeadings).toHaveText(['09:00', '21:00', '08:00']);
+    await expect(sheet.getByLabel(t('range.from'))).toHaveValue('2026-09-19');
+    await expect(sheet.getByLabel(t('range.to'))).toHaveValue('2026-09-25');
+
+    // A custom range: the label shows its first and last day, and no quick range is lit.
+    await sheet.getByLabel(t('range.from')).fill('2026-09-23');
+    await sheet.getByLabel(t('range.to')).fill('2026-09-24');
+    await expect(label).toHaveText(`${shortDayAndMonth(23)} – ${shortDayAndMonth(24)}`);
+    await expect(chip('range.last7')).toHaveAttribute('aria-pressed', 'false');
+    await expect(logRows(page)).toHaveCount(2);
+    await expect(dayHeadings).toHaveText([t('day.yesterday'), wednesday]);
+    // A longer range has no day steps.
+    await expect(picker.getByRole('button', { name: t('day.previous') })).toHaveCount(0);
+
+    // A one-day custom range steps by a day again.
+    await sheet.getByLabel(t('range.from')).fill('2026-09-24');
+    await expect(label).toHaveText(t('day.yesterday'));
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+    // One day again: no day heading, and the hour headings are back at level 3.
+    await expect(dayHeadings).toHaveText(['21:00']);
+    await expect(hourHeadings).toHaveCount(0);
+    await picker.getByRole('button', { name: t('day.previous') }).click();
+    await expect(label).toHaveText(shortDayAndMonth(23));
+    await expect(logRows(page)).toHaveCount(1);
+    await expect(logRows(page).first()).toContainText('08:00');
+    await picker.getByRole('button', { name: t('day.next') }).click();
+    await picker.getByRole('button', { name: t('day.next') }).click();
+    await expect(label).toHaveText(t('range.today'));
+    await expect(picker.getByRole('button', { name: t('day.next') })).toBeDisabled();
+
+    // A range with nothing in it.
+    await openRangeSheet(page);
+    await sheet.getByLabel(t('range.from')).fill('2026-09-10');
+    await sheet.getByLabel(t('range.to')).fill('2026-09-20');
+    await expect(page.getByText(t('log.empty'))).toBeVisible();
   });
 });
 

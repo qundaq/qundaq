@@ -68,8 +68,27 @@ export async function openRow(page: Page, text: string) {
   await logRows(page).filter({ hasText: text }).first().getByRole('button').click();
 }
 
+/** The summary tab's day picker. */
 export function dayPicker(page: Page) {
   return page.getByRole('group', { name: t('day.label'), exact: true });
+}
+
+/** The log (history) tab's date range in the brand row: the label button, and ‹ › for a one-day range. */
+export function rangePicker(page: Page) {
+  return page.getByRole('group', { name: t('range.title'), exact: true });
+}
+
+/** The log tab's range label (the button that opens the range sheet): its text is the label alone. */
+export function rangeLabel(page: Page) {
+  return page.getByTestId('range-current');
+}
+
+/** Opens the log tab's range sheet, unless it is already open. */
+export async function openRangeSheet(page: Page) {
+  const sheet = page.getByRole('dialog', { name: t('range.title') });
+  if (!(await sheet.isVisible())) await rangeLabel(page).click();
+  await expect(sheet).toBeVisible();
+  return sheet;
 }
 
 /** Opens the log (history) tab's filter sheet, unless it is already open. */

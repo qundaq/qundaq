@@ -1,6 +1,7 @@
-import { dayOffset, fromDateInputValue } from '../../domain/days';
+import { addDays, dayOffset, fromDateInputValue } from '../../domain/days';
 import type { TypeFilter } from '../../domain/filters';
 import { temperatureAlert } from '../../domain/health';
+import { isSingleDay, resolveRange, type RangeChoice } from '../../domain/ranges';
 import { isTimedType } from '../../domain/rules';
 import { stoolAlert } from '../../domain/stool';
 import type { GrowthMetric } from '../../domain/summary';
@@ -8,38 +9,37 @@ import type { Baby, EventType, Id, Side, TrackerEvent } from '../../domain/types
 import type { Locale } from '../../i18n';
 import { HOUR } from '../../domain/time';
 import { formatDuration } from '../shared/format';
+import { dateTimeFormat, numberFormat } from '../shared/intl';
 import type { TranslateFn } from '../app/I18nProvider';
 import type { IconName } from '../shared/icons';
 import { segmentMinutes } from '../log/edits';
 
-// Formatters are built per call: Intl captures the time zone when it is constructed.
+// Formatters come from the shared cache (../shared/intl), which starts over when the time zone changes.
 
 export function formatNumber(locale: Locale, value: number, maximumFractionDigits = 0): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits }).format(value);
+  return numberFormat(locale, { maximumFractionDigits }).format(value);
 }
 
 export function clockTime(locale: Locale, ms: number): string {
-  return new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(ms);
+  return dateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(
+    ms,
+  );
 }
 
 export function shortDate(locale: Locale, ms: number): string {
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(ms);
+  return dateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(ms);
 }
 
 export function longDate(locale: Locale, ms: number): string {
-  return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(ms);
+  return dateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(ms);
 }
 
 export function weekdayShort(locale: Locale, ms: number): string {
-  return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric' }).format(ms);
+  return dateTimeFormat(locale, { weekday: 'short', day: 'numeric' }).format(ms);
+}
+
+function sameYear(a: number, b: number): boolean {
+  return new Date(a).getFullYear() === new Date(b).getFullYear();
 }
 
 /** A date-input value, or null for an empty/unparseable value or for `today` itself (meaning "clear the override"). */
@@ -52,35 +52,74 @@ export function pickedDay(value: string, today: number): number | null {
 /**
  * What a day picker's onChange should receive for a native date-input's raw `value`, or undefined when the
  * change should be ignored entirely (an empty string from the Clear button, or otherwise unparseable).
- * Shared by DayPicker and BrandDayPicker so each only wires it to its own onChange.
  */
 export function resolveDayInputChange(value: string, today: number): number | null | undefined {
   if (fromDateInputValue(value) === null) return undefined;
   return pickedDay(value, today);
 }
 
-/** day.today ("Today"), day.yesterday ("Yesterday"), otherwise the weekday with the date. */
-export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: number): string {
+/** day.today, day.yesterday, otherwise the day formatted with `format`, with its year when that is not this year. */
+function relativeDay(
+  t: TranslateFn,
+  locale: Locale,
+  dayStart: number,
+  now: number,
+  format: Intl.DateTimeFormatOptions,
+): string {
   const daysAgo = dayOffset(dayStart, now);
   if (daysAgo === 0) return t('day.today');
   if (daysAgo === 1) return t('day.yesterday');
-  return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(
-    dayStart,
-  );
+  const options: Intl.DateTimeFormatOptions = sameYear(dayStart, now)
+    ? format
+    : { ...format, year: 'numeric' };
+  return dateTimeFormat(locale, options).format(dayStart);
 }
 
-/** Like dayLabel, but a short locale-formatted date (day and abbreviated month, no year) instead of the
- * full weekday form for any other day — for the brand row's tight width. */
+/** day.today ("Today"), day.yesterday ("Yesterday"), otherwise the weekday with the date. */
+export function dayLabel(t: TranslateFn, locale: Locale, dayStart: number, now: number): string {
+  return relativeDay(t, locale, dayStart, now, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/** Like dayLabel, but a short date (day and abbreviated month; the year only when not this year) for any
+ * other day — for the brand row's tight width. */
 export function dayLabelShort(
   t: TranslateFn,
   locale: Locale,
   dayStart: number,
   now: number,
 ): string {
-  const daysAgo = dayOffset(dayStart, now);
-  if (daysAgo === 0) return t('day.today');
-  if (daysAgo === 1) return t('day.yesterday');
-  return shortDate(locale, dayStart);
+  return relativeDay(t, locale, dayStart, now, { day: 'numeric', month: 'short' });
+}
+
+/** A multi-day log list's day heading: like dayLabel, but "Mon, Oct 5" for any other day. */
+export function dayHeading(t: TranslateFn, locale: Locale, dayStart: number, now: number): string {
+  return relativeDay(t, locale, dayStart, now, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+/**
+ * The log's range label: a quick range's name, a single custom day's short label, or "5 Oct – 12 Oct" — with
+ * the years ("28 Dec 2025 – 3 Jan 2026") when the range is not all in this year.
+ */
+export function rangeLabel(
+  t: TranslateFn,
+  locale: Locale,
+  choice: RangeChoice,
+  now: number,
+): string {
+  if (choice.kind === 'preset') return t(`range.${choice.preset}`);
+  const range = resolveRange(choice, now);
+  if (isSingleDay(range)) return dayLabelShort(t, locale, range.from, now);
+  const last = addDays(range.to, -1);
+  const format = dateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear(range.from, last) && sameYear(last, now) ? {} : { year: 'numeric' }),
+  });
+  return `${format.format(range.from)} – ${format.format(last)}`;
 }
 
 /** A clock time, marked when it falls on another day than the one shown. */

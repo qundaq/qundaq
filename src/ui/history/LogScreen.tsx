@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { listBabies } from '../../db/babies';
 import { listEventsOverlapping } from '../../db/events';
 import { db } from '../../db/instance';
-import { addDays, dayOffset, hourOf, resolveDay } from '../../domain/days';
+import { dayOffset, hourOf, startOfDay } from '../../domain/days';
 import { compareIds } from '../../domain/ids';
 import { matchesFilters, visibleEvents, type TypeFilter } from '../../domain/filters';
+import { DEFAULT_RANGE, isSingleDay, resolveRange, type RangeChoice } from '../../domain/ranges';
 import type { Baby, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
 import { useLocale, useT } from '../app/I18nProvider';
@@ -13,21 +14,25 @@ import { useNow } from '../shared/useNow';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
-import { filterSummary, timeOnDay } from './describe';
+import { dayHeading, filterSummary, timeOnDay } from './describe';
 import { FilterSheet } from './FilterSheet';
 import styles from './Log.module.css';
 
 /** The log (history) tab's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
 export interface LogView {
-  day: number | null; // null: today
+  range: RangeChoice;
   babyId: Id | null; // null: every baby, pumps included
   type: TypeFilter;
 }
 
-export const DEFAULT_LOG_VIEW: LogView = { day: null, babyId: null, type: 'all' };
+export const DEFAULT_LOG_VIEW: LogView = {
+  range: DEFAULT_RANGE,
+  babyId: null,
+  type: 'all',
+};
 
-/** Babies and the day's entries in one live query, so rows never flash in and out. */
-async function readDay(
+/** Babies and the range's entries in one live query, so rows never flash in and out. */
+async function readRange(
   from: number,
   to: number,
 ): Promise<{ babies: Baby[]; events: TrackerEvent[] }> {
@@ -47,10 +52,14 @@ export function LogScreen({
 }) {
   const t = useT();
   const tick = useNow();
-  const day = resolveDay(view.day, tick);
-  const to = addDays(day, 1);
-  const data = useLiveQuery(() => readDay(day, to), [day, to], useReportLoadError());
-  // The filter chips stay put while another day loads; the rows never outlive their day.
+  // A quick range follows the clock: "today" moves on at midnight.
+  const range = resolveRange(view.range, tick);
+  const data = useLiveQuery(
+    () => readRange(range.from, range.to),
+    [range.from, range.to],
+    useReportLoadError(),
+  );
+  // The filter chips stay put while another range loads; the rows never outlive their range.
   const [knownBabies, setKnownBabies] = useState<readonly Baby[]>([]);
   if (data && data.babies !== knownBabies) setKnownBabies(data.babies);
   const babies = data?.babies ?? knownBabies;
@@ -86,7 +95,8 @@ export function LogScreen({
         <DayList
           events={data.events}
           babies={data.babies}
-          day={day}
+          day={range.from}
+          byDay={!isSingleDay(range)}
           babyFilter={babyFilter}
           typeFilter={view.type}
           // The tick can be up to 30 s old; data written since then must never look like the future.
@@ -104,7 +114,10 @@ export function LogScreen({
 export interface DayListProps {
   events: readonly TrackerEvent[];
   babies: readonly Baby[];
+  /** The start of the (first) day shown: one-day lists mark times on other days relative to it. */
   day: number;
+  /** A range of several days: rows grouped under a heading per day they start on, each with plain times. */
+  byDay?: boolean;
   babyFilter: Id | null;
   typeFilter: TypeFilter;
   now: number;
@@ -115,6 +128,7 @@ export function DayList({
   events,
   babies,
   day,
+  byDay = false,
   babyFilter,
   typeFilter,
   now,
@@ -133,23 +147,30 @@ export function DayList({
       </p>
     );
   }
+  // Hour headings sit one level below day headings, which only multi-day lists have.
+  const HourHeading = byDay ? 'h4' : 'h3';
   return (
     <ul className={styles.list} role="list" aria-label={t('log.list')} data-testid="log-list">
       {rows.map((event, i) => {
-        const hour = hourOf(event.startAt);
+        const previous = rows[i - 1];
+        // A multi-day list measures each row against the day it starts on (an entry carried over from
+        // before the range sits under its own day); a one-day list against the picked day.
+        const rowDay = byDay ? startOfDay(event.startAt) : day;
+        const newDay = byDay && (!previous || dayOffset(rowDay, previous.startAt) !== 0);
         // A row from another day never shares a heading with a row of the picked day.
-        const showHeading =
-          i === 0 ||
-          hour !== hourOf(rows[i - 1]!.startAt) ||
-          dayOffset(day, event.startAt) !== dayOffset(day, rows[i - 1]!.startAt);
-        const heading = timeOnDay(t, locale, new Date(event.startAt).setMinutes(0, 0, 0), day);
+        const newHour =
+          !previous ||
+          hourOf(event.startAt) !== hourOf(previous.startAt) ||
+          dayOffset(rowDay, event.startAt) !== dayOffset(rowDay, previous.startAt);
+        const hour = timeOnDay(t, locale, new Date(event.startAt).setMinutes(0, 0, 0), rowDay);
         return (
           <li key={event.id}>
-            {showHeading && <h3 className={styles.hourHeading}>{heading}</h3>}
+            {newDay && <h3 className={styles.dayHeading}>{dayHeading(t, locale, rowDay, now)}</h3>}
+            {newHour && <HourHeading className={styles.hourHeading}>{hour}</HourHeading>}
             <EventRow
               event={event}
               baby={event.babyId === null ? null : (byId.get(event.babyId) ?? null)}
-              day={day}
+              day={rowDay}
               now={now}
               onOpen={() => onOpen(event)}
             />
