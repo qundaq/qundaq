@@ -20,6 +20,7 @@ import { useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { EditSheet } from '../history/EditSheet';
 import { BabyCard } from './BabyCard';
 import { LiveStrip } from './LiveStrip';
+import { PumpButton } from './PumpButton';
 import { useT } from '../app/I18nProvider';
 import type { LogRequest } from '../log/drafts';
 import { LogSheet } from '../log/LogSheet';
@@ -105,6 +106,7 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   return (
     <section>
       <VisuallyHidden as="h1">{t('tab.home')}</VisuallyHidden>
+      <PumpButton onOpen={setRequest} />
       {babies.length === 0 ? (
         <Card className={styles.empty}>
           <p>{t('home.empty')}</p>

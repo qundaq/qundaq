@@ -92,6 +92,18 @@ describe('buildDrafts — the "Other" types (quick.other)', () => {
     ).toStrictEqual([{ type: 'pump', babyId: null, startAt: AT, mlLeft: 60 }]);
   });
 
+  it('a baby-less pump request builds the same single parent entry', () => {
+    expect(
+      buildDrafts({ kind: 'pump', value: { mlLeft: '', mlRight: '80' } }, [], AT, 'evening'),
+    ).toStrictEqual([{ type: 'pump', babyId: null, startAt: AT, mlRight: 80, note: 'evening' }]);
+  });
+
+  it('a negative pump amount becomes NaN, so validation reports it', () => {
+    expect(
+      buildDrafts({ kind: 'pump', value: { mlLeft: '-5', mlRight: '' } }, [], AT)[0],
+    ).toMatchObject({ mlLeft: Number.NaN });
+  });
+
   it('a pump amount that is not a whole number becomes NaN, so validation reports it', () => {
     expect(
       buildDrafts({ kind: 'pump', value: { mlLeft: '60.5', mlRight: ' 40 ' } }, [], AT)[0],

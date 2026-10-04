@@ -9,6 +9,7 @@ import {
   logDiaper,
   logRows,
   openOther,
+  openPump,
   openRow,
   openTab,
   cardAction,
@@ -436,7 +437,7 @@ test('every record type shows up in the log and the summary, without CSP violati
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();
 
-  sheet = await openOther(page, 'pump');
+  sheet = await openPump(page);
   await sheet.getByLabel(t('pump.left')).fill('60');
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(sheet).toBeHidden();

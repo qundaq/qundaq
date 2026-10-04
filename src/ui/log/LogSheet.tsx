@@ -61,18 +61,20 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
       : session.value.kind === 'other'
         ? (current?.type ?? null)
         : session.value.kind;
+  // The standalone pumping request names no baby: the entry is the parent's.
+  const requestBabyId = session && session.value.kind !== 'pump' ? session.value.babyId : null;
   const nameOf = (id: Id) => babies.find((baby) => baby.id === id)?.name ?? '';
   const undoToast = useUndoToast(nameOf);
   // A feed or sleep sheet opened for a baby whose timer of that kind runs stops it instead; "other" never
   // runs (runningTimer returns null for it), so the list step never reaches this.
   const running =
-    session && !otherPending
-      ? runningTimer(events, session.value.kind, session.value.babyId)
+    session && !otherPending && session.value.kind !== 'pump' && requestBabyId !== null
+      ? runningTimer(events, session.value.kind, requestBabyId)
       : null;
   // A sheet opened from a card is always that baby's: the title names them (sheet.diaper.title · their
   // name), for every care type, the "Other" list (other.title · their name) and each Other form. Pumping
   // is the parent's record, never a baby's, so its title carries no name.
-  const babyName = session ? nameOf(session.value.babyId) : '';
+  const babyName = requestBabyId === null ? '' : nameOf(requestBabyId);
   const title = !session
     ? ''
     : otherPending
@@ -110,7 +112,7 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
           <LogForm
             key={session.value.kind === 'other' ? `${session.id}-${current?.pick}` : session.id}
             kind={session.value.kind}
-            babyId={session.value.babyId}
+            babyId={requestBabyId}
             inputKind={inputKind}
             babies={babies}
             events={events}
@@ -132,7 +134,8 @@ function OtherListStep({ onPick }: { onPick: (type: OtherType) => void }) {
 
 interface FormArgs {
   kind: LogRequest['kind'];
-  babyId: Id;
+  /** Null only for the standalone pumping sheet. */
+  babyId: Id | null;
   inputKind: InputKind;
   babies: readonly Baby[];
   events: readonly TrackerEvent[];
@@ -167,9 +170,9 @@ function LogForm({
   const [time, setTime] = useState<TimeChoice>(NOW_CHOICE);
   // The side due next, and the baby's last bottle, are the opening baby's, taken once, so neither moves
   // while the sheet is open.
-  const [dueSide] = useState(() => nextSide(events, babyId));
+  const [dueSide] = useState<Side>(() => (babyId === null ? 'L' : nextSide(events, babyId)));
   const [lastBottleInput] = useState(() =>
-    inputKind === 'bottle' ? lastBottle(events, babyId) : null,
+    inputKind === 'bottle' && babyId !== null ? lastBottle(events, babyId) : null,
   );
   const [input, setInput] = useState<SheetInput>(() =>
     firstInput(inputKind, dueSide, lastBottleInput),
@@ -189,6 +192,8 @@ function LogForm({
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setError(null), [input, time, note, mode]);
 
+  // The Other sheet and the pumping sheet take a note; a card's feed, bottle, sleep and diaper sheets do not.
+  const noted = kind === 'other' || kind === 'pump';
   const timer = input.kind === 'breastfeed' || input.kind === 'sleep' ? input : null;
   const starting = timer !== null && mode === 'start';
 
@@ -208,7 +213,12 @@ function LogForm({
     try {
       const changes = await recordEvents(
         db,
-        buildDrafts(next, [babyId], resolveTimeChoice(time, now), kind === 'other' ? note : ''),
+        buildDrafts(
+          next,
+          babyId === null ? [] : [babyId],
+          resolveTimeChoice(time, now),
+          noted ? note : '',
+        ),
         now,
         // A started timer ends each baby's other running timer at its start (the one-timer note says so).
         { endRunning: starting },
@@ -240,7 +250,7 @@ function LogForm({
       {timer && (
         <TimerFields input={timer} mode={mode} onModeChange={setMode} onChange={setInput} />
       )}
-      {timer && starting && (
+      {timer && starting && babyId !== null && (
         <OneTimerNote kind={timer.kind} babyIds={[babyId]} events={events} nameOf={nameOf} />
       )}
       {input.kind === 'bottle' && (
@@ -276,7 +286,7 @@ function LogForm({
         value={time}
         onChange={setTime}
       />
-      {kind === 'other' &&
+      {noted &&
         (input.kind === 'healthNote' ? (
           <NoteField value={note} required onChange={setNote} />
         ) : noteOpen ? (
@@ -291,7 +301,7 @@ function LogForm({
           {error}
         </p>
       )}
-      {starting && input.kind === 'breastfeed' ? (
+      {starting && input.kind === 'breastfeed' && babyId !== null ? (
         // The side buttons are this mode's action, where the footer would be.
         <SidePicker
           events={events}

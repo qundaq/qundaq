@@ -12,19 +12,15 @@ import type {
 /** What a quick button opens. "other" is the "Other" sheet (quick.other), whose chip picks one of OTHER_TYPES. */
 export type SheetKind = 'breastfeed' | 'bottle' | 'sleep' | 'diaper' | 'other';
 
-/** A card action's request: what to log, for which baby the sheet starts selected. */
-export interface LogRequest {
-  kind: SheetKind;
-  babyId: Id;
-}
+/** What opens a log sheet: a card action (for that baby) or the standalone pumping button (the parent's, no baby). */
+export type LogRequest = { kind: SheetKind; babyId: Id } | { kind: 'pump' };
 
 /** The record types of the "Other" sheet (quick.other) in chip order. The first is the default: daily vitamin D. */
-export type OtherType = 'medication' | 'growth' | 'temperature' | 'pump' | 'healthNote';
+export type OtherType = 'medication' | 'growth' | 'temperature' | 'healthNote';
 export const OTHER_TYPES: readonly OtherType[] = [
   'medication',
   'growth',
   'temperature',
-  'pump',
   'healthNote',
 ];
 

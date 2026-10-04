@@ -5,6 +5,7 @@ import {
   filterGroup,
   logRows,
   openOther,
+  openPump,
   openTab,
   cardAction,
   pickTime,
@@ -17,7 +18,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('./');
 });
 
-test('the list shows every type with its caption; the back button returns to it and resets the form', async ({
+test('the list shows its four types with their captions and no pumping; the back button returns to it and resets the form', async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
@@ -25,13 +26,11 @@ test('the list shows every type with its caption; the back button returns to it 
   await cardAction(page, 'other').click();
   const sheet = page.getByRole('dialog');
   await expect(page.getByRole('dialog', { name: t('other.title') })).toBeVisible();
-  // Five rows, plus the header's close button (no back button on the list step itself).
-  await expect(sheet.getByRole('button')).toHaveCount(6);
+  // Four rows, plus the header's close button (no back button on the list step itself).
+  await expect(sheet.getByRole('button')).toHaveCount(5);
+  await expect(sheet).not.toContainText(t('sheet.pump.title'));
   await expect(sheet.getByRole('button', { name: t('other.chip.growth') })).toContainText(
     t('other.caption.growth'),
-  );
-  await expect(sheet.getByRole('button', { name: t('other.chip.pump') })).toContainText(
-    t('other.caption.pump'),
   );
 
   await sheet.getByRole('button', { name: t('other.chip.temperature') }).click();
@@ -116,11 +115,37 @@ test('a temperature of 38 °C or more shows the fever hint and marks the row', a
   await expect(row.getByRole('button')).toHaveAccessibleName(new RegExp(t('log.warning')));
 });
 
+test('pumping needs no baby: tap the button, save 80 ml on the left, undo it', async ({ page }) => {
+  await openTab(page, t('tab.home'));
+  const sheet = await openPump(page);
+  await expect(sheet).toBeVisible();
+  await expect(page.getByText(t('home.empty'))).toBeVisible();
+  await sheet.getByLabel(t('pump.left')).fill('80');
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByText(t('toast.pump'))).toBeVisible();
+  await page.getByRole('button', { name: t('common.undo'), exact: true }).click();
+  await expect(page.getByText(t('toast.pump'))).toBeHidden();
+
+  await openTab(page, t('tab.log'));
+  await expect(logRows(page)).toHaveCount(0);
+});
+
+test("a baby's Other list has no pumping", async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  await cardAction(page, 'other').click();
+  await expect(
+    page.getByRole('dialog').getByRole('button', { name: t('sheet.pump.title') }),
+  ).toHaveCount(0);
+});
+
 test('pumping has no baby and shows under "all babies" only', async ({ page }) => {
   await addBabyInSettings(page, 'Ada');
   await addBabyInSettings(page, 'Cal');
   await openTab(page, t('tab.home'));
-  const sheet = await openOther(page, 'pump');
+  const sheet = await openPump(page);
+  await expect(sheet.getByRole('button', { name: t('note.add') })).toBeVisible();
   await expect(sheet.getByRole('group', { name: t('sheet.babies'), exact: true })).toHaveCount(0);
   await sheet.getByLabel(t('pump.left')).fill('60');
   await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();

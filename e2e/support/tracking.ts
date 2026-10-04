@@ -117,7 +117,7 @@ export async function logDiaper(page: Page, options: { at?: string; baby?: strin
   await expect(sheet).toBeHidden();
 }
 
-export type OtherEntry = 'medication' | 'growth' | 'temperature' | 'pump' | 'healthNote';
+export type OtherEntry = 'medication' | 'growth' | 'temperature' | 'healthNote';
 
 /** Opens a card's "Other" sheet (other.title), picks the entry type and returns the sheet (its title is then the type's). */
 export async function openOther(page: Page, type: OtherEntry, baby?: string) {
@@ -126,6 +126,12 @@ export async function openOther(page: Page, type: OtherEntry, baby?: string) {
   // The row's accessible name is the type's name followed by its caption, so a substring match finds it.
   await sheet.getByRole('button', { name: t(`other.chip.${type}`) }).click();
   return sheet;
+}
+
+/** Opens the standalone pumping sheet from Home's pumping button (no baby needed) and returns it. */
+export async function openPump(page: Page) {
+  await page.getByRole('button', { name: t('home.pump'), exact: true }).click();
+  return page.getByRole('dialog', { name: t('sheet.pump.title'), exact: true });
 }
 
 export type SummaryTileKey = 'sleep' | 'feeds' | 'bottle' | 'diapers';

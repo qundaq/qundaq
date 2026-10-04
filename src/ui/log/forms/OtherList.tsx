@@ -11,7 +11,6 @@ import styles from '../LogSheet.module.css';
 /** The fixed captions (other.caption.*): medication's is built from `recent` instead; temperature and healthNote have none. */
 const CAPTION_KEY: Partial<Record<OtherType, MessageKey>> = {
   growth: 'other.caption.growth',
-  pump: 'other.caption.pump',
 };
 
 export interface OtherListProps {

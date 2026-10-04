@@ -7,6 +7,7 @@ import { DEFAULT_INPUTS } from '../../src/ui/log/drafts';
 import { BottleForm, DiaperForm, diaperKind, withDiaperKind } from '../../src/ui/log/forms/care';
 import { TimeChips, chooseTime } from '../../src/ui/log/TimeChips';
 import { DURATION_CHIPS, DurationChips } from '../../src/ui/log/forms/timers';
+import { PumpButton } from '../../src/ui/home/PumpButton';
 import { OtherList } from '../../src/ui/log/forms/OtherList';
 import { formatAgo } from '../../src/ui/shared/format';
 
@@ -135,23 +136,22 @@ describe('diaper kind', () => {
 });
 
 describe('OtherList', () => {
-  it('lists the five types with their captions, the latest medicine first', () => {
+  it('lists the four types with their captions, the latest medicine first', () => {
     const at = Date.now() - 60 * 60_000;
     const html = render(<OtherList recent={{ name: 'Vitamin D', at }} onPick={() => {}} />);
     for (const text of [
       tt('other.chip.medication'),
       tt('other.chip.growth'),
       tt('other.chip.temperature'),
-      tt('other.chip.pump'),
       tt('other.chip.healthNote'),
       tt('other.caption.growth'),
-      tt('other.caption.pump'),
     ])
       expect(html).toContain(text);
     expect(html).toContain(
       tt('other.caption.medication', { name: 'Vitamin D', ago: formatAgo(tt, Date.now() - at) }),
     );
-    expect(html.match(/<button/g)).toHaveLength(5);
+    expect(html.match(/<button/g)).toHaveLength(4);
+    expect(html).not.toContain(tt('sheet.pump.title'));
   });
   it('shows no caption for medication without a recent one', () => {
     // "·" only ever appears inside the medication caption (other.caption.medication); its absence means
@@ -159,6 +159,15 @@ describe('OtherList', () => {
     const html = render(<OtherList recent={null} onPick={() => {}} />);
     expect(html).toContain(tt('other.chip.medication'));
     expect(html).not.toContain('·');
+  });
+});
+
+describe('PumpButton', () => {
+  it('is one labelled droplets button that asks for a baby-less pump sheet', () => {
+    const html = render(<PumpButton onOpen={() => {}} />);
+    expect(html.match(/<button/g)).toHaveLength(1);
+    expect(html).toContain(tt('home.pump'));
+    expect(html).toContain('<svg');
   });
 });
 

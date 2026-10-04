@@ -13,7 +13,7 @@ import {
 import {
   addBabyInSettings,
   logDiaper,
-  openOther,
+  openPump,
   openTab,
   cardAction,
   pickTime,
@@ -153,7 +153,7 @@ test.describe('CSV', () => {
     await bottle.getByRole('radio', { name: t('unit.ml', { ml: 90 }), exact: true }).click();
     await bottle.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(bottle).toBeHidden();
-    const pump = await openOther(page, 'pump');
+    const pump = await openPump(page);
     await pump.getByLabel(t('pump.left')).fill('60');
     await pump.getByRole('button', { name: t('note.add'), exact: true }).click();
     await pump.getByLabel(t('note.optional')).fill('=evening; "left"');
