@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { listBabies } from '../../db/babies';
 import { listEventsOverlapping } from '../../db/events';
 import { db } from '../../db/instance';
-import { addDays, hourOf, resolveDay } from '../../domain/days';
+import { addDays, dayOffset, hourOf, resolveDay } from '../../domain/days';
 import { compareIds } from '../../domain/ids';
 import { matchesFilters, visibleEvents, type TypeFilter } from '../../domain/filters';
 import type { Baby, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
-import { useT } from '../app/I18nProvider';
+import { useLocale, useT } from '../app/I18nProvider';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
-import { filterSummary } from './describe';
+import { filterSummary, timeOnDay } from './describe';
 import { FilterSheet } from './FilterSheet';
 import styles from './Log.module.css';
 
@@ -121,6 +121,7 @@ export function DayList({
   onOpen,
 }: DayListProps) {
   const t = useT();
+  const locale = useLocale();
   const byId = new Map(babies.map((baby) => [baby.id, baby]));
   const rows = visibleEvents(events, new Set(byId.keys()))
     .filter((event) => matchesFilters(event, babyFilter, typeFilter))
@@ -136,12 +137,15 @@ export function DayList({
     <ul className={styles.list} role="list" aria-label={t('log.list')} data-testid="log-list">
       {rows.map((event, i) => {
         const hour = hourOf(event.startAt);
-        const showHeading = i === 0 || hour !== hourOf(rows[i - 1]!.startAt);
+        // A row from another day never shares a heading with a row of the picked day.
+        const showHeading =
+          i === 0 ||
+          hour !== hourOf(rows[i - 1]!.startAt) ||
+          dayOffset(day, event.startAt) !== dayOffset(day, rows[i - 1]!.startAt);
+        const heading = timeOnDay(t, locale, new Date(event.startAt).setMinutes(0, 0, 0), day);
         return (
           <li key={event.id}>
-            {showHeading && (
-              <h3 className={styles.hourHeading}>{String(hour).padStart(2, '0')}:00</h3>
-            )}
+            {showHeading && <h3 className={styles.hourHeading}>{heading}</h3>}
             <EventRow
               event={event}
               baby={event.babyId === null ? null : (byId.get(event.babyId) ?? null)}

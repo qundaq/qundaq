@@ -268,7 +268,7 @@
 }
 .axisLeft,
 .axisRight {
-  width: 18px;
+  width: 18px; /* the least; WeekChart sets the real width from the tick labels */
   flex: none;
   display: flex;
   flex-direction: column;

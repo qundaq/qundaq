@@ -54,3 +54,14 @@ export function growthChartGeometry(
     lastAt: last.at,
   };
 }
+
+/** Room for a bold 12 px tabular digit, in px. */
+const DIGIT_PX = 7.5;
+const MIN_AXIS_PX = 18;
+const MAX_AXIS_PX = 44;
+
+/** The width of a value axis column: the widest tick label's characters, never under 18 px nor over 44 px. */
+export function axisWidthPx(labels: readonly (string | number)[]): number {
+  const chars = Math.max(0, ...labels.map((label) => String(label).length));
+  return Math.min(MAX_AXIS_PX, Math.max(MIN_AXIS_PX, Math.ceil(chars * DIGIT_PX) + 2));
+}

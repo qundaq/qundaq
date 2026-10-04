@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { growthChartGeometry } from '../../src/ui/summary/chartGeometry';
+import { axisWidthPx, growthChartGeometry } from '../../src/ui/summary/chartGeometry';
 
 // 320 × 200 with 24 on every side: the plot spans x 24–296 and y 24–176.
 describe('growthChartGeometry', () => {
@@ -62,5 +62,16 @@ describe('growthChartGeometry', () => {
       firstAt: 0,
       lastAt: 1200,
     });
+  });
+});
+
+describe('axisWidthPx', () => {
+  it('grows with the widest label and stays between 18 and 44 px', () => {
+    expect(axisWidthPx([])).toBe(18);
+    expect(axisWidthPx([0, 1, 2])).toBe(18);
+    expect(axisWidthPx([0, 15, 30])).toBe(18);
+    expect(axisWidthPx([0, 250, 500])).toBe(25);
+    expect(axisWidthPx([0, 500, 1000])).toBe(32);
+    expect(axisWidthPx(['123456789'])).toBe(44);
   });
 });

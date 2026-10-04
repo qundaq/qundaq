@@ -120,6 +120,41 @@ describe('DayList hour headings', () => {
   });
 });
 
+describe('DayList hour headings across a day boundary', () => {
+  const ada = {
+    id: 'a',
+    name: 'Ada',
+    color: '#5cc0d2',
+    archived: false,
+    createdAt: 0,
+    updatedAt: 0,
+  };
+  const note = (id: string, dayOfMonth: number, hh: number, mm: number): TrackerEvent => ({
+    id,
+    type: 'healthNote',
+    babyId: 'a',
+    startAt: new Date(2026, 8, dayOfMonth, hh, mm).getTime(),
+    note: id,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  it("keeps a previous-day hour apart from the picked day's, with the row suffix", () => {
+    const html = render(
+      <DayList
+        events={[note('early', 26, 23, 30), note('late', 27, 23, 10)]}
+        babies={[ada]}
+        day={new Date(2026, 8, 27).getTime()}
+        babyFilter={null}
+        typeFilter="all"
+        now={Date.now()}
+        onOpen={() => {}}
+      />,
+    );
+    const headings = [...html.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((m) => m[1]);
+    expect(headings).toEqual(['23:00', `23:00 ${t('log.suffix.previousDay')}`]);
+  });
+});
+
 describe('DayList same-instant tie-break', () => {
   const ada = {
     id: 'a',

@@ -510,3 +510,36 @@ test('without babies the summary tab only asks for one', async ({ page }) => {
   await expect(page.getByRole('region')).toHaveCount(0);
   await expect(page.getByRole('radiogroup', { name: t('summary.week.metric') })).toHaveCount(0);
 });
+
+for (const width of [320, 414]) {
+  test(`the feeding chart keeps a 4-digit ml axis label inside the card at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    for (let i = 0; i < 6; i += 1) await logBottle(page, 180);
+    await openTab(page, t('tab.summary'));
+    const week = summaryCard(page, t('summary.week'));
+    await week
+      .getByRole('radiogroup', { name: t('summary.week.metric'), exact: true })
+      .getByRole('radio', { name: t('summary.week.metric.feeding') })
+      .click();
+    const labels = week.getByTestId('week-axis-right').locator('span');
+    await expect(labels.first()).toHaveText(/^\d{4}$/);
+    const card = await week.boundingBox();
+    const axis = await week.getByTestId('week-axis-right').boundingBox();
+    const text = await labels.first().evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rect = range.getBoundingClientRect();
+      return { left: rect.left, right: rect.right };
+    });
+    expect(text.right).toBeLessThanOrEqual(axis!.x + axis!.width + 0.5);
+    expect(text.right).toBeLessThanOrEqual(card!.x + card!.width);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+}

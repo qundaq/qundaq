@@ -5,6 +5,7 @@ import { weekdayShort } from '../history/describe';
 import { Card } from '../shared/Card';
 import { formatDuration } from '../shared/format';
 import { Segmented } from '../shared/Segmented';
+import { axisWidthPx } from './chartGeometry';
 import { niceCeiling, weekAxis } from './dashboardModel';
 import styles from './Summary.module.css';
 
@@ -105,6 +106,8 @@ function FeedingBars({
   const leftAxis = weekAxis(minutes);
   const rightAxis = weekAxis(ml);
   if (!leftAxis && !rightAxis) return <p className={styles.muted}>{t('summary.week.empty')}</p>;
+  const leftWidth = axisWidthPx(leftAxis ?? []);
+  const rightWidth = axisWidthPx(rightAxis ?? []);
   const leftMax = leftAxis?.[2] ?? 0;
   const rightMax = rightAxis?.[2] ?? 0;
   // The bars' text alternative, from the same totals they draw.
@@ -118,7 +121,11 @@ function FeedingBars({
     <div role="img" aria-label={summary}>
       <div className={styles.chartRow}>
         {leftAxis && (
-          <div className={styles.axisLeft} data-testid="week-axis-left">
+          <div
+            className={styles.axisLeft}
+            data-testid="week-axis-left"
+            style={{ width: leftWidth }}
+          >
             <span>{leftAxis[2]}</span>
             <span>{leftAxis[1]}</span>
             <span>{leftAxis[0]}</span>
@@ -143,7 +150,11 @@ function FeedingBars({
           ))}
         </div>
         {rightAxis && (
-          <div className={styles.axisRight} data-testid="week-axis-right">
+          <div
+            className={styles.axisRight}
+            data-testid="week-axis-right"
+            style={{ width: rightWidth }}
+          >
             <span>{rightAxis[2]}</span>
             <span>{rightAxis[1]}</span>
             <span>{rightAxis[0]}</span>
@@ -152,7 +163,7 @@ function FeedingBars({
       </div>
       {/* The same three parts as the row above, a spacer standing in for each drawn axis. */}
       <div className={styles.dualLabels}>
-        {leftAxis && <div className={styles.dualLabelsSpacer} />}
+        {leftAxis && <div className={styles.dualLabelsSpacer} style={{ width: leftWidth }} />}
         <div className={styles.dualLabelsBars}>
           {week.map((day) => (
             <span
@@ -163,7 +174,7 @@ function FeedingBars({
             </span>
           ))}
         </div>
-        {rightAxis && <div className={styles.dualLabelsSpacer} />}
+        {rightAxis && <div className={styles.dualLabelsSpacer} style={{ width: rightWidth }} />}
       </div>
     </div>
   );

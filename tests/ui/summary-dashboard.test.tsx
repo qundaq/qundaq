@@ -212,6 +212,15 @@ describe('WeekChart', () => {
     expect(spacers(one)).toBe(1);
   });
 
+  it('widens the axis columns and their spacers to fit a 4-digit ml label', () => {
+    const big = week.map((day) => ({ ...day, totals: { ...day.totals, bottleMl: 1000 } }));
+    const html = render(<WeekChart week={big} today={T} metric="feeding" onMetric={() => {}} />);
+    expect(html).toMatch(/data-testid="week-axis-right" style="width:\d{2}px"/);
+    const width = Number(/week-axis-right" style="width:(\d+)px/.exec(html)![1]);
+    expect(width).toBeGreaterThanOrEqual(32);
+    expect(html).toContain(`dualLabelsSpacer" style="width:${width}px"`);
+  });
+
   // Rendering is server-side markup only (no click simulation available), so the empty state is
   // checked with a fully empty week on each tab.
   it('shows the empty state, not an empty chart, when the whole week has no data', () => {
