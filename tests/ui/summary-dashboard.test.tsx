@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { Baby } from '../../src/domain/types';
+import type { Baby, TrackerEvent } from '../../src/domain/types';
 import type { DailyTotals } from '../../src/domain/summary';
 import { translate, type MessageKey } from '../../src/i18n';
 import { I18nProvider } from '../../src/ui/app/I18nProvider';
@@ -10,6 +10,9 @@ import { SummaryTiles } from '../../src/ui/summary/SummaryTiles';
 import { formatDuration } from '../../src/ui/shared/format';
 import { MINUTE, HOUR, DAY } from '../../src/domain/time';
 import { DayStrip } from '../../src/ui/summary/DayStrip';
+import { PumpCard } from '../../src/ui/summary/PumpCard';
+import { pumpReport } from '../../src/domain/summary';
+import { axisWidthPx } from '../../src/ui/summary/chartGeometry';
 import { WeekChart } from '../../src/ui/summary/WeekChart';
 import { weekdayShort } from '../../src/ui/history/describe';
 
@@ -161,16 +164,25 @@ describe('WeekChart', () => {
   }));
   // The chart lists oldest first; `week` is newest first.
   const chronological = [...week].reverse();
+  const noPump = chronological.map((day) => ({ day: day.dayStart, ml: 0 }));
+  const pumped = chronological.map((day, i) => ({
+    day: day.dayStart,
+    ml: i === 6 ? 1200 : i === 4 ? 340 : 0,
+  }));
 
   it('shows Sleep when told to, with a Segmented tab and seven day labels', () => {
-    const html = render(<WeekChart week={week} today={T} metric="sleep" onMetric={() => {}} />);
+    const html = render(
+      <WeekChart pump={noPump} week={week} today={T} metric="sleep" onMetric={() => {}} />,
+    );
     expect(html).toMatch(/role="radiogroup"/);
     expect(html).toMatch(new RegExp(`aria-checked="true"[^>]*>${t('summary.week.metric.sleep')}`));
     expect(html.match(/data-testid="week-bar"/g)).toHaveLength(7);
   });
 
   it('shows Feeding when told to: the choice is the caller’s, so it survives a remount', () => {
-    const html = render(<WeekChart week={week} today={T} metric="feeding" onMetric={() => {}} />);
+    const html = render(
+      <WeekChart pump={noPump} week={week} today={T} metric="feeding" onMetric={() => {}} />,
+    );
     expect(html).toMatch(
       new RegExp(`aria-checked="true"[^>]*>${t('summary.week.metric.feeding')}`),
     );
@@ -179,7 +191,9 @@ describe('WeekChart', () => {
   });
 
   it('gives the sleep bars a text alternative: every day with its sleep', () => {
-    const html = render(<WeekChart week={week} today={T} metric="sleep" onMetric={() => {}} />);
+    const html = render(
+      <WeekChart pump={noPump} week={week} today={T} metric="sleep" onMetric={() => {}} />,
+    );
     const summary = chronological
       .map((day) => `${weekdayShort('tr', day.dayStart)} ${formatDuration(t, day.totals.sleepMs)}`)
       .join(', ');
@@ -187,7 +201,9 @@ describe('WeekChart', () => {
   });
 
   it('gives the feeding bars a text alternative: every day with its breastfeed time and bottle ml', () => {
-    const html = render(<WeekChart week={week} today={T} metric="feeding" onMetric={() => {}} />);
+    const html = render(
+      <WeekChart pump={noPump} week={week} today={T} metric="feeding" onMetric={() => {}} />,
+    );
     const summary = chronological
       .map(
         (day) =>
@@ -199,14 +215,16 @@ describe('WeekChart', () => {
 
   it('lines the feeding labels up under the bars: one spacer per axis that is drawn', () => {
     const spacers = (html: string) => html.match(/\bdualLabelsSpacer\b/g)?.length ?? 0;
-    const both = render(<WeekChart week={week} today={T} metric="feeding" onMetric={() => {}} />);
+    const both = render(
+      <WeekChart pump={noPump} week={week} today={T} metric="feeding" onMetric={() => {}} />,
+    );
     expect(both).toMatch(/data-testid="week-axis-left"/);
     expect(both).toMatch(/data-testid="week-axis-right"/);
     expect(spacers(both)).toBe(2);
     // Bottles only: no minutes axis on the left, so no left spacer either.
     const bottlesOnly = week.map((day) => ({ ...day, totals: { ...day.totals, breastMs: 0 } }));
     const one = render(
-      <WeekChart week={bottlesOnly} today={T} metric="feeding" onMetric={() => {}} />,
+      <WeekChart pump={noPump} week={bottlesOnly} today={T} metric="feeding" onMetric={() => {}} />,
     );
     expect(one).not.toMatch(/data-testid="week-axis-left"/);
     expect(spacers(one)).toBe(1);
@@ -214,21 +232,97 @@ describe('WeekChart', () => {
 
   it('widens the axis columns and their spacers to fit a 4-digit ml label', () => {
     const big = week.map((day) => ({ ...day, totals: { ...day.totals, bottleMl: 1000 } }));
-    const html = render(<WeekChart week={big} today={T} metric="feeding" onMetric={() => {}} />);
+    const html = render(
+      <WeekChart pump={noPump} week={big} today={T} metric="feeding" onMetric={() => {}} />,
+    );
     expect(html).toMatch(/data-testid="week-axis-right" style="width:\d{2}px"/);
     const width = Number(/week-axis-right" style="width:(\d+)px/.exec(html)![1]);
     expect(width).toBeGreaterThanOrEqual(32);
     expect(html).toContain(`dualLabelsSpacer" style="width:${width}px"`);
   });
 
+  it('offers Pumping as a third segment and draws one bar per day on one axis that fits 4 digits', () => {
+    const html = render(
+      <WeekChart pump={pumped} week={week} today={T} metric="pump" onMetric={() => {}} />,
+    );
+    expect(html.match(/role="radio"/g)).toHaveLength(3);
+    expect(html).toMatch(new RegExp(`aria-checked="true"[^>]*>${t('summary.week.metric.pump')}`));
+    expect(html.match(/data-testid="week-pump-bar"/g)).toHaveLength(7);
+    expect(html).not.toMatch(/data-testid="week-axis-right"/);
+    // 1200 ml on a 2000 ceiling: 60 %; 340 on it: 17 %. The axis ticks are 0, 1000, 2000.
+    expect(html).toContain('height:60%');
+    expect(html).toContain('height:17%');
+    const width = Number(/week-axis-left" style="width:(\d+)px/.exec(html)![1]);
+    expect(width).toBe(axisWidthPx([0, 1000, 2000]));
+    expect(width).toBeGreaterThanOrEqual(32);
+    expect(html).toContain(`dualLabelsSpacer" style="width:${width}px"`);
+    const summary = pumped
+      .map((entry) => `${weekdayShort('tr', entry.day)} ${t('unit.ml', { ml: entry.ml })}`)
+      .join(', ');
+    expect(html).toContain(`role="img" aria-label="${summary}"`);
+  });
+
   // Rendering is server-side markup only (no click simulation available), so the empty state is
   // checked with a fully empty week on each tab.
   it('shows the empty state, not an empty chart, when the whole week has no data', () => {
     const empty = week.map((day) => ({ ...day, totals: totals() }));
-    for (const metric of ['sleep', 'feeding'] as const) {
-      const html = render(<WeekChart week={empty} today={T} metric={metric} onMetric={() => {}} />);
+    for (const metric of ['sleep', 'feeding', 'pump'] as const) {
+      const html = render(
+        <WeekChart pump={noPump} week={empty} today={T} metric={metric} onMetric={() => {}} />,
+      );
       expect(html, metric).toContain(t('summary.week.empty'));
       expect(html, metric).not.toMatch(/role="img"/);
     }
+  });
+});
+
+describe('PumpCard', () => {
+  const D = new Date(2026, 8, 27).getTime();
+  const pump = (startAt: number, mlLeft?: number, mlRight?: number): TrackerEvent => ({
+    id: String(startAt),
+    type: 'pump',
+    babyId: null,
+    startAt,
+    mlLeft,
+    mlRight,
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  const card = (events: TrackerEvent[]) => {
+    const to = D + DAY;
+    return render(
+      <PumpCard day={pumpReport(events, D, to)} week={pumpReport(events, D - 6 * DAY, to)} />,
+    );
+  };
+
+  it('shows the day’s sessions, total and sides, then the 7 days and their daily average', () => {
+    const html = card([
+      pump(D + 8 * HOUR, 60, 40),
+      pump(D + 15 * HOUR, undefined, 50),
+      pump(D - 2 * DAY + HOUR, 70),
+    ]);
+    expect(html).toContain('data-testid="summary-pump"');
+    expect(html).toContain(t('pump.report.sessions', { n: 2 }));
+    expect(html).toMatch(/<section[^>]*aria-labelledby="([^"]+)"[\s\S]*<h2 id="\1"/);
+    expect(html).toContain(t('pump.report.total', { ml: 150 }));
+    expect(html).toContain(t('pump.report.sides', { l: 60, r: 90 }));
+    expect(html).toContain(t('pump.report.week', { ml: 220 }));
+    expect(html).toContain(t('pump.report.average', { ml: 31 }));
+  });
+
+  it('is no card at all when the 7 days have no pump', () => {
+    expect(card([])).toBe('');
+  });
+
+  it('says "1 session" with the singular text', () => {
+    expect(card([pump(D + 8 * HOUR, 60)])).toContain(t('pump.report.sessions.one'));
+  });
+
+  it('keeps the 7-day lines alone when only the shown day has no pump', () => {
+    const html = card([pump(D - 3 * DAY + HOUR, 70)]);
+    expect(html).toContain(t('pump.report.week', { ml: 70 }));
+    expect(html).toContain(t('pump.report.average', { ml: 10 }));
+    expect(html).not.toContain(t('pump.report.sessions', { n: 0 }));
+    expect(html).not.toContain(t('pump.report.sides', { l: 0, r: 0 }));
   });
 });

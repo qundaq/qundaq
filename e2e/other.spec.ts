@@ -117,6 +117,8 @@ test('a temperature of 38 °C or more shows the fever hint and marks the row', a
 
 test('pumping needs no baby: tap the button, save 80 ml on the left, undo it', async ({ page }) => {
   await openTab(page, t('tab.home'));
+  const pumpButton = page.getByRole('button', { name: t('home.pump'), exact: true });
+  expect((await pumpButton.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   const sheet = await openPump(page);
   await expect(sheet).toBeVisible();
   await expect(page.getByText(t('home.empty'))).toBeVisible();

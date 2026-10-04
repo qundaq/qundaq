@@ -9,20 +9,23 @@ import { axisWidthPx } from './chartGeometry';
 import { niceCeiling, weekAxis } from './dashboardModel';
 import styles from './Summary.module.css';
 
-export type Metric = 'sleep' | 'feeding';
+export type Metric = 'sleep' | 'feeding' | 'pump';
 
 /**
- * The `summary.week` card ("Last 7 days"): a Sleep/Feeding switch over the seven days ending on the
+ * The `summary.week` card ("Last 7 days"): a Sleep/Feeding/Pumping switch over the seven days ending on the
  * shown day, oldest first. The switch is controlled by the caller, whose state outlives this card's
  * remounts while another day or baby loads.
  */
 export function WeekChart({
   week,
+  pump,
   today,
   metric,
   onMetric,
 }: {
   week: readonly { dayStart: number; totals: DailyTotals }[];
+  /** The pumped ml per day over the same seven days, oldest first (pumps belong to no baby). */
+  pump: readonly { day: number; ml: number }[];
   today: number;
   metric: Metric;
   onMetric: (metric: Metric) => void;
@@ -42,10 +45,13 @@ export function WeekChart({
         options={[
           { value: 'sleep', label: t('summary.week.metric.sleep') },
           { value: 'feeding', label: t('summary.week.metric.feeding') },
+          { value: 'pump', label: t('summary.week.metric.pump') },
         ]}
       />
       {metric === 'sleep' ? (
         <SleepBars week={chronological} today={today} locale={locale} />
+      ) : metric === 'pump' ? (
+        <PumpBars days={pump} today={today} locale={locale} t={t} />
       ) : (
         <FeedingBars week={chronological} today={today} locale={locale} t={t} />
       )}
@@ -175,6 +181,60 @@ function FeedingBars({
           ))}
         </div>
         {rightAxis && <div className={styles.dualLabelsSpacer} style={{ width: rightWidth }} />}
+      </div>
+    </div>
+  );
+}
+
+function PumpBars({
+  days,
+  today,
+  locale,
+  t,
+}: {
+  days: readonly { day: number; ml: number }[];
+  today: number;
+  locale: ReturnType<typeof useLocale>;
+  t: ReturnType<typeof useT>;
+}) {
+  const axis = weekAxis(days.map((entry) => entry.ml));
+  if (!axis) return <p className={styles.muted}>{t('summary.week.empty')}</p>;
+  const width = axisWidthPx(axis);
+  // The bars' text alternative, from the same totals they draw.
+  const summary = days
+    .map((entry) => `${weekdayShort(locale, entry.day)} ${t('unit.ml', { ml: entry.ml })}`)
+    .join(', ');
+  return (
+    <div role="img" aria-label={summary}>
+      <div className={styles.chartRow}>
+        <div className={styles.axisLeft} data-testid="week-axis-left" style={{ width }}>
+          <span>{axis[2]}</span>
+          <span>{axis[1]}</span>
+          <span>{axis[0]}</span>
+        </div>
+        <div className={styles.dualBars}>
+          {days.map((entry) => (
+            <div key={entry.day} className={styles.dualBar} data-testid="week-pump-bar">
+              <div
+                className={styles.pumpBar}
+                style={{ height: `${Math.min(100, (entry.ml / axis[2]) * 100)}%` }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className={styles.dualLabels}>
+        <div className={styles.dualLabelsSpacer} style={{ width }} />
+        <div className={styles.dualLabelsBars}>
+          {days.map((entry) => (
+            <span
+              key={entry.day}
+              className={entry.day === today ? styles.barLabelToday : styles.barLabel}
+            >
+              {weekdayShort(locale, entry.day)}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

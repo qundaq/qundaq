@@ -307,8 +307,13 @@
   width: 7px;
   border-radius: 3px 3px 0 0;
 }
-.dualBarMinutes {
+.dualBarMinutes,
+.pumpBar {
   background: var(--info);
+}
+.pumpBar {
+  width: 14px;
+  border-radius: 3px 3px 0 0;
 }
 .dualBarMl {
   background: var(--live);

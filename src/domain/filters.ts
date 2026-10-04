@@ -12,7 +12,14 @@ export function visibleEvents<T extends { babyId: Id | null }>(
 }
 
 export type TypeFilter = 'all' | 'feeding' | 'sleep' | 'diaper' | 'pump' | 'other';
-export const TYPE_FILTERS: readonly TypeFilter[] = ['all', 'feeding', 'sleep', 'diaper', 'other'];
+export const TYPE_FILTERS: readonly TypeFilter[] = [
+  'all',
+  'feeding',
+  'sleep',
+  'diaper',
+  'pump',
+  'other',
+];
 
 const TYPES: Record<Exclude<TypeFilter, 'all'>, readonly EventType[]> = {
   feeding: ['breastfeed', 'bottle'],

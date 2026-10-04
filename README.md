@@ -15,7 +15,7 @@ Runs entirely on your phone as an installable web app. No accounts, no servers, 
 
 ## Status
 
-🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. The Sounds tab plays four bundled recordings (white noise, waves, wind chimes, an airplane cabin), one at a time, with a sleep timer and a volume safety cap. That completes the planned v1 feature set.
+🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. Home has a standalone pumping button (no baby needed). The Log tab lists entries for a day or a date range (quick ranges and a custom range) and lets you correct or delete them; a pumping report appears in the Log (pumping filter) and in the Summary tab; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. The Sounds tab plays four bundled recordings (white noise, waves, wind chimes, an airplane cabin), one at a time, with a sleep timer and a volume safety cap. That completes the planned v1 feature set.
 
 ## Why
 
@@ -113,7 +113,7 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 
 "Qundaq", Türkçedeki _kundak_ kelimesinin Azerbaycan Türkçesindeki yazılışıdır.
 
-**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sesler sekmesi dört hazır kaydı (beyaz gürültü, dalgalar, rüzgâr çanı, uçak kabini) tek tek çalar; uyku zamanlayıcısı ve ses güvenlik sınırı var. Planlanan v1 özellikleri böylece tamamlandı.
+**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Ana ekranda bebek seçmeden kullanılan bir sağım düğmesi var. Günlük sekmesi kayıtları bir güne veya tarih aralığına (hazır aralıklar ve özel aralık) göre listeler, düzeltmenize ve silmenize izin verir; sağım raporu Günlük'te (sağım süzgeci) ve Özet'te görünür; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sesler sekmesi dört hazır kaydı (beyaz gürültü, dalgalar, rüzgâr çanı, uçak kabini) tek tek çalar; uyku zamanlayıcısı ve ses güvenlik sınırı var. Planlanan v1 özellikleri böylece tamamlandı.
 
 **Yedekler:** Kayıtlar yalnızca telefonda durur ve iOS ana ekrana eklenen uygulamaların verisini silebilir. Düzenli yedek alın; son yedek 7 günden eskiyse Ana ekran hatırlatır.
 

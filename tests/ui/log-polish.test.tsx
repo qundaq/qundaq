@@ -14,6 +14,8 @@ import {
 import { I18nProvider } from '../../src/ui/app/I18nProvider';
 import { BrandRangePicker } from '../../src/ui/history/BrandRangePicker';
 import { DayList } from '../../src/ui/history/LogScreen';
+import { PumpReportCard } from '../../src/ui/history/PumpReportCard';
+import { pumpReport } from '../../src/domain/summary';
 
 const t = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
 const render = (node: React.ReactNode) =>
@@ -160,6 +162,7 @@ describe('filterSummary', () => {
     expect(filterSummary(t, [ada], 'a', 'all')).toBe('Ada');
     expect(filterSummary(t, [ada], null, 'feeding')).toBe(t('log.type.feeding'));
     expect(filterSummary(t, [ada], 'a', 'feeding')).toBe(`Ada · ${t('log.type.feeding')}`);
+    expect(filterSummary(t, [ada], null, 'pump')).toBe(t('log.type.pump'));
   });
 });
 
@@ -417,5 +420,64 @@ describe('DayList formatting cost', () => {
     } finally {
       vi.restoreAllMocks();
     }
+  });
+});
+
+describe('the pumping report', () => {
+  const day = (d: number) => new Date(2026, 8, d).getTime();
+  const pump = (id: string, d: number, mlLeft?: number, mlRight?: number): TrackerEvent => ({
+    id,
+    type: 'pump',
+    babyId: null,
+    startAt: new Date(2026, 8, d, 9, 0).getTime(),
+    ...(mlLeft !== undefined ? { mlLeft } : {}),
+    ...(mlRight !== undefined ? { mlRight } : {}),
+    createdAt: 0,
+    updatedAt: 0,
+  });
+  const events = [pump('p1', 25, 80, 60), pump('p2', 26, 70)];
+  const card = (from: number, to: number, multiDay: boolean, list = events) =>
+    render(<PumpReportCard report={pumpReport(list, from, to)} multiDay={multiDay} />);
+
+  it('shows sessions, total, sides and, for several days, the daily average', () => {
+    const html = card(day(25), day(27), true);
+    expect(html).toContain(t('pump.report.title'));
+    expect(html).toContain(t('pump.report.sessions', { n: 2 }));
+    expect(html).toContain(t('pump.report.total', { ml: 210 }));
+    expect(html).toContain(t('pump.report.sides', { l: 150, r: 60 }));
+    expect(html).toContain(t('pump.report.average', { ml: 105 }));
+  });
+  it('has no average for one day', () => {
+    const html = card(day(25), day(26), false);
+    expect(html).toContain(t('pump.report.sessions.one'));
+    expect(translate('en', 'pump.report.sessions.one')).toBe('1 session');
+    expect(html).toMatch(/<section[^>]*aria-labelledby="([^"]+)"[\s\S]*<h2 id="\1"/);
+    expect(html).not.toContain(t('pump.report.average', { ml: 140 }));
+  });
+  it('is no card at all when no pump started in the range', () => {
+    expect(card(day(20), day(22), true)).toBe('');
+  });
+  it('a baby filter with the pumping type leaves only the empty text (pumps belong to no baby)', () => {
+    const ada = {
+      id: 'a',
+      name: 'Ada',
+      color: '#5cc0d2',
+      archived: false,
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    const html = render(
+      <DayList
+        events={events}
+        babies={[ada]}
+        day={day(25)}
+        babyFilter="a"
+        typeFilter="pump"
+        now={NOW}
+        onOpen={() => {}}
+      />,
+    );
+    expect(html).toContain(t('log.emptyFiltered'));
+    expect(html).not.toContain('data-testid="log-list"');
   });
 });

@@ -296,14 +296,14 @@ test('the day strip shows sleep and feeds on one timeline per baby, with a now t
   await expect(strip.getByTestId('strip-sleep')).toHaveCount(0);
 });
 
-test('the week chart switches between sleep and feeding: empty on a fresh baby, dual bars on two axes once feeds exist', async ({
+test('the week chart switches between sleep, feeding and pumping: empty on a fresh baby, dual bars on two axes once feeds exist', async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
   await openTab(page, t('tab.summary'));
   const week = summaryCard(page, t('summary.week'));
   const metric = week.getByRole('radiogroup', { name: t('summary.week.metric'), exact: true });
-  await expect(metric.getByRole('radio')).toHaveCount(2);
+  await expect(metric.getByRole('radio')).toHaveCount(3);
   const sleepTab = metric.getByRole('radio', { name: t('summary.week.metric.sleep') });
   const feedingTab = metric.getByRole('radio', { name: t('summary.week.metric.feeding') });
   await expect(sleepTab).toHaveAttribute('aria-checked', 'true');
@@ -480,7 +480,7 @@ test('every record type shows up in the log and the summary, without CSP violati
   await expectTile(page, 'feeds', '2', plus('count', 2));
   await expectTile(page, 'bottle', t('unit.ml', { ml: 90 }), plus('ml', t('unit.ml', { ml: 90 })));
   await expectTile(page, 'diapers', '1', plus('count', 1));
-  await expect(page.getByTestId('summary-pump')).toContainText(t('summary.pumpTotal', { ml: 60 }));
+  await expect(page.getByTestId('summary-pump')).toContainText(t('pump.report.total', { ml: 60 }));
   // Every inline-styled piece of the dashboard is on screen for the CSP check.
   const strip = dayStrip(
     page,
@@ -544,3 +544,59 @@ for (const width of [320, 414]) {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 }
+
+test('the pumping card and the Pumping chart follow the seven days, whichever baby is picked', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await addBabyInSettings(page, 'Cal');
+  await openTab(page, t('tab.summary'));
+  await expect(page.getByTestId('summary-pump')).toHaveCount(0);
+
+  await openTab(page, t('tab.home'));
+  const logPump = async (at: string, left: string, right?: string) => {
+    const sheet = await openPump(page);
+    await pickTime(sheet, at);
+    await sheet.getByLabel(t('pump.left')).fill(left);
+    if (right) await sheet.getByLabel(t('pump.right')).fill(right);
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await expect(sheet).toBeHidden();
+  };
+  await logPump('2026-09-22T09:00', '80', '60');
+  await logPump('2026-09-25T08:00', '70');
+
+  await openTab(page, t('tab.summary'));
+  const card = page.getByTestId('summary-pump');
+  await expect(card).toContainText(t('pump.report.sessions.one'));
+  await expect(card).toContainText(t('pump.report.total', { ml: 70 }));
+  await expect(card).toContainText(t('pump.report.sides', { l: 70, r: 0 }));
+  await expect(card).toContainText(t('pump.report.week', { ml: 210 }));
+  await expect(card).toContainText(t('pump.report.average', { ml: 30 }));
+
+  const week = summaryCard(page, t('summary.week'));
+  await expect(week.getByRole('radio')).toHaveCount(3);
+  await week.getByRole('radio', { name: t('summary.week.metric.pump') }).click();
+  const bars = week.getByTestId('week-pump-bar');
+  await expect(bars).toHaveCount(7);
+  await expect(week.getByTestId('week-axis-left').locator('span')).toHaveText(['200', '100', '0']);
+  await expect(bars.nth(6).locator('div')).toHaveAttribute('style', /height: 35%/);
+  await expect(bars.nth(3).locator('div')).toHaveAttribute('style', /height: 70%/);
+  await expect(bars.nth(4).locator('div')).toHaveAttribute('style', /height: 0%/);
+
+  // Pumps belong to no baby: the other baby sees the same chart and card.
+  await page.getByRole('radio', { name: 'Cal', exact: true }).click();
+  await expect(card).toContainText(t('pump.report.week', { ml: 210 }));
+  await expect(bars).toHaveCount(7);
+  await expect(week.getByRole('radio', { name: t('summary.week.metric.pump') })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+
+  // A day with no pump keeps the 7-day lines; Sleep and Feeding are untouched.
+  await stepDay(page, 'previous');
+  await expect(card).not.toContainText(t('pump.report.sessions.one'));
+  await expect(card).toContainText(t('pump.report.week', { ml: 140 }));
+  await expect(card).toContainText(t('pump.report.average', { ml: 20 }));
+  await week.getByRole('radio', { name: t('summary.week.metric.sleep') }).click();
+  await expect(week.getByText(t('summary.week.empty'))).toBeVisible();
+});

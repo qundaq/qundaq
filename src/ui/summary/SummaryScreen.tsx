@@ -9,15 +9,14 @@ import {
   GROWTH_METRICS,
   dailyTotals,
   growthSeries,
-  pumpTotalMl,
+  pumpReport,
   weekTotals,
   type GrowthMetric,
 } from '../../domain/summary';
 import type { Baby, GrowthEvent, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
 import { DayPicker } from '../history/DayPicker';
-import { formatNumber } from '../history/describe';
-import { useLocale, useT } from '../app/I18nProvider';
+import { useT } from '../app/I18nProvider';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
 import { Card } from '../shared/Card';
@@ -25,6 +24,7 @@ import { Chip } from '../shared/Chip';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { BabySwitcher } from './BabySwitcher';
 import { DayStrip, type DayStripBaby } from './DayStrip';
+import { PumpCard } from './PumpCard';
 import { GrowthChart } from './GrowthChart';
 import { SummaryTiles } from './SummaryTiles';
 import { WeekChart, type Metric } from './WeekChart';
@@ -77,7 +77,7 @@ export function SummaryScreen({ view, onViewChange }: Props) {
   const [knownBabies, setKnownBabies] = useState<readonly Baby[]>([]);
   if (data && data.babies !== knownBabies) setKnownBabies(data.babies);
   // Held here, not in the week chart: the body remounts while another day or baby loads, and the
-  // Sleep/Feeding choice must survive that. It opens on Sleep each time the summary tab does.
+  // Sleep/Feeding/Pumping choice must survive that. It opens on Sleep each time the summary tab does.
   const [weekMetric, setWeekMetric] = useState<Metric>('sleep');
   const babies = data?.babies ?? knownBabies;
   const set = (patch: Partial<SummaryView>) => onViewChange({ ...view, ...patch });
@@ -144,7 +144,6 @@ function SummaryBody({
   now,
 }: BodyProps) {
   const t = useT();
-  const locale = useLocale();
   const baby = data.babies.find((candidate) => candidate.id === data.babyId);
   if (!baby) return null;
   const events = visibleEvents(data.events, new Set(data.babies.map((candidate) => candidate.id)));
@@ -165,29 +164,19 @@ function SummaryBody({
     };
   });
 
-  const pumpedToday = events.some(
-    (event) =>
-      event.type === 'pump' &&
-      event.deletedAt === undefined &&
-      event.startAt >= day &&
-      event.startAt < to,
-  );
+  // Pumps belong to no baby: the pumping card and chart ignore the baby switcher.
+  const weekPump = pumpReport(events, addDays(day, -6), to);
+  const dayPump = pumpReport(events, day, to);
 
   return (
     <>
       <SummaryTiles totals={totals} previous={previous} />
       {/* `to` is addDays(day, 1): the real calendar day, 23 or 25 hours on a daylight-saving change. */}
       <DayStrip babies={strips} nowPct={isToday ? (now - day) / (to - day) : null} />
-      {pumpedToday && (
-        <Card data-testid="summary-pump">
-          <h2>{t('summary.pump')}</h2>
-          <p>
-            {t('summary.pumpTotal', { ml: formatNumber(locale, pumpTotalMl(events, day, to)) })}
-          </p>
-        </Card>
-      )}
+      <PumpCard day={dayPump} week={weekPump} />
       <WeekChart
         week={weekTotals(events, baby.id, day, now)}
+        pump={weekPump.perDay}
         today={startOfDay(now)}
         metric={weekMetric}
         onMetric={onWeekMetric}

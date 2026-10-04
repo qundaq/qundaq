@@ -46,7 +46,7 @@ interface Props {
 export function LogSheet({ request, babies, events, onClose }: Props) {
   const t = useT();
   const session = useSheetSession(request);
-  // The "Other" sheet (quick.other, other.title) opens on a list of its five types; picking one shows
+  // The "Other" sheet (quick.other, other.title) opens on a list of its four types; picking one shows
   // its form here. `pick` changes on every choice, so going back (onBack) and picking the same type
   // again always starts that form fresh, per Task 11.
   const [picked, setPicked] = useState<{ session: number; type: OtherType; pick: number } | null>(

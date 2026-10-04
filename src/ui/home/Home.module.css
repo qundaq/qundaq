@@ -123,6 +123,5 @@
   color: var(--muted);
 }
 .pump {
-  min-height: 48px;
   margin-bottom: var(--space-3);
 }

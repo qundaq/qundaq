@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addDays } from '../../src/domain/days';
-import {
-  dailyTotals,
-  growthSeries,
-  pumpReport,
-  pumpTotalMl,
-  weekTotals,
-} from '../../src/domain/summary';
+import { dailyTotals, growthSeries, pumpReport, weekTotals } from '../../src/domain/summary';
 import { HOUR, MINUTE } from '../../src/domain/time';
 import type { EventDraft, TrackerEvent } from '../../src/domain/types';
 
@@ -177,21 +171,6 @@ describe('weekTotals', () => {
     expect(week[0]!.totals.sleepMs).toBe(2 * HOUR);
     expect(week[1]!.totals.sleepMs).toBe(HOUR);
     expect(week[2]!.totals.sleepMs).toBe(0);
-  });
-});
-
-describe('pumpTotalMl', () => {
-  it('adds both sides of every pump that started in the window', () => {
-    const events = [
-      ev({ type: 'pump', babyId: null, startAt: at(9, 25, 7), mlLeft: 60, mlRight: 40 }),
-      ev({ type: 'pump', babyId: null, startAt: at(9, 25, 15), mlRight: 50 }),
-      ev({ type: 'pump', babyId: null, startAt: at(9, 24, 15), mlLeft: 70 }),
-      ev(
-        { type: 'pump', babyId: null, startAt: at(9, 25, 16), mlLeft: 30 },
-        { deletedAt: at(9, 25, 17) },
-      ),
-    ];
-    expect(pumpTotalMl(events, at(9, 25), at(9, 26))).toBe(150);
   });
 });
 

@@ -10,6 +10,7 @@ import {
   filterGroup,
   logDiaper,
   logRows,
+  openPump,
   openRangeSheet,
   openRow,
   openTab,
@@ -666,4 +667,46 @@ test.describe('editing and deleting', () => {
     await expect(card).toContainText(t('tile.awake'));
     await expect(hint).toHaveCount(0);
   });
+});
+
+test('the pumping filter reports the range: sessions, total, sides and the daily average', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await addBabyInSettings(page, 'Cal');
+  await openTab(page, t('tab.home'));
+  const logPump = async (at: string, left: string, right?: string) => {
+    const sheet = await openPump(page);
+    await pickTime(sheet, at);
+    await sheet.getByLabel(t('pump.left')).fill(left);
+    if (right) await sheet.getByLabel(t('pump.right')).fill(right);
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await expect(sheet).toBeHidden();
+  };
+  await logPump('2026-09-24T09:00', '80', '60');
+  await logPump('2026-09-25T08:00', '70');
+
+  await openTab(page, t('tab.log'));
+  const sheet = await openRangeSheet(page);
+  await sheet.getByRole('button', { name: t('range.last7'), exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pump-report')).toHaveCount(0);
+
+  await (
+    await filterGroup(page, 'type')
+  )
+    .getByRole('button', { name: t('log.type.pump'), exact: true })
+    .click();
+  const report = page.getByTestId('pump-report');
+  await expect(report).toContainText(t('pump.report.title'));
+  await expect(report).toContainText(t('pump.report.sessions', { n: 2 }));
+  await expect(report).toContainText(t('pump.report.total', { ml: 210 }));
+  await expect(report).toContainText(t('pump.report.sides', { l: 150, r: 60 }));
+  await expect(report).toContainText(t('pump.report.average', { ml: 30 }));
+  await expect(logRows(page)).toHaveCount(2);
+
+  // Pumps belong to no baby: one baby's filter leaves the empty text and no report.
+  await (await filterGroup(page, 'baby')).getByRole('button', { name: 'Ada', exact: true }).click();
+  await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
+  await expect(report).toHaveCount(0);
 });

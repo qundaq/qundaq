@@ -12,10 +12,12 @@ import { useLocale, useT } from '../app/I18nProvider';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
+import { pumpReport } from '../../domain/summary';
 import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
 import { dayHeading, filterSummary, timeOnDay } from './describe';
 import { FilterSheet } from './FilterSheet';
+import { PumpReportCard } from './PumpReportCard';
 import styles from './Log.module.css';
 
 /** The log (history) tab's state. It lives in Shell, so it survives tab switches and resets when the app restarts. */
@@ -92,18 +94,26 @@ export function LogScreen({
       {data === undefined ? (
         <p className={styles.muted} aria-busy="true" />
       ) : (
-        <DayList
-          events={data.events}
-          babies={data.babies}
-          day={range.from}
-          byDay={!isSingleDay(range)}
-          babyFilter={babyFilter}
-          typeFilter={view.type}
-          // The tick can be up to 30 s old; data written since then must never look like the future.
-          // eslint-disable-next-line react-hooks/purity
-          now={Math.max(tick, Date.now())}
-          onOpen={setEditing}
-        />
+        <>
+          {view.type === 'pump' && babyFilter === null && (
+            <PumpReportCard
+              report={pumpReport(data.events, range.from, range.to)}
+              multiDay={!isSingleDay(range)}
+            />
+          )}
+          <DayList
+            events={data.events}
+            babies={data.babies}
+            day={range.from}
+            byDay={!isSingleDay(range)}
+            babyFilter={babyFilter}
+            typeFilter={view.type}
+            // The tick can be up to 30 s old; data written since then must never look like the future.
+            // eslint-disable-next-line react-hooks/purity
+            now={Math.max(tick, Date.now())}
+            onOpen={setEditing}
+          />
+        </>
       )}
       <EditSheet event={editing} babies={babies} onClose={() => setEditing(null)} />
     </section>

@@ -94,11 +94,6 @@ export function dailyTotals(
   return totals;
 }
 
-/** Millilitres pumped (both sides) by pumps that started in [from, to). Pumps belong to no baby. */
-export function pumpTotalMl(events: readonly TrackerEvent[], from: number, to: number): number {
-  return pumpReport(events, from, to).totalMl;
-}
-
 export interface PumpReport {
   sessions: number;
   totalMl: number;

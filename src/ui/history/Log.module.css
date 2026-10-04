@@ -226,6 +226,12 @@ li:first-child > .dayHeading {
 .editDelete {
   margin-top: var(--space-5);
 }
+.pumpReport p {
+  margin: 0;
+}
+.pumpReport p + p {
+  margin-top: var(--space-1);
+}
 .muted {
   color: var(--muted);
 }
