@@ -15,8 +15,8 @@ import {
 
 describe('sound ids', () => {
   it('are exactly the four bundled recordings, in tile order', () => {
-    expect([...SOUND_IDS]).toEqual(['white', 'airplane', 'train', 'waves']);
-    expect(isSoundId('train')).toBe(true);
+    expect([...SOUND_IDS]).toEqual(['white', 'waves', 'windchime', 'airplane']);
+    expect(isSoundId('windchime')).toBe(true);
     expect(isSoundId('pink')).toBe(false);
     expect(isSoundId(7)).toBe(false);
   });
@@ -48,7 +48,7 @@ describe('readVolumeCap', () => {
 });
 
 describe('readLastSound', () => {
-  const stored = { soundId: 'train', master: 0.6, timerMin: 30 };
+  const stored = { soundId: 'windchime', master: 0.6, timerMin: 30 };
 
   it('reads a well-formed selection', () => {
     expect(readLastSound(stored)).toEqual(stored);

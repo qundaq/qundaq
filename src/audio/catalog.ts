@@ -12,9 +12,9 @@ export interface Sound {
 
 export const SOUNDS: readonly Sound[] = [
   { id: 'white', nameKey: 'sound.white' },
-  { id: 'airplane', nameKey: 'sound.airplane' },
-  { id: 'train', nameKey: 'sound.train' },
   { id: 'waves', nameKey: 'sound.waves' },
+  { id: 'windchime', nameKey: 'sound.windchime' },
+  { id: 'airplane', nameKey: 'sound.airplane' },
 ];
 
 export function soundById(id: SoundId): Sound {

@@ -15,7 +15,7 @@ Runs entirely on your phone as an installable web app. No accounts, no servers, 
 
 ## Status
 
-🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. The Sounds tab plays four bundled recordings (white noise, an airplane cabin, a train, waves), one at a time, with a sleep timer and a volume safety cap. That completes the planned v1 feature set.
+🚧 **Early development.** The current version tracks babies, breastfeeding (with a left/right timer), bottles, sleep (with a timer), diapers with the stool color card, pumping, growth, temperature, medicines and health notes. The Log tab lists every entry by day and lets you correct or delete it; the Summary tab shows daily totals, a 7-day table and a growth chart. Backups (to the Files app, with a restore that previews every change) and a CSV export for your pediatrician are in. The Sounds tab plays four bundled recordings (white noise, waves, wind chimes, an airplane cabin), one at a time, with a sleep timer and a volume safety cap. That completes the planned v1 feature set.
 
 ## Why
 
@@ -50,7 +50,7 @@ Your entries live only on your phone, and iOS may delete a home-screen app's sto
 - **Each baby's card logs for that baby: no baby picker in the sheet**
 - **Timeline and daily summaries**, a 7-day overview and a growth chart
 - **Stool color card** with a warning for pale/white/clay colors, an early sign of biliary atresia, one of the few things this app will ever nudge you about
-- **Sleep sounds:** four bundled recordings (white noise, airplane cabin, train, waves), played one at a time, with a sleep timer and a volume safety cap
+- **Sleep sounds:** four bundled recordings (white noise, waves, wind chimes, airplane cabin), played one at a time, with a sleep timer and a volume safety cap
 - **Backup & export:** JSON backup to the Files app, CSV export for your pediatrician
 - **Dark, light and system themes**, and a night mode with a dim red/amber palette
 - **Turkish and English**
@@ -81,7 +81,7 @@ Before a release, run the [device checklist](docs/device-checklist.md) on a real
 
 ## Sounds
 
-The Sounds tab plays four bundled recordings: white noise, an airplane cabin, a train and waves. They play one at a time: tap a tile to start it, tap the playing tile to pause, tap another to switch (the two crossfade over about 2 seconds). The recordings are part of the app and are cached with it, so no audio is downloaded after the first load. Saved mixes from earlier versions still travel in backups but are no longer shown.
+The Sounds tab plays four bundled recordings: white noise, waves, wind chimes and an airplane cabin. They play one at a time: tap a tile to start it, tap the playing tile to pause, tap another to switch (the two crossfade over about 2 seconds). The recordings are part of the app and are cached with it, so no audio is downloaded after the first load. Saved mixes from earlier versions still travel in backups but are no longer shown.
 
 - **Sleep timer:** 15, 30 or 60 minutes (the default) or none. The sound fades out over the last 30 seconds and stops, also while the phone is locked. Pausing does not stop the countdown.
 - **Locked screen:** the sound keeps playing with the screen locked and in airplane mode. It plays through the ring/silent switch, and it pauses other audio (a podcast) when it starts. After a call or an alarm while the phone is locked, iOS may keep the sound off until you open the app again; the app then shows "Resume".
@@ -113,7 +113,7 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 
 "Qundaq", Türkçedeki _kundak_ kelimesinin Azerbaycan Türkçesindeki yazılışıdır.
 
-**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sesler sekmesi dört hazır kaydı (beyaz gürültü, uçak kabini, tren, dalgalar) tek tek çalar; uyku zamanlayıcısı ve ses güvenlik sınırı var. Planlanan v1 özellikleri böylece tamamlandı.
+**Durum:** 🚧 Geliştirmenin başında. Şu anki sürüm bebekleri, emzirmeyi (sol/sağ sayaçla), biberonu, uykuyu (sayaçla), kaka renk kartıyla bezi, sağımı, büyümeyi, ateşi, ilaçları ve sağlık notlarını takip ediyor. Günlük sekmesi kayıtları güne göre listeler, düzeltmenize ve silmenize izin verir; Özet sekmesi günlük toplamları, 7 günlük tabloyu ve büyüme grafiğini gösterir. Dosyalar uygulamasına yedek alma, her değişikliği önceden gösteren geri yükleme ve doktor için CSV çıktısı hazır. Sesler sekmesi dört hazır kaydı (beyaz gürültü, dalgalar, rüzgâr çanı, uçak kabini) tek tek çalar; uyku zamanlayıcısı ve ses güvenlik sınırı var. Planlanan v1 özellikleri böylece tamamlandı.
 
 **Yedekler:** Kayıtlar yalnızca telefonda durur ve iOS ana ekrana eklenen uygulamaların verisini silebilir. Düzenli yedek alın; son yedek 7 günden eskiyse Ana ekran hatırlatır.
 
@@ -122,7 +122,7 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 - **CSV:** Ayarlar → Yedekleme → **CSV olarak dışa aktar**, doktor için her bebeğe bir tablo verir.
 - Yedek dosyası düz JSON'dur ve **şifrelenmez**. Uygulama dosyayı hiçbir yere göndermez; dosya yalnızca paylaş menüsünde sizin seçtiğiniz yere gider. iCloud Drive, Mail ya da WhatsApp'ı seçerseniz dosya o hizmete gider.
 
-**Sesler:** Sesler sekmesi dört hazır kaydı çalar: beyaz gürültü, uçak kabini, tren ve dalgalar. Sesler tek tek çalınır: başlatmak için bir kutuya dokunun, çalan kutuya dokunursanız duraklar, başka bir kutuya dokunursanız ses yaklaşık 2 saniyede birinden diğerine geçer. Kayıtlar uygulamanın parçasıdır ve onunla birlikte saklanır; ilk yüklemeden sonra hiçbir ses indirilmez. Önceki sürümlerden kalan kayıtlı karışımlar yedeklerde yine taşınır ama artık gösterilmez.
+**Sesler:** Sesler sekmesi dört hazır kaydı çalar: beyaz gürültü, dalgalar, rüzgâr çanı ve uçak kabini. Sesler tek tek çalınır: başlatmak için bir kutuya dokunun, çalan kutuya dokunursanız duraklar, başka bir kutuya dokunursanız ses yaklaşık 2 saniyede birinden diğerine geçer. Kayıtlar uygulamanın parçasıdır ve onunla birlikte saklanır; ilk yüklemeden sonra hiçbir ses indirilmez. Önceki sürümlerden kalan kayıtlı karışımlar yedeklerde yine taşınır ama artık gösterilmez.
 
 - **Uyku zamanlayıcısı:** 15, 30 ya da 60 dakika (varsayılan) veya sınırsız. Ses son 30 saniyede kısılıp durur; ekran kilitliyken de. Duraklatmak geri sayımı durdurmaz.
 - **Kilitli ekran:** Ses, ekran kilitliyken ve uçak modunda çalmaya devam eder. Sessiz anahtarı açıkken de çalar ve başladığında diğer sesleri (ör. bir podcast'i) duraklatır. Telefon kilitliyken gelen bir arama ya da alarmdan sonra iOS sesi uygulamayı yeniden açana kadar kapalı tutabilir; uygulama o zaman "Devam et" gösterir.

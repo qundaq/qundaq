@@ -462,7 +462,7 @@ export const tr = {
   'sound.white': 'Beyaz gürültü',
   'sound.waves': 'Dalgalar',
   'sound.airplane': 'Uçak kabini',
-  'sound.train': 'Tren',
+  'sound.windchime': 'Rüzgâr çanı',
   'sounds.play': 'Çal',
   'sounds.pause': 'Duraklat',
   'sounds.resume': 'Devam et',

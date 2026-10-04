@@ -464,7 +464,7 @@ export const en: Record<MessageKey, string> = {
   'sound.white': 'White noise',
   'sound.waves': 'Waves',
   'sound.airplane': 'Airplane cabin',
-  'sound.train': 'Train',
+  'sound.windchime': 'Wind chimes',
   'sounds.play': 'Play',
   'sounds.pause': 'Pause',
   'sounds.resume': 'Resume',

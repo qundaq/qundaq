@@ -28,9 +28,9 @@ describe('loadLoop', () => {
     const context = contextWith(padded, rate);
     const fetchBytes = vi.fn(() => Promise.resolve(bytes));
 
-    const buffer = await loadLoop(context, 'train', fetchBytes);
+    const buffer = await loadLoop(context, 'windchime', fetchBytes);
 
-    expect(fetchBytes).toHaveBeenCalledWith('sounds/train.m4a');
+    expect(fetchBytes).toHaveBeenCalledWith('sounds/windchime.m4a');
     const fade = Math.round(CROSSFADE_SECONDS * rate);
     expect(context.buffers).toEqual([{ length: 8000 - fade, sampleRate: rate }]);
     expect(buffer.getChannelData(0)).toBe(context.bufferData[0]);

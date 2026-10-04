@@ -153,8 +153,8 @@ describe('one sound at a time (R4, R7)', () => {
     const { engine, deps, context } = await playing('white');
     deps.advance(5000);
     const t = context.currentTime;
-    engine.select('train');
-    expect(engine.getSnapshot()).toMatchObject({ current: 'train', status: 'playing' });
+    engine.select('windchime');
+    expect(engine.getSnapshot()).toMatchObject({ current: 'windchime', status: 'playing' });
     await flush();
 
     expect(context.sources).toHaveLength(2);
@@ -209,10 +209,10 @@ describe('one sound at a time (R4, R7)', () => {
     await flush();
     expect(engine.getSnapshot().status).toBe('interrupted');
     deps.wall += 16 * MINUTE; // iOS freezes JS timers during an interruption: the wall clock moves, no timeout fires
-    engine.select('train');
+    engine.select('windchime');
     expect(engine.getSnapshot()).toMatchObject({
       status: 'stopped',
-      current: 'train',
+      current: 'windchime',
       endsAt: null,
     });
     expect(context.calls.filter((call) => call === 'resume')).toHaveLength(1);
@@ -222,14 +222,14 @@ describe('one sound at a time (R4, R7)', () => {
     const { engine, deps, context } = await playing('white');
     const resumesBefore = context.calls.filter((call) => call === 'resume').length;
     const prepareBefore = deps.prepareSession.mock.calls.length;
-    engine.select('train');
+    engine.select('windchime');
     expect(deps.prepareSession.mock.calls.length).toBe(prepareBefore + 1);
     expect(context.calls.filter((call) => call === 'resume').length).toBe(resumesBefore + 1);
   });
 
   it('switching back to a cached sound while playing ramps it in over START_FADE_SECONDS, not an instant jump', async () => {
     const { engine, deps, context } = await playing('white');
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     deps.advance(3000);
     const t = context.currentTime;
@@ -244,7 +244,7 @@ describe('one sound at a time (R4, R7)', () => {
 
   it('a switch while playing keeps the total output from overshooting while the old voice fades out', async () => {
     const { engine, deps, context } = await playing('white');
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     deps.advance(3000); // both loops cached, the first crossfade and the start fade over
     const t = context.currentTime;
@@ -259,7 +259,7 @@ describe('one sound at a time (R4, R7)', () => {
 
   it('a switch shortly after pausing starts the new voice only once the transport is truly silent', async () => {
     const { engine, deps, context } = await playing('white');
-    engine.select('train'); // caches train's loop
+    engine.select('windchime'); // caches windchime's loop
     await flush();
     deps.advance(3000);
     const before = totalPower(context, context.currentTime);
@@ -300,12 +300,12 @@ describe('loading and unavailable sounds (R8)', () => {
     const { engine, deps, context } = setup();
     const waiting = deferLoads(deps);
     engine.select('white');
-    engine.select('train');
-    expect(engine.getSnapshot()).toMatchObject({ current: 'train', loading: 'train' });
+    engine.select('windchime');
+    expect(engine.getSnapshot()).toMatchObject({ current: 'windchime', loading: 'windchime' });
     waiting[0]!.resolve(context.createBuffer(1, 100, 48_000));
     await flush();
     expect(context.sources).toHaveLength(0);
-    expect(engine.getSnapshot().loading).toBe('train');
+    expect(engine.getSnapshot().loading).toBe('windchime');
     waiting[1]!.resolve(context.createBuffer(1, 100, 48_000));
     await flush();
     expect(context.sources).toHaveLength(1);
@@ -318,7 +318,7 @@ describe('loading and unavailable sounds (R8)', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { engine, deps, context } = setup();
     const waiting = deferLoads(deps);
-    engine.select('train');
+    engine.select('windchime');
     waiting[0]!.reject(new Error('HTTP 404'));
     await flush();
     expect(engine.getSnapshot()).toMatchObject({
@@ -326,13 +326,13 @@ describe('loading and unavailable sounds (R8)', () => {
       current: null,
       loading: null,
       endsAt: null,
-      unavailable: ['train'],
+      unavailable: ['windchime'],
     });
     expect(context.sources).toHaveLength(0);
     expect(error).toHaveBeenCalled();
     error.mockRestore();
 
-    engine.select('train'); // does nothing: the tile is unavailable
+    engine.select('windchime'); // does nothing: the tile is unavailable
     expect(deps.load).toHaveBeenCalledTimes(1);
     expect(engine.getSnapshot().status).toBe('stopped');
   });
@@ -341,14 +341,14 @@ describe('loading and unavailable sounds (R8)', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { engine, deps } = setup();
     deps.load.mockRejectedValueOnce(new Error('HTTP 404'));
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     engine.select('waves');
     await flush();
     expect(engine.getSnapshot()).toMatchObject({
       status: 'playing',
       current: 'waves',
-      unavailable: ['train'],
+      unavailable: ['windchime'],
     });
     error.mockRestore();
   });
@@ -390,9 +390,9 @@ describe('loading and unavailable sounds (R8)', () => {
     const { engine, deps, context } = setup();
     const waiting = deferLoads(deps);
     engine.select('white');
-    engine.select('train');
+    engine.select('windchime');
     engine.select('white'); // the first white load is still in flight: a second one starts
-    expect(waiting.map((entry) => entry.id)).toEqual(['white', 'train', 'white']);
+    expect(waiting.map((entry) => entry.id)).toEqual(['white', 'windchime', 'white']);
     const first = context.createBuffer(1, 100, 48_000);
     waiting[0]!.resolve(first);
     await flush();
@@ -646,7 +646,7 @@ describe('the sleep timer (R1, R2)', () => {
     const { sleep } = context.graph;
     const calls = sleep.gain.calls.length;
     const t = context.currentTime;
-    engine.select('train');
+    engine.select('windchime');
     await flush(); // the file loads, and the source starts then
     const source = context.sources[1]!;
     expect(source.stops).toEqual([]);
@@ -759,11 +759,11 @@ describe('pause, resume and interruptions (R14)', () => {
     deps.advance(1000);
     const resumes = context.calls.filter((call) => call === 'resume').length;
     deps.wall += 20 * MINUTE; // iOS freezes JS timers: the wall clock jumps, no timeout fires
-    engine.select('train');
+    engine.select('windchime');
     expect(engine.getSnapshot()).toMatchObject({
       status: 'stopped',
       endsAt: null,
-      current: 'train',
+      current: 'windchime',
     });
     expect(context.calls.filter((call) => call === 'resume')).toHaveLength(resumes);
     expect(deps.load).toHaveBeenCalledTimes(1); // nothing is fetched for a sound that does not start
@@ -794,11 +794,11 @@ describe('pause, resume and interruptions (R14)', () => {
     context.interrupt();
     await flush();
     expect(engine.getSnapshot().status).toBe('interrupted');
-    engine.select('train');
+    engine.select('windchime');
     expect(deps.prepareSession).toHaveBeenCalledTimes(2);
     expect(context.calls).toEqual(['resume', 'resume']);
     await flush();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', current: 'train' });
+    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', current: 'windchime' });
     expect(context.sources).toHaveLength(2);
   });
 
@@ -833,7 +833,7 @@ describe('pause, resume and interruptions (R14)', () => {
 
   it('stop during a switch cuts both voices at once, the one still fading out included', async () => {
     const { engine, context } = await playing('white');
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     const [oldSource, newSource] = context.sources;
     const oldNode = context.voiceGain(oldSource!)!;
@@ -852,13 +852,13 @@ describe('pause, resume and interruptions (R14)', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { engine, deps, context } = await playing('white');
     const waiting = deferLoads(deps);
-    engine.select('train');
+    engine.select('windchime');
     const [oldSource] = context.sources;
     const oldNode = context.voiceGain(oldSource!)!;
     expect(oldSource?.stops).toEqual([context.currentTime + SWITCH_FADE_SECONDS + 0.05]);
     waiting[0]!.reject(new Error('HTTP 404'));
     await flush();
-    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', unavailable: ['train'] });
+    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', unavailable: ['windchime'] });
     expect(oldSource?.stops.at(-1)).toBeUndefined();
     expect(oldSource?.disconnected).toBe(true);
     expect(oldNode.disconnected).toBe(true);
@@ -867,7 +867,7 @@ describe('pause, resume and interruptions (R14)', () => {
 
   it('a pause inside a switch, then another tile: no voice from before is left to sound under the new one', async () => {
     const { engine, deps, context } = await playing('white');
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     deps.advance(500); // inside the 2 s switch: white is still fading out
     engine.pause();
@@ -876,8 +876,8 @@ describe('pause, resume and interruptions (R14)', () => {
     await flush();
     expect(engine.getSnapshot()).toMatchObject({ status: 'playing', current: 'waves' });
     expect(context.sources).toHaveLength(3);
-    const [white, train, waves] = context.sources;
-    for (const source of [white, train]) {
+    const [white, windchime, waves] = context.sources;
+    for (const source of [white, windchime]) {
       expect(source?.stops.at(-1)).toBeUndefined();
       expect(source?.disconnected).toBe(true);
     }
@@ -886,7 +886,7 @@ describe('pause, resume and interruptions (R14)', () => {
 
   it('a fading voice that already ended is not stopped again', async () => {
     const { engine, context } = await playing('white');
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     const [oldSource] = context.sources;
     const oldNode = context.voiceGain(oldSource!)!;
@@ -982,10 +982,10 @@ describe('pause, resume and interruptions (R14)', () => {
 describe('restoring the last selection (R9)', () => {
   it('takes up a known sound, the master and the chip without creating the context or playing', () => {
     const { engine, deps } = setup();
-    engine.restore({ soundId: 'train', master: 0.3, timer: 15 }, 0.5);
+    engine.restore({ soundId: 'windchime', master: 0.3, timer: 15 }, 0.5);
     expect(engine.getSnapshot()).toMatchObject({
       status: 'stopped',
-      current: 'train',
+      current: 'windchime',
       master: 0.3,
       timer: 15,
     });
@@ -1023,7 +1023,7 @@ describe('restoring the last selection (R9)', () => {
   it('restore does nothing once the graph already exists', async () => {
     const { engine, deps } = await playing(); // builds the graph
     const before = engine.getSnapshot();
-    engine.restore({ soundId: 'train', master: 0.1, timer: 30 }, 0.9);
+    engine.restore({ soundId: 'windchime', master: 0.1, timer: 30 }, 0.9);
     expect(engine.getSnapshot()).toBe(before);
     expect(deps.context.graph.cap.gain.value).not.toBe(capGain(0.9));
   });
@@ -1052,7 +1052,7 @@ describe('memory and the store (R13, R19)', () => {
 
   it('drops the previous sound five minutes after a switch, and keeps the playing one', async () => {
     const { engine, deps } = await playing('white');
-    engine.select('train');
+    engine.select('windchime');
     await flush();
     expect(deps.load).toHaveBeenCalledTimes(2);
     deps.advance(EVICT_AFTER_MS + 2000);
@@ -1060,7 +1060,7 @@ describe('memory and the store (R13, R19)', () => {
     expect(deps.load).toHaveBeenCalledTimes(3);
     expect(deps.load).toHaveBeenLastCalledWith(deps.context, 'white');
     await flush();
-    engine.select('train'); // it was playing until a moment ago: still cached
+    engine.select('windchime'); // it was playing until a moment ago: still cached
     expect(deps.load).toHaveBeenCalledTimes(3);
   });
 

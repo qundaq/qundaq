@@ -19,18 +19,18 @@ describe('SoundTile', () => {
   });
 
   it('a loading tile says it is preparing', () => {
-    expect(render(<SoundTile name="Train" state="loading" onSelect={() => {}} />)).toContain(
+    expect(render(<SoundTile name="Wind chimes" state="loading" onSelect={() => {}} />)).toContain(
       'Preparing…',
     );
   });
 
   it('an unavailable tile says so, in its name too, and is aria-disabled', () => {
-    const html = render(<SoundTile name="Train" state="unavailable" onSelect={() => {}} />);
+    const html = render(<SoundTile name="Wind chimes" state="unavailable" onSelect={() => {}} />);
     expect(html).toContain('aria-disabled="true"');
     expect(html).toContain('This sound isn’t available right now.');
-    expect(html).toContain('aria-label="Train: This sound isn’t available right now."');
+    expect(html).toContain('aria-label="Wind chimes: This sound isn’t available right now."');
     // Only the name is dimmed: the note is not inside it, so it keeps full contrast.
-    expect(html).toContain('<span class="tileName">Train</span><span class="tileNote">');
+    expect(html).toContain('<span class="tileName">Wind chimes</span><span class="tileNote">');
   });
 
   it.each([

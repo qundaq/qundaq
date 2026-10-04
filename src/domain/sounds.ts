@@ -2,7 +2,7 @@
  * The sounds this version can play, by id, in tile order. A stored selection may name others (from
  * another version): they read back as nothing selected.
  */
-export const SOUND_IDS = ['white', 'airplane', 'train', 'waves'] as const;
+export const SOUND_IDS = ['white', 'waves', 'windchime', 'airplane'] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
 

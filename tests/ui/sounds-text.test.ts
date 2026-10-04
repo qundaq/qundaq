@@ -18,7 +18,7 @@ const NOW = 1_790_000_000_000;
 describe('names and status', () => {
   it('names the current sound, and nothing for no selection', () => {
     expect(soundName(t, 'white')).toBe('White noise');
-    expect(soundName(t, 'train')).toBe('Train');
+    expect(soundName(t, 'windchime')).toBe('Wind chimes');
     expect(soundName(t, null)).toBe('');
   });
 
@@ -36,12 +36,12 @@ describe('names and status', () => {
 });
 
 describe('the last selection', () => {
-  const state = { current: 'train' as const, master: 0.4, timer: 30 as const };
+  const state = { current: 'windchime' as const, master: 0.4, timer: 30 as const };
 
   it('is the sound, the master and the chip, and maps back to what the engine restores', () => {
     const last = lastSoundOf(state);
-    expect(last).toEqual({ soundId: 'train', master: 0.4, timerMin: 30 });
-    expect(toSavedSound(last)).toEqual({ soundId: 'train', master: 0.4, timer: 30 });
+    expect(last).toEqual({ soundId: 'windchime', master: 0.4, timerMin: 30 });
+    expect(toSavedSound(last)).toEqual({ soundId: 'windchime', master: 0.4, timer: 30 });
   });
 
   describe('what the persist timer writes, read from the engine when it fires', () => {
@@ -49,7 +49,7 @@ describe('the last selection', () => {
       const rescaled = { ...state, master: 0.25 };
       expect(lastSoundToPersist(rescaled, lastSoundOf(rescaled))).toBeNull();
       expect(lastSoundToPersist(rescaled, lastSoundOf(state))).toEqual({
-        soundId: 'train',
+        soundId: 'windchime',
         master: 0.25,
         timerMin: 30,
       });

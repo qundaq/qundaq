@@ -33,27 +33,27 @@ test('one sound plays at a time; the tile is the play control; the now-playing b
   await expect(tile(page, t('sound.white'))).toHaveAttribute('data-state', 'playing');
   expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 1, resumes: 1, sources: 1 });
 
-  // One voice: Train replaces White (the old one fades, the new one starts).
-  await tile(page, t('sound.train')).click();
-  await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
+  // One voice: Wind chimes replaces White (the old one fades, the new one starts).
+  await tile(page, t('sound.windchime')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.windchime')));
   await expect.poll(async () => (await fakeAudioRecord(page)).sources).toBe(2);
   await expect(tile(page, t('sound.white'))).toHaveAccessibleName(endsWithPlay);
 
-  await tile(page, t('sound.train')).click();
+  await tile(page, t('sound.windchime')).click();
   await expect(soundStatus(page)).toHaveText(
     `${t('sounds.status.paused')} · ${t('sounds.remaining', { m: 60 })}`,
   );
   // The paused tile stays marked: it is the one a tap resumes.
-  await expect(tile(page, t('sound.train'))).toHaveAttribute('data-state', 'paused');
-  await expect(tile(page, t('sound.train'))).toHaveAccessibleName(
-    t('sounds.tile', { name: t('sound.train'), action: t('sounds.resume') }),
+  await expect(tile(page, t('sound.windchime'))).toHaveAttribute('data-state', 'paused');
+  await expect(tile(page, t('sound.windchime'))).toHaveAccessibleName(
+    t('sounds.tile', { name: t('sound.windchime'), action: t('sounds.resume') }),
   );
-  await tile(page, t('sound.train')).click();
-  await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
+  await tile(page, t('sound.windchime')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.windchime')));
 
   await openTab(page, t('tab.home'));
   const bar = page.getByRole('region', { name: t('nowplaying.label') });
-  await expect(bar).toContainText(t('sounds.status.playing', { name: t('sound.train') }));
+  await expect(bar).toContainText(t('sounds.status.playing', { name: t('sound.windchime') }));
   // Scrolled all the way down, the last card's actions must still clear the fixed bar above the tab
   // bar: that headroom comes from the screen's own bottom padding (App.module.css,
   // --nowplaying-h), not from the actions merely sitting off-screen above an unscrolled fold.
@@ -70,10 +70,10 @@ test('one sound plays at a time; the tile is the play control; the now-playing b
   await bar.getByRole('button', { name: t('sounds.pause'), exact: true }).click();
   await expect(bar).toContainText(t('sounds.status.paused'));
   await bar.getByRole('button', { name: t('sounds.play'), exact: true }).click();
-  await expect(bar).toContainText(t('sounds.status.playing', { name: t('sound.train') }));
+  await expect(bar).toContainText(t('sounds.status.playing', { name: t('sound.windchime') }));
   await bar
     .getByRole('button', {
-      name: new RegExp(t('sounds.status.playing', { name: t('sound.train') })),
+      name: new RegExp(t('sounds.status.playing', { name: t('sound.windchime') })),
     })
     .click(); // the text opens the Sounds tab
   await expect(page.getByRole('heading', { level: 1, name: t('tab.sounds') })).toBeAttached();
@@ -132,14 +132,14 @@ test('the 15-minute timer counts down and stops the sound; the tile restarts it 
 test('a sound whose file is missing is dimmed, says so, does nothing, and the other sounds still play', async ({
   page,
 }) => {
-  await fakeAudio(page, { missing: ['train'] });
+  await fakeAudio(page, { missing: ['windchime'] });
   await page.goto('./');
   await openTab(page, t('tab.sounds'));
-  await tile(page, t('sound.train')).click();
-  await expect(tile(page, t('sound.train'))).toContainText(t('sounds.unavailable'));
-  await expect(tile(page, t('sound.train'))).toHaveAttribute('aria-disabled', 'true');
+  await tile(page, t('sound.windchime')).click();
+  await expect(tile(page, t('sound.windchime'))).toContainText(t('sounds.unavailable'));
+  await expect(tile(page, t('sound.windchime'))).toHaveAttribute('aria-disabled', 'true');
   await expect(soundStatus(page)).toHaveText(t('sounds.status.stopped'));
-  await tile(page, t('sound.train')).click({ force: true }); // aria-disabled: Playwright would wait
+  await tile(page, t('sound.windchime')).click({ force: true }); // aria-disabled: Playwright would wait
   expect(await fakeAudioRecord(page)).toMatchObject({ sources: 0 });
 
   await tile(page, t('sound.waves')).click();
@@ -242,9 +242,9 @@ test('the real AudioContext builds the graph and plays without errors', async ({
   await stubSoundFiles(page);
   await page.goto('./');
   await openTab(page, t('tab.sounds'));
-  await tile(page, t('sound.train')).click();
-  await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
-  await expect(tile(page, t('sound.train'))).toHaveAttribute('data-state', 'playing');
+  await tile(page, t('sound.windchime')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.windchime')));
+  await expect(tile(page, t('sound.windchime'))).toHaveAttribute('data-state', 'playing');
   await tile(page, t('sound.waves')).click();
   await expect(soundStatus(page)).toHaveText(playing(t('sound.waves')));
   await page
