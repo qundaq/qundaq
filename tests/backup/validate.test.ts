@@ -199,7 +199,7 @@ describe('rows that fail their checks are skipped and reported', () => {
   it('keeps a mix whose sound this version does not know: it comes from a newer version and is skipped only when played', () => {
     const newer = mix('m1', {
       layers: [
-        { soundId: 'train', gain: 0.5 },
+        { soundId: 'future-sound', gain: 0.5 },
         { soundId: 'white', gain: 1 },
       ],
     });
@@ -491,7 +491,7 @@ describe('whitelisting', () => {
       lastBackupAt: T,
       backupReminderSnoozedUntil: T,
       volumeCap: 0.7,
-      lastSound: { layers: [{ soundId: 'white', level: 0.5 }], master: 0.6, timerMin: 30 },
+      lastSound: { soundId: 'white', master: 0.6, timerMin: 30 },
     };
     const text = serializeBackup(
       buildBackup(

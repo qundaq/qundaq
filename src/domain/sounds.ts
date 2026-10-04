@@ -1,15 +1,8 @@
-/** The sounds this version can play, by id. A stored mix may name others (from a newer version): they are skipped. */
-export const SOUND_IDS = [
-  'white',
-  'pink',
-  'brown',
-  'rain',
-  'waves',
-  'wind',
-  'heartbeat',
-  'shush',
-  'airplane',
-] as const;
+/**
+ * The sounds this version can play, by id, in tile order. A stored selection may name others (from
+ * another version): they read back as nothing selected.
+ */
+export const SOUND_IDS = ['white', 'airplane', 'train', 'waves'] as const;
 
 export type SoundId = (typeof SOUND_IDS)[number];
 
@@ -17,7 +10,7 @@ export function isSoundId(value: unknown): value is SoundId {
   return typeof value === 'string' && (SOUND_IDS as readonly string[]).includes(value);
 }
 
-/** Layers that play at once: the sounds tab's tiles, a saved mix, the last selection and a backup's mixes. */
+/** A saved mix's layer limit: still read from backups and old rows (src/backup/validate.ts, src/db/mixes.ts); nothing plays layers any more. */
 export const MAX_LAYERS = 6;
 
 /** The sleep timer's chips: 15, 30 or 60 minutes, or ∞ (null: no timer). */
@@ -50,45 +43,41 @@ export function readVolumeCap(value: unknown): number {
 
 /** What the sounds tab remembers between launches: the selection, never the playing state. */
 export interface LastSound {
-  layers: { soundId: SoundId; level: number }[];
+  /** null: nothing selected. */
+  soundId: SoundId | null;
   master: number;
   timerMin: TimerChoice;
 }
 
 /**
- * The stored last selection, checked field by field: at most MAX_LAYERS known, unique sound ids with
- * levels in 0..1, a master in 0..1 and a timer chip. Anything else is dropped whole (undefined).
+ * The stored last selection, checked field by field: a master in 0..1 and a timer chip, or it is dropped
+ * whole (undefined). A sound id this version does not know — including the old multi-layer shape, which
+ * has none — reads back as nothing selected, so the master and the chip survive an upgrade.
  */
 export function readLastSound(value: unknown): LastSound | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
   const record = value as Record<string, unknown>;
-  const layers = record.layers;
-  if (
-    !Array.isArray(layers) ||
-    layers.length > MAX_LAYERS ||
-    !isUnit(record.master) ||
-    !isTimerChoice(record.timerMin)
-  )
-    return undefined;
-
-  const out: LastSound['layers'] = [];
-  for (const layer of layers) {
-    if (typeof layer !== 'object' || layer === null) return undefined;
-    const { soundId, level } = layer as Record<string, unknown>;
-    if (!isSoundId(soundId) || !isUnit(level) || out.some((other) => other.soundId === soundId))
-      return undefined;
-    out.push({ soundId, level });
-  }
-
-  return { layers: out, master: record.master, timerMin: record.timerMin };
+  if (!isUnit(record.master) || !isTimerChoice(record.timerMin)) return undefined;
+  return {
+    soundId: isSoundId(record.soundId) ? record.soundId : null,
+    master: record.master,
+    timerMin: record.timerMin,
+  };
 }
 
-/** The layers a mix may be saved with: 1–MAX_LAYERS known, unique sound ids with finite gains in 0..1. */
+/** The layers a mix may be saved with: 1–MAX_LAYERS unique sound ids (any version's, 1–40 characters) with finite gains in 0..1. */
 export function validMixLayers(layers: readonly { soundId: string; gain: number }[]): boolean {
   if (layers.length === 0 || layers.length > MAX_LAYERS) return false;
   const seen = new Set<string>();
   for (const layer of layers) {
-    if (!isSoundId(layer.soundId) || !isUnit(layer.gain) || seen.has(layer.soundId)) return false;
+    if (
+      typeof layer.soundId !== 'string' ||
+      layer.soundId.length === 0 ||
+      layer.soundId.length > 40 ||
+      !isUnit(layer.gain) ||
+      seen.has(layer.soundId)
+    )
+      return false;
     seen.add(layer.soundId);
   }
   return true;

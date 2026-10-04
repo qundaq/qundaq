@@ -32,6 +32,12 @@ export interface BufferLike {
   getChannelData(channel: number): Float32Array;
 }
 
+/** What `decodeAudioData` resolves to: a buffer that also knows its rate and length. */
+export interface DecodedBufferLike extends BufferLike {
+  readonly sampleRate: number;
+  readonly length: number;
+}
+
 export interface BufferSourceLike extends ScheduledSourceLike {
   buffer: BufferLike | null;
   loop: boolean;
@@ -63,6 +69,7 @@ export interface ContextLike {
   createConstantSource(): ConstantSourceLike;
   createDynamicsCompressor(): CompressorLike;
   createBuffer(channels: number, length: number, sampleRate: number): BufferLike;
+  decodeAudioData(data: ArrayBuffer): Promise<DecodedBufferLike>;
 }
 
 /** An AudioParam together with the record of what the engine scheduled on it. */

@@ -50,7 +50,7 @@ describe('mixes repository', () => {
     await expect(saveMix(db, 'Night', [])).rejects.toEqual(
       new ValidationError(['mix-layers-invalid']),
     );
-    await expect(saveMix(db, 'Night', [{ soundId: 'train', gain: 0.5 }])).rejects.toEqual(
+    await expect(saveMix(db, 'Night', [{ soundId: '', gain: 0.5 }])).rejects.toEqual(
       new ValidationError(['mix-layers-invalid']),
     );
     await expect(saveMix(db, 'Night', [{ soundId: 'white', gain: 2 }])).rejects.toEqual(

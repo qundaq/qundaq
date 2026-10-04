@@ -13,15 +13,16 @@ import {
   validMixLayers,
 } from '../../src/domain/sounds';
 
-describe('sound ids and layers', () => {
-  it('knows the nine sounds and at most six layers', () => {
-    expect(SOUND_IDS).toHaveLength(9);
-    expect(isSoundId('white')).toBe(true);
-    expect(isSoundId('train')).toBe(false);
+describe('sound ids', () => {
+  it('are exactly the four bundled recordings, in tile order', () => {
+    expect([...SOUND_IDS]).toEqual(['white', 'airplane', 'train', 'waves']);
+    expect(isSoundId('train')).toBe(true);
+    expect(isSoundId('pink')).toBe(false);
     expect(isSoundId(7)).toBe(false);
-    expect(MAX_LAYERS).toBe(6);
   });
+});
 
+describe('timer chips', () => {
   it('offers 15, 30 and 60 minutes and ∞, with 60 selected by default', () => {
     expect(TIMER_CHOICES).toEqual([15, 30, 60, null]);
     expect(DEFAULT_TIMER).toBe(60);
@@ -47,87 +48,54 @@ describe('readVolumeCap', () => {
 });
 
 describe('readLastSound', () => {
-  const good = {
-    layers: [
-      { soundId: 'white', level: 0.7 },
-      { soundId: 'rain', level: 0 },
-    ],
-    master: 1,
-    timerMin: 15,
-  };
+  const stored = { soundId: 'train', master: 0.6, timerMin: 30 };
 
-  it('keeps a well-formed selection, an empty one included', () => {
-    expect(readLastSound(good)).toEqual(good);
-    expect(readLastSound({ layers: [], master: 0.6, timerMin: null })).toEqual({
-      layers: [],
-      master: 0.6,
-      timerMin: null,
-    });
+  it('reads a well-formed selection', () => {
+    expect(readLastSound(stored)).toEqual(stored);
+    expect(readLastSound({ ...stored, soundId: null })).toEqual({ ...stored, soundId: null });
   });
 
-  it.each([
-    ['not an object', 'white'],
-    ['an array', []],
-    ['no layers', { master: 0.6, timerMin: null }],
-    ['an unknown sound', { ...good, layers: [{ soundId: 'train', level: 0.5 }] }],
-    ['a level above 1', { ...good, layers: [{ soundId: 'white', level: 1.5 }] }],
-    ['a level that is not a number', { ...good, layers: [{ soundId: 'white', level: '0.5' }] }],
-    [
-      'the same sound twice',
-      {
-        ...good,
-        layers: [
-          { soundId: 'white', level: 0.5 },
-          { soundId: 'white', level: 0.5 },
-        ],
-      },
-    ],
-    [
-      'seven layers',
-      {
-        ...good,
-        layers: ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat'].map((soundId) => ({
-          soundId,
-          level: 0.5,
-        })),
-      },
-    ],
-    ['a master out of range', { ...good, master: -0.1 }],
-    ['a timer that is not a chip', { ...good, timerMin: 45 }],
-    ['a missing timer', { layers: good.layers, master: 0.5 }],
-  ])('drops a selection with %s', (_label, value) => {
-    expect(readLastSound(value)).toBeUndefined();
+  it('reads an old multi-layer value as "nothing selected", keeping the master and the chip (R9)', () => {
+    expect(
+      readLastSound({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.4, timerMin: null }),
+    ).toEqual({ soundId: null, master: 0.4, timerMin: null });
+  });
+
+  it('reads a removed sound as nothing selected', () => {
+    expect(readLastSound({ ...stored, soundId: 'pink' })).toEqual({ ...stored, soundId: null });
+  });
+
+  it('drops a malformed master or timer whole', () => {
+    expect(readLastSound({ ...stored, master: 2 })).toBeUndefined();
+    expect(readLastSound({ ...stored, master: Number.NaN })).toBeUndefined();
+    expect(readLastSound({ ...stored, timerMin: 45 })).toBeUndefined();
+    expect(readLastSound(null)).toBeUndefined();
+    expect(readLastSound([stored])).toBeUndefined();
+    expect(readLastSound('x')).toBeUndefined();
   });
 });
 
 describe('validMixLayers', () => {
-  it('accepts 1–6 known, unique sounds with gains in 0..1', () => {
+  it('accepts 1–MAX_LAYERS unique sound ids of any version, with gains in 0..1', () => {
     expect(validMixLayers([{ soundId: 'white', gain: 0.7 }])).toBe(true);
-    expect(
-      validMixLayers(
-        ['white', 'pink', 'brown', 'rain', 'waves', 'wind'].map((soundId) => ({
-          soundId,
-          gain: 1,
-        })),
-      ),
-    ).toBe(true);
+    expect(validMixLayers([{ soundId: 'rain', gain: 0.4 }])).toBe(true); // a removed sound still round-trips
+    expect(MAX_LAYERS).toBe(6);
+  });
+
+  it('rejects an empty list, too many layers, a repeated id, an empty or over-long id and a bad gain', () => {
     expect(validMixLayers([])).toBe(false);
     expect(
-      validMixLayers(
-        ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'shush'].map((soundId) => ({
-          soundId,
-          gain: 1,
-        })),
-      ),
+      validMixLayers(Array.from({ length: 7 }, (_, i) => ({ soundId: `s${i}`, gain: 0.5 }))),
     ).toBe(false);
-    expect(validMixLayers([{ soundId: 'train', gain: 0.7 }])).toBe(false);
-    expect(validMixLayers([{ soundId: 'white', gain: 1.1 }])).toBe(false);
-    expect(validMixLayers([{ soundId: 'white', gain: Number.NaN }])).toBe(false);
     expect(
       validMixLayers([
         { soundId: 'white', gain: 0.5 },
         { soundId: 'white', gain: 0.6 },
       ]),
     ).toBe(false);
+    expect(validMixLayers([{ soundId: '', gain: 0.5 }])).toBe(false);
+    expect(validMixLayers([{ soundId: 'x'.repeat(41), gain: 0.5 }])).toBe(false);
+    expect(validMixLayers([{ soundId: 'white', gain: 1.1 }])).toBe(false);
+    expect(validMixLayers([{ soundId: 'white', gain: Number.NaN }])).toBe(false);
   });
 });

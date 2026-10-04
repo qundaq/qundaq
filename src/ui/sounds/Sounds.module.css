@@ -1,15 +1,6 @@
-/* The sounds tab: the play button is the brightest element; tiles are toggle buttons with a level slider each. */
-.playButton {
-  min-height: 64px;
-  font-size: 20px;
-}
+/* The sounds tab: the tiles are the play controls; the playing one takes the live accent. */
 .status {
   margin: var(--space-2) 0 var(--space-3);
-}
-.notice {
-  min-height: 1.45em;
-  margin: var(--space-2) 0;
-  color: var(--danger);
 }
 .chips {
   display: flex;
@@ -22,18 +13,10 @@
   gap: var(--space-2);
   margin: var(--space-3) 0;
 }
-@media (min-width: 390px) {
-  .tiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-.tileCell {
-  display: grid;
-  gap: 4px;
-}
 .tile {
   width: 100%;
-  min-height: 64px;
+  min-height: 96px;
+  font-size: 17px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -48,12 +31,17 @@
   text-align: center;
 }
 .tileOn {
-  background: var(--primary);
-  color: var(--on-primary);
-  border-color: transparent;
+  border: 1px solid color-mix(in srgb, var(--live) 40%, transparent);
+  background: color-mix(in srgb, var(--live) 12%, transparent);
+  color: var(--live);
   font-weight: 600;
 }
-.preparing {
+.tileUnavailable {
+  opacity: 0.55;
+  color: var(--muted);
+  cursor: default;
+}
+.tileNote {
   font-size: 13px;
 }
 /* Range inputs: a 32px thumb on a 48px-tall control, so a sleepy thumb still finds them one-handed. The
@@ -134,51 +122,4 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-/* Saved mixes: the name is the play button across the full row; rename and a two-step delete share the row
-   under it, 16px apart like .timerRow, so a sleepy thumb cannot hit the wrong one and the armed delete
-   confirm (edit.deleteConfirm) never squeezes the name, even at 320px. */
-.mixList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-4);
-}
-.mixRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
-}
-.mixAction {
-  flex: 1 1 0;
-}
-.mixPlay {
-  flex: 1 1 100%;
-  min-width: 0;
-  min-height: var(--tap);
-  display: grid;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
-  text-align: left;
-  font: inherit;
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.mixName {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.mixLayers {
-  color: var(--muted);
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-.formActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
 }

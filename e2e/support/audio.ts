@@ -9,13 +9,64 @@ interface FakeAudioRecord {
 }
 
 /**
+ * Answers the bundled sound files with a short synthetic WAV (a real context can decode it, the fake one
+ * ignores it) so no test depends on real audio files. `window.fetch` is wrapped in an init script because
+ * the service worker handles the page's requests, which `page.route` cannot intercept. A file whose id is
+ * in `missing` answers 404.
+ */
+export async function stubSoundFiles(page: Page, options: { missing?: string[] } = {}) {
+  await page.addInitScript((missing) => {
+    function toneWav(): ArrayBuffer {
+      const rate = 8000;
+      const count = rate / 2;
+      const buffer = new ArrayBuffer(44 + count * 2);
+      const view = new DataView(buffer);
+      const text = (offset: number, value: string) =>
+        [...value].forEach((char, i) => view.setUint8(offset + i, char.charCodeAt(0)));
+      text(0, 'RIFF');
+      view.setUint32(4, 36 + count * 2, true);
+      text(8, 'WAVE');
+      text(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, 1, true); // mono
+      view.setUint32(24, rate, true);
+      view.setUint32(28, rate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      text(36, 'data');
+      view.setUint32(40, count * 2, true);
+      for (let i = 0; i < count; i++)
+        view.setInt16(
+          44 + i * 2,
+          Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 0.3 * 32767),
+          true,
+        );
+      return buffer;
+    }
+
+    const realFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const match = /(?:^|\/)sounds\/([a-z]+)\.m4a$/.exec(url);
+      if (!match) return realFetch(input, init);
+      if (missing.includes(match[1]!)) return Promise.resolve(new Response(null, { status: 404 }));
+      return Promise.resolve(
+        new Response(toneWav(), { status: 200, headers: { 'Content-Type': 'audio/wav' } }),
+      );
+    };
+  }, options.missing ?? []);
+}
+
+/**
  * Replaces `AudioContext` with a fake that keeps the engine's contract without any audio output: the
  * clock runs on `Date.now()` (so `page.clock` drives it), `resume()`/`suspend()` change `state` and fire
  * `statechange`, and a `ConstantSourceNode`'s scheduled stop fires `onended` through `setTimeout`. CI's
  * WebKit runner may not run a real context at all (R11); the one real-context test is Chromium-only.
  * No test hook in the app: this follows the `stubShare` pattern.
  */
-export async function fakeAudio(page: Page) {
+export async function fakeAudio(page: Page, options: { missing?: string[] } = {}) {
+  await stubSoundFiles(page, options);
   await page.addInitScript(() => {
     const record: FakeAudioRecord = { contexts: 0, resumes: 0, suspends: 0, sources: 0 };
     (window as unknown as { __fakeAudio: FakeAudioRecord }).__fakeAudio = record;
@@ -138,6 +189,10 @@ export async function fakeAudio(page: Page) {
         return source;
       }
 
+      decodeAudioData(): Promise<unknown> {
+        return Promise.resolve(this.createBuffer(1, 48_000, 48_000));
+      }
+
       createBuffer(channels: number, length: number, sampleRate: number) {
         const data = new Float32Array(length);
         return {
@@ -168,14 +223,14 @@ export function fakeAudioRecord(page: Page): Promise<FakeAudioRecord> {
   return page.evaluate(() => (window as unknown as { __fakeAudio: FakeAudioRecord }).__fakeAudio);
 }
 
-/** The Sounds tab's tile for a sound, by its name. */
+/** The Sounds tab's tile for a sound, by the prefix of its accessible name ("<name>: <action>"). */
 export function tile(page: Page, name: string) {
   return page
     .getByRole('group', { name: t('sounds.tiles'), exact: true })
-    .getByRole('button', { name, exact: true });
+    .getByRole('button', { name, exact: false });
 }
 
-/** The status line under the play button (sounds.status.playing/.stopped/…). */
+/** The status line on the Sounds tab (sounds.status.playing/.stopped/…). */
 export function soundStatus(page: Page) {
   return page.getByTestId('sound-status');
 }

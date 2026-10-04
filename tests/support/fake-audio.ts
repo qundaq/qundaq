@@ -7,11 +7,11 @@ import type {
   CompressorLike,
   ConstantSourceLike,
   ContextLike,
+  DecodedBufferLike,
   GainLike,
   NodeLike,
   ParamLike,
 } from '../../src/audio/graph';
-import type { SoundId } from '../../src/domain/sounds';
 
 /**
  * A fake of the parts of the Web Audio API the engine uses (src/audio/graph.ts declares them). Every
@@ -215,27 +215,37 @@ export class FakeContext implements ContextLike {
   readonly sentinels: FakeConstantSource[] = [];
   readonly compressors: FakeCompressor[] = [];
   readonly buffers: { length: number; sampleRate: number }[] = [];
+  /** The data array of every createBuffer call, in the same order as `buffers`. */
+  readonly bufferData: Float32Array[] = [];
+  /** What decodeAudioData resolves to; a test replaces it to feed the loader particular samples or a failure. */
+  decodeResult: (data: ArrayBuffer) => Promise<DecodedBufferLike> = () => {
+    const data = new Float32Array(this.sampleRate).fill(0.5);
+    return Promise.resolve({
+      sampleRate: this.sampleRate,
+      length: data.length,
+      getChannelData: () => data,
+    });
+  };
 
   constructor(options: FakeContextOptions = {}) {
     this.sampleRate = options.sampleRate ?? 48_000;
     this.holdSupported = options.holdSupported ?? true;
   }
 
-  /** The five gains the engine builds first, in order: layer bus, master, transport, sleep, cap. */
+  /** The four gains the engine builds first, in order: master, transport, sleep, cap. */
   get graph(): {
-    bus: FakeGain;
     master: FakeGain;
     transport: FakeGain;
     sleep: FakeGain;
     cap: FakeGain;
   } {
-    const [bus, master, transport, sleep, cap] = this.gains;
-    if (!bus || !master || !transport || !sleep || !cap)
+    const [master, transport, sleep, cap] = this.gains;
+    if (!master || !transport || !sleep || !cap)
       throw new Error('The engine has not built its graph');
-    return { bus, master, transport, sleep, cap };
+    return { master, transport, sleep, cap };
   }
 
-  /** The gain of the running layer's source, or null once the source is gone. */
+  /** The gain of a voice's source, or null once the source is gone. */
   voiceGain(source: FakeBufferSource): FakeGain | null {
     const node = source.outputs[0];
     return node instanceof FakeGain ? node : null;
@@ -297,7 +307,12 @@ export class FakeContext implements ContextLike {
   createBuffer(_channels: number, length: number, sampleRate: number): BufferLike {
     this.buffers.push({ length, sampleRate });
     const data = new Float32Array(length);
+    this.bufferData.push(data);
     return { getChannelData: () => data };
+  }
+
+  decodeAudioData(data: ArrayBuffer): Promise<DecodedBufferLike> {
+    return this.decodeResult(data);
   }
 }
 
@@ -320,8 +335,9 @@ export class FakeDeps implements EngineDeps {
   private timers: Timer[] = [];
   private nextTimer = 1;
   readonly createContext = vi.fn((): FakeContext => this.context);
-  readonly generate = vi.fn(
-    (_soundId: SoundId, sampleRate: number): Float32Array => new Float32Array(sampleRate),
+  /** Resolves at once with a 1 s buffer at the context's rate, whatever the sound. */
+  readonly load = vi.fn<EngineDeps['load']>((context) =>
+    Promise.resolve(context.createBuffer(1, context.sampleRate, context.sampleRate)),
   );
   readonly prepareSession = vi.fn();
 

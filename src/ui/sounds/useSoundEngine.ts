@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { generateSound } from '../../audio/catalog';
 import { createSoundEngine, type EngineState, type SoundEngine } from '../../audio/engine';
+import { fetchBytes, loadLoop } from '../../audio/loader';
 import {
   browserCreateMetadata,
   setPlaybackSession,
@@ -18,7 +18,7 @@ export function getSoundEngine(): SoundEngine {
   if (engine) return engine;
   const created = createSoundEngine({
     createContext: () => new AudioContext(),
-    generate: generateSound,
+    load: (context, id) => loadLoop(context, id, fetchBytes),
     now: () => Date.now(),
     setTimeout: (callback, ms) => window.setTimeout(callback, ms),
     clearTimeout: (handle) => window.clearTimeout(handle),

@@ -162,7 +162,7 @@ describe('buildBackup', () => {
       lastBackupAt: T,
       backupReminderSnoozedUntil: T,
       volumeCap: 1,
-      lastSound: { layers: [{ soundId: 'white', level: 1 }], master: 1, timerMin: null },
+      lastSound: { soundId: 'white', master: 1, timerMin: null },
       theme: 'light',
     };
     expect(Object.keys(deviceOnly).sort()).toEqual([...DEVICE_ONLY_SETTINGS].sort());

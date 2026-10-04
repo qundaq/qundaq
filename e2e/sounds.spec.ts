@@ -1,16 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 import { t } from './support/i18n';
-import { fakeAudio, fakeAudioRecord, soundStatus, tile } from './support/audio';
-import { clearAppData, pickBackupFile, stubShare, takeBackup } from './support/backup';
+import { fakeAudio, fakeAudioRecord, soundStatus, stubSoundFiles, tile } from './support/audio';
 import { addBabyInSettings, openTab } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
 
 const NIGHT = new Date('2026-09-26T22:00:00+03:00');
-const playing = (names: string) =>
-  `${t('sounds.status.playing', { names })} · ${t('sounds.remaining', { m: 60 })}`;
+const playing = (name: string) =>
+  `${t('sounds.status.playing', { name })} · ${t('sounds.remaining', { m: 60 })}`;
+const endsWithPlay = new RegExp(`${t('sounds.play')}$`);
 
-test('two sounds play, the status names them, and the now-playing bar on Home pauses them above the card actions', async ({
+test('one sound plays at a time; the tile is the play control; the now-playing bar on Home pauses it above the card actions', async ({
   page,
 }) => {
   await fakeAudio(page);
@@ -21,37 +21,34 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   for (const name of ['Ada', 'Cal', 'Dan', 'Eve', 'Zoe']) await addBabyInSettings(page, name);
   await openTab(page, t('tab.sounds'));
   await expect(soundStatus(page)).toHaveText(t('sounds.status.stopped'));
-  await expect(page.getByRole('button', { name: t('sounds.play'), exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: t('sounds.play'), exact: true })).toHaveCount(0);
 
   await tile(page, t('sound.white')).click();
-  await expect(tile(page, t('sound.white'))).toHaveAttribute('aria-pressed', 'true');
   await expect(soundStatus(page)).toHaveText(playing(t('sound.white')));
   // VoiceOver reads the state changes; the countdown stays out of the live region, or it is read every minute.
   await expect(soundStatus(page).locator('[aria-live="polite"]')).toHaveText(
-    t('sounds.status.playing', { names: t('sound.white') }),
+    t('sounds.status.playing', { name: t('sound.white') }),
   );
-  await expect(page.getByLabel(t('sounds.level', { name: t('sound.white') }))).toHaveValue('0.7');
-  await tile(page, t('sound.rain')).click();
-  await expect(soundStatus(page)).toHaveText(playing(`${t('sound.white')} + ${t('sound.rain')}`));
-  // Both loops generated (the status does not wait for them): one context, resumed in the tap, two sources.
-  await expect(tile(page, t('sound.white'))).not.toContainText(t('sounds.preparing'));
-  await expect(tile(page, t('sound.rain'))).not.toContainText(t('sounds.preparing'));
-  expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 1, resumes: 1, sources: 2 });
+  // The status does not wait for the file: the tile settles out of loading once the source has started.
+  await expect(tile(page, t('sound.white'))).toHaveAttribute('data-state', 'playing');
+  expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 1, resumes: 1, sources: 1 });
 
-  // A seventh sound is refused with a message.
-  for (const key of ['sound.pink', 'sound.brown', 'sound.waves', 'sound.wind'] as const)
-    await tile(page, t(key)).click();
-  await tile(page, t('sound.shush')).click();
-  await expect(page.getByRole('status').filter({ hasText: t('sounds.full') })).toHaveText(
-    t('sounds.full'),
+  // One voice: Train replaces White (the old one fades, the new one starts).
+  await tile(page, t('sound.train')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
+  await expect.poll(async () => (await fakeAudioRecord(page)).sources).toBe(2);
+  await expect(tile(page, t('sound.white'))).toHaveAccessibleName(endsWithPlay);
+
+  await tile(page, t('sound.train')).click();
+  await expect(soundStatus(page)).toHaveText(
+    `${t('sounds.status.paused')} · ${t('sounds.remaining', { m: 60 })}`,
   );
-  await expect(tile(page, t('sound.shush'))).toHaveAttribute('aria-pressed', 'false');
+  await tile(page, t('sound.train')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
 
   await openTab(page, t('tab.home'));
   const bar = page.getByRole('region', { name: t('nowplaying.label') });
-  await expect(bar).toContainText(
-    t('sounds.status.playing', { names: `${t('sound.white')} + ${t('sound.rain')}` }),
-  );
+  await expect(bar).toContainText(t('sounds.status.playing', { name: t('sound.train') }));
   // Scrolled all the way down, the last card's actions must still clear the fixed bar above the tab
   // bar: that headroom comes from the screen's own bottom padding (App.module.css,
   // --nowplaying-h), not from the actions merely sitting off-screen above an unscrolled fold.
@@ -68,14 +65,17 @@ test('two sounds play, the status names them, and the now-playing bar on Home pa
   await bar.getByRole('button', { name: t('sounds.pause'), exact: true }).click();
   await expect(bar).toContainText(t('sounds.status.paused'));
   await bar.getByRole('button', { name: t('sounds.play'), exact: true }).click();
-  await expect(bar).toContainText(t('sounds.status.playing', { names: '' }).split(' ·')[0]!);
-  const playingWord = t('sounds.status.playing', { names: '' }).split(' ·')[0]!;
-  await bar.getByRole('button', { name: new RegExp(playingWord) }).click(); // the text opens the Sounds tab
+  await expect(bar).toContainText(t('sounds.status.playing', { name: t('sound.train') }));
+  await bar
+    .getByRole('button', {
+      name: new RegExp(t('sounds.status.playing', { name: t('sound.train') })),
+    })
+    .click(); // the text opens the Sounds tab
   await expect(page.getByRole('heading', { level: 1, name: t('tab.sounds') })).toBeAttached();
   await expect(bar).toHaveCount(0);
 });
 
-test('the 15-minute timer counts down and stops the sound; play restarts it with the same chip; the selection survives a reload', async ({
+test('the 15-minute timer counts down and stops the sound; the tile restarts it with the same chip; the selection survives a reload', async ({
   page,
 }) => {
   await page.clock.install({ time: NIGHT });
@@ -88,44 +88,34 @@ test('the 15-minute timer counts down and stops the sound; play restarts it with
   await page
     .getByRole('radio', { name: t('sounds.timer.minutes', { m: 15 }), exact: true })
     .click();
+  const white = t('sounds.status.playing', { name: t('sound.white') });
   await tile(page, t('sound.white')).click();
-  await expect(soundStatus(page)).toHaveText(
-    `${t('sounds.status.playing', { names: t('sound.white') })} · ${t('sounds.remaining', { m: 15 })}`,
-  );
+  await expect(soundStatus(page)).toHaveText(`${white} · ${t('sounds.remaining', { m: 15 })}`);
   await page.getByLabel(t('sounds.master'), { exact: true }).fill('0.3');
 
   await page.clock.fastForward(14 * 60_000);
-  await expect(soundStatus(page)).toHaveText(
-    `${t('sounds.status.playing', { names: t('sound.white') })} · ${t('sounds.remaining', { m: 1 })}`,
-  );
+  await expect(soundStatus(page)).toHaveText(`${white} · ${t('sounds.remaining', { m: 1 })}`);
   // Pausing does not stop the countdown.
-  await page.getByRole('button', { name: t('sounds.pause'), exact: true }).click();
+  await tile(page, t('sound.white')).click();
   await expect(soundStatus(page)).toHaveText(
     `${t('sounds.status.paused')} · ${t('sounds.remaining', { m: 1 })}`,
   );
   await page.clock.fastForward(70_000);
   await expect(soundStatus(page)).toHaveText(t('sounds.status.stopped'));
-  await expect(tile(page, t('sound.white'))).toHaveAttribute('aria-pressed', 'true');
   expect(await fakeAudioRecord(page)).toMatchObject({ suspends: 1 });
 
-  await page.getByRole('button', { name: t('sounds.play'), exact: true }).click();
-  await expect(soundStatus(page)).toHaveText(
-    `${t('sounds.status.playing', { names: t('sound.white') })} · ${t('sounds.remaining', { m: 15 })}`,
-  );
+  await tile(page, t('sound.white')).click();
+  await expect(soundStatus(page)).toHaveText(`${white} · ${t('sounds.remaining', { m: 15 })}`);
   await page.getByRole('radio', { name: t('sounds.timer.none'), exact: true }).click();
-  await expect(soundStatus(page)).toHaveText(
-    t('sounds.status.playing', { names: t('sound.white') }),
-  );
+  await expect(soundStatus(page)).toHaveText(white);
   await page.clock.fastForward(60 * 60_000);
-  await expect(soundStatus(page)).toHaveText(
-    t('sounds.status.playing', { names: t('sound.white') }),
-  );
+  await expect(soundStatus(page)).toHaveText(white);
 
   // The selection, the master and the chip come back after a reload; nothing plays by itself.
   await page.reload();
   await openTab(page, t('tab.sounds'));
   await expect(soundStatus(page)).toHaveText(t('sounds.status.stopped'));
-  await expect(tile(page, t('sound.white'))).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile(page, t('sound.white'))).toHaveAccessibleName(endsWithPlay);
   await expect(page.getByLabel(t('sounds.master'), { exact: true })).toHaveValue('0.3');
   await expect(
     page.getByRole('radio', { name: t('sounds.timer.none'), exact: true }),
@@ -133,152 +123,21 @@ test('the 15-minute timer counts down and stops the sound; play restarts it with
   expect(await fakeAudioRecord(page)).toMatchObject({ contexts: 0 });
 });
 
-test('a mix is saved, plays after a reload from the list, and can be renamed and deleted with two taps', async ({
+test('a sound whose file is missing is dimmed, says so, does nothing, and the other sounds still play', async ({
   page,
 }) => {
-  await page.clock.install({ time: NIGHT });
-  await fakeAudio(page);
+  await fakeAudio(page, { missing: ['train'] });
   await page.goto('./');
   await openTab(page, t('tab.sounds'));
-  await expect(page.getByRole('button', { name: t('sounds.saveMix'), exact: true })).toBeDisabled();
-  await tile(page, t('sound.white')).click();
-  await tile(page, t('sound.rain')).click();
-  await page.getByLabel(t('sounds.level', { name: t('sound.rain') })).fill('0.4');
-  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
-  const sheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet.getByRole('alert')).toHaveText(t('rule.name-required'));
-  await sheet.getByLabel(t('sounds.mix.name')).fill('Night');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
-  const row = page.getByRole('listitem').filter({ hasText: 'Night' });
-  await expect(row).toContainText(`${t('sound.white')} + ${t('sound.rain')}`);
-
-  await page.getByRole('button', { name: t('sounds.pause'), exact: true }).click();
-  await tile(page, t('sound.white')).click(); // off while paused: the selection changes, nothing starts
-  await expect(soundStatus(page)).toHaveText(
-    `${t('sounds.status.paused')} · ${t('sounds.remaining', { m: 60 })}`,
-  );
-  await page.reload();
-  await openTab(page, t('tab.sounds'));
+  await tile(page, t('sound.train')).click();
+  await expect(tile(page, t('sound.train'))).toContainText(t('sounds.unavailable'));
+  await expect(tile(page, t('sound.train'))).toHaveAttribute('aria-disabled', 'true');
   await expect(soundStatus(page)).toHaveText(t('sounds.status.stopped'));
-  await page
-    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
-    .click();
-  await expect(soundStatus(page)).toHaveText(playing(`${t('sound.white')} + ${t('sound.rain')}`));
-  await expect(page.getByLabel(t('sounds.level', { name: t('sound.rain') }))).toHaveValue('0.4');
+  await tile(page, t('sound.train')).click({ force: true }); // aria-disabled: Playwright would wait
+  expect(await fakeAudioRecord(page)).toMatchObject({ sources: 0 });
 
-  await row.getByRole('button', { name: `Night: ${t('sounds.mix.rename')}`, exact: true }).click();
-  const rename = page.getByRole('dialog', { name: t('sounds.mix.renameTitle') });
-  await rename.getByLabel(t('sounds.mix.name')).fill('Deep sleep');
-  await rename.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(rename).toBeHidden();
-  const renamed = page.getByRole('listitem').filter({ hasText: 'Deep sleep' });
-  await expect(renamed).toBeVisible();
-  await renamed
-    .getByRole('button', { name: `Deep sleep: ${t('edit.delete')}`, exact: true })
-    .click();
-  await page.clock.fastForward(1000);
-  await renamed
-    .getByRole('button', { name: `Deep sleep: ${t('edit.deleteConfirm')}`, exact: true })
-    .click();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Deep sleep' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: t('sounds.mixes') })).toHaveCount(0);
-  const playingWord = t('sounds.status.playing', { names: '' }).split(' ·')[0]!;
-  await expect(soundStatus(page)).toContainText(playingWord); // deleting the mix leaves the sound alone
-});
-
-test('on a 320 px screen a mix row keeps its name readable and 16 px between rename and delete', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 320, height: 640 });
-  await fakeAudio(page);
-  await page.goto('./');
-  await openTab(page, t('tab.sounds'));
-  await tile(page, t('sound.white')).click();
-  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
-  const sheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
-  await sheet.getByLabel(t('sounds.mix.name')).fill('Night');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
-  const row = page.getByRole('listitem').filter({ hasText: 'Night' });
-  const name = (await row
-    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
-    .boundingBox())!;
-  const rename = (await row
-    .getByRole('button', { name: `Night: ${t('sounds.mix.rename')}`, exact: true })
-    .boundingBox())!;
-  const remove = row.getByRole('button', { name: new RegExp(`^Night: ${t('edit.delete')}`) });
-  const check = async () => {
-    const box = (await remove.boundingBox())!;
-    const apart = Math.max(
-      box.x - (rename.x + rename.width),
-      rename.x - (box.x + box.width),
-      box.y - (rename.y + rename.height),
-      rename.y - (box.y + box.height),
-    );
-    expect(apart).toBeGreaterThanOrEqual(16);
-  };
-  await check();
-  expect(name.width).toBeGreaterThanOrEqual(200);
-  await remove.click(); // armed: the longer delete-confirm label still keeps its distance
-  await expect(remove).toHaveAccessibleName(`Night: ${t('edit.deleteConfirm')}`);
-  await check();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
-});
-
-test('a saved mix travels in the backup and comes back in a restore', async ({ page }) => {
-  await fakeAudio(page);
-  await stubShare(page);
-  await page.goto('./');
-  await addBabyInSettings(page, 'Ada');
-  await openTab(page, t('tab.sounds'));
-  await tile(page, t('sound.shush')).click();
-  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
-  const sheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
-  await sheet.getByLabel(t('sounds.mix.name')).fill('Night');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet).toBeHidden();
-  const backup = await takeBackup(page);
-  const parsed = JSON.parse(backup) as {
-    schemaVersion: number;
-    mixes: { name: string; layers: unknown[] }[];
-  };
-  expect(parsed.schemaVersion).toBe(2);
-  expect(parsed.mixes).toEqual([
-    {
-      id: expect.any(String),
-      name: 'Night',
-      layers: [{ soundId: 'shush', gain: 0.7 }],
-      createdAt: expect.any(Number),
-      updatedAt: expect.any(Number),
-    },
-  ]);
-  expect(backup).not.toContain('volumeCap');
-  expect(backup).not.toContain('lastSound');
-
-  await clearAppData(page);
-  const restore = await pickBackupFile(page, backup);
-  const mixesRow = restore
-    .getByTestId('import-counts')
-    .locator('> div')
-    .filter({ hasText: t('import.mixes') });
-  const fullCounts = t('import.counts', { add: 1, update: 0, remove: 0, same: 0, keep: 0 });
-  const countsPrefix = fullCounts.slice(0, fullCounts.lastIndexOf(' · '));
-  await expect(mixesRow).toContainText(countsPrefix);
-  await restore.getByRole('button', { name: t('import.applyMerge'), exact: true }).click();
-  await expect(restore.getByRole('status')).toHaveText(
-    t('import.done.merge', { added: 0, updated: 0, removed: 0, moved: 0 }),
-  );
-  await restore.getByRole('button', { name: t('common.ok'), exact: true }).click();
-  await openTab(page, t('tab.sounds'));
-  await expect(page.getByRole('listitem').filter({ hasText: 'Night' })).toContainText(
-    t('sound.shush'),
-  );
-  await page
-    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
-    .click();
-  await expect(soundStatus(page)).toHaveText(playing(t('sound.shush')));
+  await tile(page, t('sound.waves')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.waves')));
 });
 
 test('raising the cap warns and never makes the sound louder; the sound sources open in-app', async ({
@@ -292,7 +151,7 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
   await openTab(page, t('tab.sounds'));
   await tile(page, t('sound.white')).click();
   await expect(soundStatus(page)).toContainText(
-    t('sounds.status.playing', { names: '' }).split(' ·')[0]!,
+    t('sounds.status.playing', { name: t('sound.white') }),
   );
   await expect(page.getByLabel(t('sounds.master'), { exact: true })).toHaveValue('0.6');
   await expect(page.getByText(t('sounds.safety'))).toBeVisible();
@@ -312,7 +171,7 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
   await openTab(page, t('tab.sounds'));
   await expect(page.getByLabel(t('sounds.master'), { exact: true })).toHaveValue('0.3');
   await expect(soundStatus(page)).toContainText(
-    t('sounds.status.playing', { names: '' }).split(' ·')[0]!,
+    t('sounds.status.playing', { name: t('sound.white') }),
   );
   expect(await storedCapAndMaster(page)).toEqual({ volumeCap: 1, master: 0.3 });
   // A launch right after restores them as a pair.
@@ -334,8 +193,7 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
 
   await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
   const sheet = page.getByRole('dialog', { name: t('settings.sources') });
-  await expect(sheet).toContainText(`| pink | ${t('sound.pink')} / Pink noise |`);
-  await expect(sheet).toContainText('Paul Kellet');
+  await expect(sheet).toContainText('| file |');
   await sheet.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   await expect(sheet).toBeHidden();
 });
@@ -375,23 +233,22 @@ test('the real AudioContext builds the graph and plays without errors', async ({
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
+  await stubSoundFiles(page);
   await page.goto('./');
   await openTab(page, t('tab.sounds'));
-  await tile(page, t('sound.heartbeat')).click();
-  await tile(page, t('sound.rain')).click();
-  await expect(soundStatus(page)).toHaveText(
-    playing(`${t('sound.heartbeat')} + ${t('sound.rain')}`),
-  );
-  await expect(tile(page, t('sound.rain'))).not.toContainText(t('sounds.preparing'));
-  await page.getByLabel(t('sounds.level', { name: t('sound.rain') })).fill('0.2');
+  await tile(page, t('sound.train')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
+  await expect(tile(page, t('sound.train'))).toHaveAttribute('data-state', 'playing');
+  await tile(page, t('sound.waves')).click();
+  await expect(soundStatus(page)).toHaveText(playing(t('sound.waves')));
   await page
     .getByRole('radio', { name: t('sounds.timer.minutes', { m: 15 }), exact: true })
     .click();
-  await page.getByRole('button', { name: t('sounds.pause'), exact: true }).click();
+  await tile(page, t('sound.waves')).click();
   await expect(soundStatus(page)).toContainText(t('sounds.status.paused'));
-  await page.getByRole('button', { name: t('sounds.play'), exact: true }).click();
+  await tile(page, t('sound.waves')).click();
   await expect(soundStatus(page)).toContainText(
-    t('sounds.status.playing', { names: '' }).split(' ·')[0]!,
+    t('sounds.status.playing', { name: t('sound.waves') }),
   );
   expect(await page.evaluate(() => 'AudioContext' in window && !('__fakeAudio' in window))).toBe(
     true,

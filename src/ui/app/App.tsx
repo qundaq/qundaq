@@ -28,8 +28,8 @@ import { SoundsScreen } from '../sounds/SoundsScreen';
 import {
   lastSoundOf,
   lastSoundToPersist,
-  layerNames,
   sameLastSound,
+  soundName,
   toSavedSound,
 } from '../sounds/text';
 import { useMediaSession, useSoundEngine } from '../sounds/useSoundEngine';
@@ -157,9 +157,9 @@ function Shell({
     // Deliberate deps: only these sound fields restart the 1 s debounce, and updateSettings is a new
     // function every render, so listing either would rearm the timer on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, sound.layers, sound.master, sound.timer, settings.lastSound]);
+  }, [engine, sound.current, sound.master, sound.timer, settings.lastSound]);
 
-  useMediaSession(engine, sound, layerNames(t, sound.layers));
+  useMediaSession(engine, sound, soundName(t, sound.current));
 
   // On the other tabs the now-playing bar sits above the tab bar; the screens make room through --nowplaying-h (R16).
   const nowPlaying = tab !== 'sounds' && sound.status !== 'stopped';

@@ -34,28 +34,16 @@ test('using the app triggers no CSP violations', async ({ page }) => {
   for (const name of [t('tab.log'), t('tab.summary'), t('tab.sounds'), t('tab.settings')]) {
     await nav.getByRole('button', { name, exact: true }).click();
   }
-  // Playing a sound, saving a mix, playing it from the list and opening the source list stay inside the
-  // policy (no inline styles, same-origin fetch).
+  // Playing a sound and opening the source list stay inside the policy (no inline styles, same-origin fetch).
   await nav.getByRole('button', { name: t('tab.sounds'), exact: true }).click();
-  await tile(page, t('sound.rain')).click();
-  const playingWord = t('sounds.status.playing', { names: '' }).split(' ·')[0]!;
-  await expect(soundStatus(page)).toContainText(playingWord);
-  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
-  const mixSheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
-  await mixSheet.getByLabel(t('sounds.mix.name')).fill('Night');
-  await mixSheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(mixSheet).toBeHidden();
-  const mixRow = page.getByRole('listitem').filter({ hasText: 'Night' });
-  await mixRow
-    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
-    .click();
+  await tile(page, t('sound.white')).click();
   await expect(soundStatus(page)).toContainText(
-    t('sounds.status.playing', { names: t('sound.rain') }),
+    t('sounds.status.playing', { name: t('sound.white') }),
   );
   await nav.getByRole('button', { name: t('tab.settings'), exact: true }).click();
   await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
   const sources = page.getByRole('dialog', { name: t('settings.sources') });
-  await expect(sources).toContainText('Paul Kellet');
+  await expect(sources).toContainText('| file |');
   await sources.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   const nightSwitch = page.getByRole('switch');
   await nightSwitch.click();

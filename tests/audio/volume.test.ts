@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CAP,
-  busScale,
+  VOICE_LEVEL,
   capGain,
   clamp01,
   clampCap,
@@ -36,20 +36,8 @@ describe('volume', () => {
     expect(isAboveDefaultCap(0.55)).toBe(true);
   });
 
-  it('scales the layer bus so that 1, 2 or 6 full layers are never louder than one', () => {
-    expect(busScale([])).toBe(1);
-    expect(busScale([1])).toBe(1);
-    expect(busScale([1, 1])).toBeCloseTo(1 / Math.SQRT2, 9);
-    expect(busScale([1, 1, 1, 1, 1, 1])).toBeCloseTo(1 / Math.sqrt(6), 9);
-    // Quiet layers add up to less than one full layer: no scaling.
-    expect(busScale([0.5, 0.5])).toBe(1);
-    for (const levels of [[1], [1, 1], [0.7, 0.7, 0.7], [1, 1, 1, 1, 1, 1]]) {
-      const power = levels.reduce(
-        (sum, level) => sum + (sliderGain(level) * busScale(levels)) ** 2,
-        0,
-      );
-      expect(power).toBeLessThanOrEqual(1 + 1e-9);
-    }
+  it('plays every voice at the old default layer level (R3)', () => {
+    expect(sliderGain(VOICE_LEVEL)).toBeCloseTo(0.49, 9);
   });
 
   it('raising the cap lowers the master so that what plays stays the same; lowering it keeps the master', () => {

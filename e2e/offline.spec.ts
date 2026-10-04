@@ -128,29 +128,14 @@ test('makes no network requests after the first load', async ({ page, context, b
   // Sounds are generated on the device, and the source list comes from the cache.
   await openTab(page, t('tab.sounds'));
   await tile(page, t('sound.white')).click();
-  await tile(page, t('sound.heartbeat')).click();
   await expect(soundStatus(page)).toHaveText(
-    `${t('sounds.status.playing', { names: `${t('sound.white')} + ${t('sound.heartbeat')}` })} · ${t('sounds.remaining', { m: 60 })}`,
-  );
-
-  // Saving and playing a mix from the list also stay on the device.
-  await page.getByRole('button', { name: t('sounds.saveMix'), exact: true }).click();
-  const mixSheet = page.getByRole('dialog', { name: t('sounds.saveMix') });
-  await mixSheet.getByLabel(t('sounds.mix.name')).fill('Night');
-  await mixSheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(mixSheet).toBeHidden();
-  const mixRow = page.getByRole('listitem').filter({ hasText: 'Night' });
-  await mixRow
-    .getByRole('button', { name: t('sounds.mix.play', { name: 'Night' }), exact: true })
-    .click();
-  await expect(soundStatus(page)).toHaveText(
-    `${t('sounds.status.playing', { names: `${t('sound.white')} + ${t('sound.heartbeat')}` })} · ${t('sounds.remaining', { m: 60 })}`,
+    `${t('sounds.status.playing', { name: t('sound.white') })} · ${t('sounds.remaining', { m: 60 })}`,
   );
 
   await openTab(page, t('tab.settings'));
   await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
   const sources = page.getByRole('dialog', { name: t('settings.sources') });
-  await expect(sources).toContainText(`| white | ${t('sound.white')} / White noise |`);
+  await expect(sources).toContainText('| file |');
   await sources.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   await expect(sources).toBeHidden();
 

@@ -2,27 +2,18 @@ import { soundById } from '../../audio/catalog';
 import type { EngineState, SavedSound } from '../../audio/engine';
 import { minutesLeft } from '../../audio/timer';
 import { DEFAULT_MASTER } from '../../audio/volume';
-import { DEFAULT_TIMER, isSoundId, type LastSound, type SoundId } from '../../domain/sounds';
-import type { MixLayer } from '../../domain/types';
+import { DEFAULT_TIMER, type LastSound, type SoundId } from '../../domain/sounds';
 import type { TranslateFn } from '../app/I18nProvider';
 
-/** sound.white + sound.rain ("White noise + Rain"), in layer order. */
-export function layerNames(t: TranslateFn, layers: readonly { soundId: SoundId }[]): string {
-  return layers.map((layer) => t(soundById(layer.soundId).nameKey)).join(' + ');
+/** The sound's name ("White noise"); empty while nothing is selected. */
+export function soundName(t: TranslateFn, soundId: SoundId | null): string {
+  return soundId === null ? '' : t(soundById(soundId).nameKey);
 }
 
-/** A saved mix's sounds as this version knows them; sounds.mix.unknown ("(unknown sound)") when it knows none of them (R7). */
-export function mixLayerNames(t: TranslateFn, layers: readonly MixLayer[]): string {
-  const known = layers.filter((layer): layer is MixLayer & { soundId: SoundId } =>
-    isSoundId(layer.soundId),
-  );
-  return known.length === 0 ? t('sounds.mix.unknown') : layerNames(t, known);
-}
-
-/** sounds.status.playing ("Playing · White noise + Rain"), .paused, .stopped or .interrupted (R14). */
-export function statusText(t: TranslateFn, state: Pick<EngineState, 'status' | 'layers'>): string {
+/** sounds.status.playing ("Playing · White noise"), .paused, .stopped or .interrupted (R14). */
+export function statusText(t: TranslateFn, state: Pick<EngineState, 'status' | 'current'>): string {
   if (state.status === 'playing')
-    return t('sounds.status.playing', { names: layerNames(t, state.layers) });
+    return t('sounds.status.playing', { name: soundName(t, state.current) });
   return t(`sounds.status.${state.status}`);
 }
 
@@ -32,16 +23,12 @@ export function remainingText(t: TranslateFn, endsAt: number | null, now: number
 }
 
 /** What the app remembers of the Sounds tab: the selection, the master slider and the chip; never the playing state. */
-export function lastSoundOf(state: Pick<EngineState, 'layers' | 'master' | 'timer'>): LastSound {
-  return {
-    layers: state.layers.map((layer) => ({ soundId: layer.soundId, level: layer.level })),
-    master: state.master,
-    timerMin: state.timer,
-  };
+export function lastSoundOf(state: Pick<EngineState, 'current' | 'master' | 'timer'>): LastSound {
+  return { soundId: state.current, master: state.master, timerMin: state.timer };
 }
 
 export function toSavedSound(last: LastSound): SavedSound {
-  return { layers: last.layers, master: last.master, timer: last.timerMin };
+  return { soundId: last.soundId, master: last.master, timer: last.timerMin };
 }
 
 /**
@@ -50,25 +37,17 @@ export function toSavedSound(last: LastSound): SavedSound {
  * master under the new cap) or the launch's restore (the default selection over the stored one).
  */
 export function lastSoundToPersist(
-  snapshot: Pick<EngineState, 'layers' | 'master' | 'timer'>,
+  snapshot: Pick<EngineState, 'current' | 'master' | 'timer'>,
   stored: LastSound | undefined,
 ): LastSound | null {
   const next = lastSoundOf(snapshot);
   return sameLastSound(next, stored) ? null : next;
 }
 
-const NOTHING: LastSound = { layers: [], master: DEFAULT_MASTER, timerMin: DEFAULT_TIMER };
+const NOTHING: LastSound = { soundId: null, master: DEFAULT_MASTER, timerMin: DEFAULT_TIMER };
 
 /** Equal selections; a stored `undefined` counts as the default selection, so a fresh app writes nothing. */
 export function sameLastSound(a: LastSound, b: LastSound | undefined): boolean {
   const other = b ?? NOTHING;
-  return (
-    a.master === other.master &&
-    a.timerMin === other.timerMin &&
-    a.layers.length === other.layers.length &&
-    a.layers.every(
-      (layer, i) =>
-        layer.soundId === other.layers[i]!.soundId && layer.level === other.layers[i]!.level,
-    )
-  );
+  return a.soundId === other.soundId && a.master === other.master && a.timerMin === other.timerMin;
 }

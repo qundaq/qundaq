@@ -184,35 +184,12 @@ describe('sound settings in the settings row', () => {
 
   it('keeps a well-formed last selection and drops a malformed one whole', async () => {
     const db = freshDb();
-    const lastSound: LastSound = {
-      layers: [
-        { soundId: 'white', level: 0.7 },
-        { soundId: 'rain', level: 0.3 },
-      ],
-      master: 0.6,
-      timerMin: null,
-    };
+    const lastSound: LastSound = { soundId: 'white', master: 0.6, timerMin: null };
     await saveSettings(db, { lastSound }, 'tr');
     expect((await loadSettings(db, 'tr')).lastSound).toEqual(lastSound);
     const malformed = [
-      { ...lastSound, layers: [{ soundId: 'train', level: 0.7 }] }, // an unknown sound
-      { ...lastSound, layers: [{ soundId: 'white', level: 2 }] }, // a level above 1
-      {
-        ...lastSound,
-        layers: [
-          { soundId: 'white', level: 0.5 },
-          { soundId: 'white', level: 0.5 },
-        ],
-      }, // twice
       { ...lastSound, master: Number.NaN },
       { ...lastSound, timerMin: 45 },
-      {
-        ...lastSound,
-        layers: Array.from({ length: 7 }, (_, i) => ({
-          soundId: ['white', 'pink', 'brown', 'rain', 'waves', 'wind', 'heartbeat'][i],
-          level: 0.5,
-        })),
-      },
       'white',
     ];
     for (const bad of malformed) {
@@ -230,5 +207,21 @@ describe('sound settings in the settings row', () => {
         lastBabyIds: [],
       });
     }
+  });
+
+  it('loads a stored old multi-layer selection as nothing selected, keeping the master and the chip', async () => {
+    const db = freshDb();
+    await db.settings.put({
+      id: 'app',
+      locale: 'tr',
+      nightMode: false,
+      lastBabyIds: [],
+      lastSound: { layers: [{ soundId: 'rain', level: 0.7 }], master: 0.4, timerMin: 15 },
+    } as never);
+    expect((await loadSettings(db, 'tr')).lastSound).toEqual({
+      soundId: null,
+      master: 0.4,
+      timerMin: 15,
+    });
   });
 });

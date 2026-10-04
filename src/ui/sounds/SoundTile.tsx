@@ -1,46 +1,43 @@
-import { percent } from '../../audio/volume';
 import { useT } from '../app/I18nProvider';
 import styles from './Sounds.module.css';
 
+export type TileState = 'off' | 'loading' | 'playing' | 'paused' | 'unavailable';
+
 interface Props {
   name: string;
-  /** The layer's slider while the sound is on; undefined while it is off. */
-  level: number | undefined;
-  preparing: boolean;
-  onToggle: () => void;
-  onLevel: (level: number) => void;
+  state: TileState;
+  onSelect: () => void;
 }
 
-/** One sound: a toggle button, and its level slider while it is on. */
-export function SoundTile({ name, level, preparing, onToggle, onLevel }: Props) {
+/**
+ * One sound: the tile is the play control. Its accessible name carries the action a tap does now
+ * ("White noise: Pause"); an unavailable sound (its file would not load) is dimmed, says so and does nothing.
+ */
+export function SoundTile({ name, state, onSelect }: Props) {
   const t = useT();
-  const active = level !== undefined;
+  const unavailable = state === 'unavailable';
+  const on = state === 'playing' || state === 'loading';
+  const action = on
+    ? t('sounds.pause')
+    : state === 'paused'
+      ? t('sounds.resume')
+      : t('sounds.play');
   return (
-    <div className={styles.tileCell}>
-      {/* The name is the accessible name; the "preparing" text (sounds.preparing) is visual only, so the name never changes. */}
-      <button
-        type="button"
-        className={[styles.tile, active ? styles.tileOn : ''].join(' ')}
-        aria-pressed={active}
-        aria-label={name}
-        onClick={onToggle}
-      >
-        <span>{name}</span>
-        {preparing && <span className={styles.preparing}>{t('sounds.preparing')}</span>}
-      </button>
-      {active && (
-        <input
-          type="range"
-          className={styles.level}
-          min={0}
-          max={1}
-          step={0.01}
-          value={level}
-          aria-label={t('sounds.level', { name })}
-          aria-valuetext={percent(level)}
-          onChange={(event) => onLevel(Number(event.target.value))}
-        />
-      )}
-    </div>
+    <button
+      type="button"
+      className={[
+        styles.tile,
+        on ? styles.tileOn : '',
+        unavailable ? styles.tileUnavailable : '',
+      ].join(' ')}
+      data-state={state}
+      aria-label={unavailable ? name : t('sounds.tile', { name, action })}
+      aria-disabled={unavailable || undefined}
+      onClick={unavailable ? undefined : onSelect}
+    >
+      <span>{name}</span>
+      {state === 'loading' && <span className={styles.tileNote}>{t('sounds.preparing')}</span>}
+      {unavailable && <span className={styles.tileNote}>{t('sounds.unavailable')}</span>}
+    </button>
   );
 }
