@@ -57,7 +57,7 @@ export function watchAudioSession(
 }
 
 export interface MediaInfo {
-  /** The mix or the layer names, as the lock screen shows them. */
+  /** The sound's name, as the lock screen shows it. */
   title: string;
   /** null: nothing plays (stopped). */
   playing: boolean | null;

@@ -4,12 +4,10 @@ import type { BreastSegment, EventDraft, TrackerEvent } from '../../src/domain/t
 import {
   FUTURE_TOLERANCE_MS,
   MAX_DURATION_MS,
-  MIX_NAME_MAX,
   ValidationError,
   editedMinutesValid,
   validateBabyName,
   validateEvent,
-  validateMixName,
   type RuleViolation,
 } from '../../src/domain/rules';
 
@@ -423,14 +421,5 @@ describe('ValidationError — babyIds', () => {
   it('names no baby by default and keeps the ones it is given', () => {
     expect(new ValidationError(['already-running']).babyIds).toEqual([]);
     expect(new ValidationError(['already-running'], ['a']).babyIds).toEqual(['a']);
-  });
-});
-
-describe('validateMixName', () => {
-  it('needs a name of at most 40 characters after trimming', () => {
-    expect(validateMixName('Night')).toEqual([]);
-    expect(validateMixName('   ')).toEqual(['name-required']);
-    expect(validateMixName(` ${'x'.repeat(MIX_NAME_MAX)} `)).toEqual([]);
-    expect(validateMixName('x'.repeat(MIX_NAME_MAX + 1))).toEqual(['text-too-long']);
   });
 });

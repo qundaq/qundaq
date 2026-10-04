@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Baby, Mix, TrackerEvent } from '../domain/types';
+import type { Baby, TrackerEvent } from '../domain/types';
 import { openFlagMiddleware, shouldBeOpen } from './openFlag';
 import type { Settings } from './settings';
 
@@ -17,7 +17,6 @@ export type TrackerDb = Dexie & {
   settings: EntityTable<SettingsRow, 'id'>;
   babies: EntityTable<Baby, 'id'>;
   events: EntityTable<EventRow, 'id'>;
-  mixes: EntityTable<Mix, 'id'>;
 };
 
 export function openDb(name = 'qundaq'): TrackerDb {
@@ -45,12 +44,10 @@ export function openDb(name = 'qundaq'): TrackerDb {
           else delete row.open;
         }),
     );
-  // v4 adds saved sound mixes. openFlagMiddleware stays scoped to the events table.
   db.version(4).stores({
     settings: 'id',
     babies: 'id, createdAt',
     events: 'id, babyId, type, startAt, [babyId+startAt], updatedAt, open',
-    mixes: 'id, updatedAt',
   });
   db.use(openFlagMiddleware);
   return db;

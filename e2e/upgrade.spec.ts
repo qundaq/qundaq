@@ -31,7 +31,7 @@ function readStored(page: import('@playwright/test').Page) {
 }
 
 // Phones updating to this version hold a Dexie v2 database (IndexedDB version 20), perhaps with a timer
-// running. This build must open it, mark the running row for the `open` index (v3), add the mixes table (v4), and carry on.
+// running. This build must open it, mark the running row for the `open` index (v3), and carry on.
 test('a v2 database with a running sleep opens in this version and the sleep can be stopped', async ({
   page,
 }) => {

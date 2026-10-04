@@ -1,4 +1,4 @@
-import type { Baby, Id, Mix, TrackerEvent } from '../domain/types';
+import type { Baby, Id, TrackerEvent } from '../domain/types';
 import type { BackupSettings } from './format';
 import { compareRows, isLive, type Row } from './rows';
 import { findStale, repairRunning, type StaleTimer, type StoppedTimer } from './running';
@@ -11,7 +11,6 @@ export type ImportMode = 'merge' | 'replace';
 export interface LocalState {
   babies: readonly Baby[];
   events: readonly TrackerEvent[];
-  mixes: readonly Mix[];
   settings: BackupSettings;
 }
 
@@ -64,18 +63,15 @@ export interface TableStats {
 export interface ImportStats {
   babies: TableStats;
   events: TableStats;
-  mixes: TableStats;
   /** Live rows on the device now; replace mode removes them. */
   localBabies: number;
   localEvents: number;
-  localMixes: number;
 }
 
 /** Replace mode: live device rows that the file lacks or that changed after the backup was taken. */
 export interface Loss {
   events: number;
   newestAt: number | null; // the latest start among the lost events
-  mixes: number;
 }
 
 export interface ImportPlan {
@@ -87,8 +83,6 @@ export interface ImportPlan {
    */
   babies: Baby[];
   events: TrackerEvent[];
-  /** Saved mixes merge like babies (last writer wins, tombstones), with no pairing. */
-  mixes: Mix[];
   settings: BackupSettings;
   stats: ImportStats;
   loss: Loss;
@@ -233,10 +227,6 @@ function replacePlan(
   let newestAt: number | null = null;
   for (const event of lost)
     if (newestAt === null || event.startAt > newestAt) newestAt = event.startAt;
-  const mixFileIds = new Set(backup.mixes.map((mix) => mix.id));
-  const lostMixes = local.mixes.filter(
-    (mix) => isLive(mix) && (!mixFileIds.has(mix.id) || mix.updatedAt > backup.exportedAt),
-  ).length;
 
   const count = (rows: readonly Row[]): TableStats => ({
     ...emptyStats(),
@@ -247,7 +237,6 @@ function replacePlan(
     mode: 'replace',
     babies: [...backup.babies],
     events: [...events.values()],
-    mixes: [...backup.mixes],
     settings: {
       locale: backup.settings.locale ?? local.settings.locale,
       nightMode: backup.settings.nightMode ?? local.settings.nightMode,
@@ -256,12 +245,10 @@ function replacePlan(
     stats: {
       babies: count(backup.babies),
       events: count(backup.events),
-      mixes: count(backup.mixes),
       localBabies: local.babies.filter(isLive).length,
       localEvents: local.events.filter(isLive).length,
-      localMixes: local.mixes.filter(isLive).length,
     },
-    loss: { events: lost.length, newestAt, mixes: lostMixes },
+    loss: { events: lost.length, newestAt },
     removedBabies: [],
     moves: [],
     follows: [],
@@ -279,7 +266,6 @@ function mergePlan(
 ): ImportPlan {
   const babies = mergeTable(local.babies, backup.babies);
   const events = mergeTable(local.events, backup.events);
-  const mixes = mergeTable(local.mixes, backup.mixes);
   // The device's live babies that the file deletes.
   const removed = local.babies.filter(
     (baby) => isLive(baby) && babies.writes.has(baby.id) && !isLive(babies.writes.get(baby.id)!),
@@ -420,7 +406,6 @@ function mergePlan(
     mode: 'merge',
     babies: [...babies.writes.values()],
     events: [...events.writes.values()],
-    mixes: [...mixes.writes.values()],
     settings: {
       locale: local.settings.locale,
       nightMode: local.settings.nightMode,
@@ -429,12 +414,10 @@ function mergePlan(
     stats: {
       babies: babies.stats,
       events: events.stats,
-      mixes: mixes.stats,
       localBabies: local.babies.filter(isLive).length,
       localEvents: local.events.filter(isLive).length,
-      localMixes: local.mixes.filter(isLive).length,
     },
-    loss: { events: 0, newestAt: null, mixes: 0 },
+    loss: { events: 0, newestAt: null },
     removedBabies: removed.map(displayName),
     moves: [...moved].map(([id, count]) => ({ name: babies.result.get(id)!.name, events: count })),
     follows,

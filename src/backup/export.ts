@@ -3,7 +3,6 @@ import {
   BACKUP_APP,
   BACKUP_VERSION,
   EVENT_KEYS,
-  MIX_KEYS,
   type BackupFile,
   type BackupSettings,
 } from './format';
@@ -12,7 +11,6 @@ import {
 export interface Snapshot {
   babies: readonly object[];
   events: readonly object[];
-  mixes: readonly object[];
   settings: BackupSettings;
 }
 
@@ -40,7 +38,7 @@ function orderedCopy(
 }
 
 /**
- * Every baby, event and saved mix, deleted and archived ones included (their tombstones keep a later
+ * Every baby and event, deleted and archived ones included (their tombstones keep a later
  * merge from bringing them back). Only the events' storage-only `open` field is left out.
  */
 export function buildBackup(snapshot: Snapshot, meta: BackupMeta): BackupFile {
@@ -55,9 +53,6 @@ export function buildBackup(snapshot: Snapshot, meta: BackupMeta): BackupFile {
     events: snapshot.events.map((event) =>
       orderedCopy(event, EVENT_KEYS, ['open']),
     ) as unknown as BackupFile['events'],
-    mixes: snapshot.mixes.map((mix) =>
-      orderedCopy(mix, MIX_KEYS),
-    ) as unknown as BackupFile['mixes'],
     settings: {
       locale: snapshot.settings.locale,
       nightMode: snapshot.settings.nightMode,

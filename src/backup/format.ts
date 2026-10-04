@@ -1,12 +1,12 @@
 import type { Settings } from '../db/settings';
-import type { Baby, Id, Mix, TrackerEvent } from '../domain/types';
+import type { Baby, Id, TrackerEvent } from '../domain/types';
 import type { Locale } from '../i18n';
 
 export const BACKUP_APP = 'qundaq';
 /**
  * The backup file format version (the parent spec's `schemaVersion`). Every new stored field needs a bump
  * here plus a step in migrate.ts, so an older backup still reads; tests/backup/validate.test.ts fails when
- * a stored field is missing from the validator. Version 2 makes `mixes` real data (saved sound mixes).
+ * a stored field is missing from the validator.
  */
 export const BACKUP_VERSION = 2;
 export const BACKUP_MIME = 'application/json';
@@ -39,7 +39,6 @@ export interface BackupFile {
   appVersion: string;
   babies: Baby[];
   events: TrackerEvent[];
-  mixes: Mix[];
   settings: BackupSettings;
 }
 
@@ -84,16 +83,12 @@ export const EVENT_KEYS = [
   'deletedAt',
 ] as const;
 
-/** Key order of a written mix row. */
-export const MIX_KEYS = ['id', 'name', 'layers', 'createdAt', 'updatedAt', 'deletedAt'] as const;
-
-// Every stored field has a place in the key order: a field added to Baby, Mix or to any TrackerEvent
+// Every stored field has a place in the key order: a field added to Baby or to any TrackerEvent
 // variant fails to compile here until it is listed (and then tests/backup/validate.test.ts until it is
 // read back). Likewise every settings key is either exported or listed as device-only.
 type KeysOf<T> = T extends unknown ? keyof T : never;
 type UnorderedEventKeys = Exclude<KeysOf<TrackerEvent>, (typeof EVENT_KEYS)[number]>;
 type UnorderedBabyKeys = Exclude<keyof Baby, (typeof BABY_KEYS)[number]>;
-type UnorderedMixKeys = Exclude<keyof Mix, (typeof MIX_KEYS)[number]>;
 type ClassifiedSettingsKeys = keyof BackupSettings | (typeof DEVICE_ONLY_SETTINGS)[number];
 // Both directions on purpose: the union is `never` only while the classification is in sync, and the
 // second arm catches classified keys that no longer exist in Settings.
@@ -106,8 +101,6 @@ export const EVERY_EVENT_KEY_ORDERED: [UnorderedEventKeys] extends [never]
 export const EVERY_BABY_KEY_ORDERED: [UnorderedBabyKeys] extends [never]
   ? true
   : UnorderedBabyKeys = true;
-export const EVERY_MIX_KEY_ORDERED: [UnorderedMixKeys] extends [never] ? true : UnorderedMixKeys =
-  true;
 export const EVERY_SETTINGS_KEY_CLASSIFIED: [UnclassifiedSettingsKeys] extends [never]
   ? true
   : UnclassifiedSettingsKeys = true;

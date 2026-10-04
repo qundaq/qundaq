@@ -139,7 +139,6 @@ export const tr = {
   'rule.medication-name-required': 'İlacın ya da vitaminin adını girin.',
   'rule.note-required': 'Bir not yazın.',
   'rule.text-too-long': 'Metin çok uzun. İlaç adı en fazla 60, doz 40, not 500 karakter olabilir.',
-  'rule.mix-layers-invalid': 'Kaydetmek için en az bir ses seçin.',
   'rule.already-running.named': '{names} için zaten devam eden bir kayıt var.',
   'rule.running-overlap': 'Başlangıç, süren kaydın başlangıcından önce olamaz.',
   'rule.running-overlap.named': '{names}: başlangıç, süren kaydın başlangıcından önce olamaz.',
@@ -401,7 +400,6 @@ export const tr = {
   'import.skipped': '{n} kayıt okunamadı ve atlanacak.',
   'import.skippedDetails': 'Ayrıntılar',
   'import.skippedBaby': 'Bebek',
-  'import.skippedMix': 'Karışım',
   'import.unknownRow': 'Tanımlanamayan kayıt',
   'import.outOfRange':
     "{n} kaydın tarihi olağan dışı (2000'den önce ya da ileri bir tarih); yine de eklenecek.",
@@ -416,13 +414,11 @@ export const tr = {
   'import.sameBaby': 'Yedekteki {fileName} ile bu cihazdaki {localName} aynı bebek',
   'import.babies': 'Bebekler',
   'import.events': 'Kayıtlar',
-  'import.mixes': 'Karışımlar',
   'import.counts':
     'Eklenecek: {add} · Güncellenecek: {update} · Silinecek: {remove} · Aynı: {same} · Bu cihazdaki daha yeni olduğu için korunacak: {keep}',
   'import.deleted': 'silinmiş: {n}',
   'import.replaceSummary':
     'Bu cihazdaki {babies} bebek ve {events} kayıt silinip yedektekilerle değiştirilecek.',
-  'import.replaceMixes': 'Bu cihazdaki {n} karışım silinecek.',
   'import.loss': 'Yedekten sonra bu cihaza girilen {n} kayıt silinecek (en yenisi: {newest}).',
   'import.staleTitle': 'Süren sayaçlar',
   'import.staleItem': '{name} · {type}: sayaç hâlâ sürüyor (başlangıç: {since})',
@@ -440,8 +436,6 @@ export const tr = {
     "Yedek geri yüklendi, ancak sonuç gösterilemedi. Kayıtları Günlük'te kontrol edin.",
   'import.done.merge':
     'Geri yüklendi: {added} kayıt eklendi, {updated} güncellendi, {removed} silindi, {moved} taşındı.',
-  'import.done.mergeMixes':
-    'Karışımlar: {added} eklendi, {updated} güncellendi, {removed} silindi.',
   'import.done.replace': 'Geri yüklendi: {babies} bebek ve {events} kayıt.',
   'import.removedBabies': 'Bu cihazdan kaldırılacak bebek: {names}',
   'import.moved': '{n} kayıt {name} altında birleştirilecek.',
@@ -458,7 +452,6 @@ export const tr = {
   'backup.problem.bad-payload': 'ayrıntıları geçersiz',
   'backup.problem.bad-field': 'bir alanı geçersiz',
   'backup.problem.missing-baby': 'bebeği yedekte yok',
-  'backup.problem.bad-mix': 'karışım bilgileri geçersiz',
   'sound.white': 'Beyaz gürültü',
   'sound.waves': 'Dalgalar',
   'sound.airplane': 'Uçak kabini',

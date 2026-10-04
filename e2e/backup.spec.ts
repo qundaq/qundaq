@@ -49,7 +49,6 @@ test.describe('JSON backup', () => {
     expect(backup).toMatchObject({
       app: 'qundaq',
       schemaVersion: 2,
-      mixes: [],
       settings: { locale: 'tr', nightMode: false },
     });
     expect(backup.babies.map((baby) => baby.name)).toEqual(['Ada']);

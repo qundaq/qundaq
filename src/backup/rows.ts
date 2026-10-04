@@ -1,5 +1,5 @@
 import type { Id } from '../domain/types';
-import { BABY_KEYS, EVENT_KEYS, MIX_KEYS } from './format';
+import { BABY_KEYS, EVENT_KEYS } from './format';
 
 /**
  * What happens to one row of the file. add: new to the device. update: the file's copy wins. same: both
@@ -23,13 +23,13 @@ function sortKeys(value: unknown): unknown {
 }
 
 /**
- * Every field a baby, an event or a mix row can legitimately have (the storage-only `open` marker is not
+ * Every field a baby or an event row can legitimately have (the storage-only `open` marker is not
  * one of them, so it drops out on its own). A device row may also carry a legacy or otherwise unknown
  * field from an older version of the app; canonicalRow ignores those too, on both sides, so two rows that
  * agree on every field the current app understands compare equal regardless of what else either one is
- * carrying. A mix's `layers` are compared with their keys sorted, like every nested value.
+ * carrying.
  */
-const CANONICAL_KEYS = new Set<string>([...BABY_KEYS, ...EVENT_KEYS, ...MIX_KEYS]);
+const CANONICAL_KEYS = new Set<string>([...BABY_KEYS, ...EVENT_KEYS]);
 
 /** A row as JSON with sorted keys and only the known fields: equal rows give equal strings, whatever their key order. */
 export function canonicalRow(row: object): string {

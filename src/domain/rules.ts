@@ -20,8 +20,7 @@ export type RuleViolation =
   | 'temperature-invalid'
   | 'medication-name-required'
   | 'note-required'
-  | 'text-too-long'
-  | 'mix-layers-invalid';
+  | 'text-too-long';
 
 export class ValidationError extends Error {
   readonly violations: readonly RuleViolation[];
@@ -51,7 +50,6 @@ export const GROWTH_RANGES = {
 export const TEMPERATURE_RANGE_C = [30, 45] as const;
 export const TEXT_LIMITS = { medicationName: 60, dose: 40, note: 500 } as const;
 export const BABY_NAME_MAX = 40;
-export const MIX_NAME_MAX = 40;
 
 const GROWTH_METRICS = ['weightG', 'heightMm', 'headMm'] as const;
 
@@ -172,13 +170,6 @@ export function validateEvent(
 
 export function validateBabyName(name: string): RuleViolation[] {
   return name.trim() === '' ? ['name-required'] : [];
-}
-
-/** A saved mix's name: trimmed, 1–40 characters. Duplicates are allowed (two phones' same-named mix both survive a merge). */
-export function validateMixName(name: string): RuleViolation[] {
-  const trimmed = name.trim();
-  if (trimmed === '') return ['name-required'];
-  return trimmed.length > MIX_NAME_MAX ? ['text-too-long'] : [];
 }
 
 /** Minutes typed for the sides of a breastfeed in the edit sheet: at least one side, each a whole number ≥ 1. */

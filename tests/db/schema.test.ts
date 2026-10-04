@@ -28,7 +28,6 @@ describe('schema', () => {
     });
     expect(await db.babies.count()).toBe(0);
     expect(await db.events.count()).toBe(0);
-    expect(await db.mixes.count()).toBe(0);
     expect(db.verno).toBe(4);
     await db.delete();
   });
@@ -67,7 +66,7 @@ describe('schema', () => {
     await db.delete();
   });
 
-  it('v4 adds the mixes table and keeps the events, their running index and the settings of a version-3 database', async () => {
+  it('v4 keeps the events, their running index and the settings of a version-3 database', async () => {
     const name = `test-${crypto.randomUUID()}`;
     const v3 = new Dexie(name);
     v3.version(1).stores({ settings: 'id' });
@@ -99,7 +98,6 @@ describe('schema', () => {
 
     const db = openDb(name);
     expect(db.verno).toBe(4);
-    expect(await db.mixes.count()).toBe(0);
     expect(await db.events.where('open').equals(1).primaryKeys()).toEqual(['running']);
     expect(await loadSettings(db, 'en')).toEqual({
       locale: 'tr',
@@ -107,14 +105,6 @@ describe('schema', () => {
       theme: 'dark',
       lastBabyIds: [],
     });
-    await db.mixes.add({
-      id: 'm1',
-      name: 'Night',
-      layers: [{ soundId: 'white', gain: 0.7 }],
-      createdAt: 1,
-      updatedAt: 1,
-    });
-    expect(await db.mixes.count()).toBe(1);
     await db.delete();
   });
 });

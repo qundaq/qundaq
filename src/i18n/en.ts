@@ -140,7 +140,6 @@ export const en: Record<MessageKey, string> = {
   'rule.medication-name-required': 'Enter the name of the medicine or vitamin.',
   'rule.note-required': 'Write a note.',
   'rule.text-too-long': 'Text too long. Name up to 60, dose 40, note 500 characters.',
-  'rule.mix-layers-invalid': 'Choose at least one sound to save.',
   'rule.already-running.named': '{names} already has a running entry.',
   'rule.running-overlap': "The start can't be earlier than the running entry's start.",
   'rule.running-overlap.named':
@@ -402,7 +401,6 @@ export const en: Record<MessageKey, string> = {
   'import.skipped': 'Entries that cannot be read and will be skipped: {n}.',
   'import.skippedDetails': 'Details',
   'import.skippedBaby': 'Baby',
-  'import.skippedMix': 'Mix',
   'import.unknownRow': 'Unidentified entry',
   'import.outOfRange':
     'Entries with an unusual date (before 2000, or in the future): {n}. They will be added anyway.',
@@ -418,13 +416,11 @@ export const en: Record<MessageKey, string> = {
   'import.sameBaby': '{fileName} in the backup and {localName} on this device are the same baby',
   'import.babies': 'Babies',
   'import.events': 'Entries',
-  'import.mixes': 'Mixes',
   'import.counts':
     'To add: {add} · To update: {update} · To delete: {remove} · Same: {same} · Kept because newer on this device: {keep}',
   'import.deleted': 'deleted: {n}',
   'import.replaceSummary':
     "Everything on this device (babies: {babies}, entries: {events}) will be deleted and replaced with the backup's.",
-  'import.replaceMixes': 'Mixes on this device that will be deleted: {n}.',
   'import.loss':
     'Entries made on this device after the backup will be deleted: {n} (newest: {newest}).',
   'import.staleTitle': 'Running timers',
@@ -443,7 +439,6 @@ export const en: Record<MessageKey, string> = {
     'The backup was restored, but the result could not be shown. Check the entries in the Log.',
   'import.done.merge':
     'Restored. Entries added: {added} · updated: {updated} · deleted: {removed} · moved: {moved}.',
-  'import.done.mergeMixes': 'Mixes added: {added} · updated: {updated} · deleted: {removed}.',
   'import.done.replace': 'Restored. Babies: {babies} · Entries: {events}.',
   'import.removedBabies': 'Babies to be removed from this device: {names}',
   'import.moved': 'Entries to be combined under {name}: {n}.',
@@ -460,7 +455,6 @@ export const en: Record<MessageKey, string> = {
   'backup.problem.bad-payload': 'its details are invalid',
   'backup.problem.bad-field': 'one of its fields is invalid',
   'backup.problem.missing-baby': 'its baby is not in the backup',
-  'backup.problem.bad-mix': "the mix's details are invalid",
   'sound.white': 'White noise',
   'sound.waves': 'Waves',
   'sound.airplane': 'Airplane cabin',

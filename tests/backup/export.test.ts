@@ -55,23 +55,6 @@ function snapshot(): Snapshot {
         extra: 7,
       },
     ],
-    mixes: [
-      {
-        updatedAt: T,
-        layers: [{ gain: 0.7, soundId: 'white' }],
-        name: 'Night',
-        id: 'm1',
-        createdAt: T,
-      },
-      {
-        id: 'm2',
-        name: 'Old',
-        layers: [{ soundId: 'pink', gain: 0.5 }],
-        createdAt: T,
-        updatedAt: T + 1,
-        deletedAt: T + 1,
-      },
-    ],
     settings: { locale: 'tr', nightMode: true, lastBabyIds: ['b1'] },
   };
 }
@@ -86,8 +69,6 @@ describe('buildBackup', () => {
     expect(backup.babies.map((baby) => baby.id)).toEqual(['b1', 'b2']);
     expect(backup.babies[1]).toMatchObject({ deletedAt: T + 5 });
     expect(backup.events).toHaveLength(3);
-    expect(backup.mixes).toHaveLength(2);
-    expect(backup.mixes[1]).toMatchObject({ deletedAt: T + 1 });
     expect(backup.settings).toEqual({ locale: 'tr', nightMode: true, lastBabyIds: ['b1'] });
   });
 
@@ -124,7 +105,6 @@ describe('buildBackup', () => {
       'appVersion',
       'babies',
       'events',
-      'mixes',
       'settings',
     ]);
     expect(Object.keys(backup.babies[0]!)).toEqual([
@@ -147,14 +127,6 @@ describe('buildBackup', () => {
       'updatedAt',
     ]);
     expect(Object.keys(backup.events[2]!).at(-1)).toBe('extra');
-    expect(Object.keys(backup.mixes[0]!)).toEqual([
-      'id',
-      'name',
-      'layers',
-      'createdAt',
-      'updatedAt',
-    ]);
-    expect(backup.mixes[0]!.layers).toEqual([{ gain: 0.7, soundId: 'white' }]);
   });
 
   it('never exports what describes this device only', () => {

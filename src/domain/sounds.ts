@@ -10,9 +10,6 @@ export function isSoundId(value: unknown): value is SoundId {
   return typeof value === 'string' && (SOUND_IDS as readonly string[]).includes(value);
 }
 
-/** A saved mix's layer limit: still read from backups and old rows (src/backup/validate.ts, src/db/mixes.ts); nothing plays layers any more. */
-export const MAX_LAYERS = 6;
-
 /** The sleep timer's chips: 15, 30 or 60 minutes, or ∞ (null: no timer). */
 export const TIMER_MINUTES = [15, 30, 60] as const;
 export type TimerMinutes = (typeof TIMER_MINUTES)[number];
@@ -63,22 +60,4 @@ export function readLastSound(value: unknown): LastSound | undefined {
     master: record.master,
     timerMin: record.timerMin,
   };
-}
-
-/** The layers a mix may be saved with: 1–MAX_LAYERS unique sound ids (any version's, 1–40 characters) with finite gains in 0..1. */
-export function validMixLayers(layers: readonly { soundId: string; gain: number }[]): boolean {
-  if (layers.length === 0 || layers.length > MAX_LAYERS) return false;
-  const seen = new Set<string>();
-  for (const layer of layers) {
-    if (
-      typeof layer.soundId !== 'string' ||
-      layer.soundId.length === 0 ||
-      layer.soundId.length > 40 ||
-      !isUnit(layer.gain) ||
-      seen.has(layer.soundId)
-    )
-      return false;
-    seen.add(layer.soundId);
-  }
-  return true;
 }

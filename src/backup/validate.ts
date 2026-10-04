@@ -5,12 +5,9 @@ import {
   GROWTH_RANGES,
   MAX_BOTTLE_ML,
   MAX_PUMP_ML,
-  MIX_NAME_MAX,
   TEMPERATURE_RANGE_C,
   TEXT_LIMITS,
-  validateMixName,
 } from '../domain/rules';
-import { MAX_LAYERS } from '../domain/sounds';
 import { STOOL_COLORS } from '../domain/stool';
 import { DAY } from '../domain/time';
 import type {
@@ -21,8 +18,6 @@ import type {
   EventPayload,
   EventType,
   Id,
-  Mix,
-  MixLayer,
   TrackerEvent,
 } from '../domain/types';
 import { LOCALES, type Locale } from '../i18n';
@@ -59,8 +54,7 @@ export type ProblemCode =
   | 'unknown-type' // an event type this version does not know
   | 'bad-payload' // the fields of the event's type (sides, amount, measurements…)
   | 'bad-field' // group, note, or a pump that names a baby
-  | 'missing-baby' // an event whose baby is not in the file, or was skipped
-  | 'bad-mix'; // a saved mix's name or layers
+  | 'missing-baby'; // an event whose baby is not in the file, or was skipped
 
 export const PROBLEM_CODES: readonly ProblemCode[] = [
   'not-object',
@@ -72,12 +66,11 @@ export const PROBLEM_CODES: readonly ProblemCode[] = [
   'bad-payload',
   'bad-field',
   'missing-baby',
-  'bad-mix',
 ];
 
 /** A skipped row, with whatever could be read of it, so the preview can name it by date, time and type. */
 export interface SkippedRow {
-  list: 'babies' | 'events' | 'mixes';
+  list: 'babies' | 'events';
   index: number;
   code: ProblemCode;
   type?: EventType;
@@ -107,7 +100,6 @@ export interface ParsedBackup {
   appVersion: string;
   babies: Baby[];
   events: TrackerEvent[];
-  mixes: Mix[];
   settings: ParsedSettings;
 }
 
@@ -305,34 +297,7 @@ function readEvent(raw: unknown, babyIds: ReadonlySet<Id>): TrackerEvent {
 }
 
 /**
- * A saved mix: a name of 1–40 characters (trimmed) and 1–MAX_LAYERS layers, each a sound id of 1–40
- * characters (ids this version does not know are kept: they come from a newer version and are skipped
- * only when played) with a finite gain in 0..1, no sound twice.
- */
-function readMix(raw: unknown): Mix {
-  if (!isRecord(raw)) fail('not-object');
-  const id = readId(raw);
-  const name = own(raw, 'name');
-  const rawLayers = own(raw, 'layers');
-  if (typeof name !== 'string' || validateMixName(name).length > 0) fail('bad-mix');
-  if (!Array.isArray(rawLayers) || rawLayers.length === 0 || rawLayers.length > MAX_LAYERS)
-    fail('bad-mix');
-  const layers: MixLayer[] = [];
-  for (const item of rawLayers) {
-    if (!isRecord(item)) fail('bad-mix');
-    const soundId = own(item, 'soundId');
-    const gain = own(item, 'gain');
-    if (typeof soundId !== 'string' || soundId.length === 0 || soundId.length > 40) fail('bad-mix');
-    if (!isFiniteNumber(gain) || gain < 0 || gain > 1) fail('bad-mix');
-    if (layers.some((layer) => layer.soundId === soundId)) fail('bad-mix');
-    layers.push({ soundId, gain });
-  }
-
-  return { id, name: name.trim(), layers, ...readBookkeeping(raw) };
-}
-
-/**
- * What could be read of a skipped row, for the preview. `name` is only read for a baby or a mix row: an
+ * What could be read of a skipped row, for the preview. `name` is only read for a baby row: an
  * event's own `name` field (a medicine) is not a baby name, and must never be reported as if it were one.
  */
 function describeSkipped(
@@ -340,11 +305,9 @@ function describeSkipped(
   list: SkippedRow['list'],
 ): Pick<SkippedRow, 'type' | 'startAt' | 'name'> {
   if (!isRecord(raw)) return {};
-  if (list === 'babies' || list === 'mixes') {
+  if (list === 'babies') {
     const name = own(raw, 'name');
-    return typeof name === 'string'
-      ? { name: name.slice(0, list === 'babies' ? BABY_NAME_MAX : MIX_NAME_MAX) }
-      : {};
+    return typeof name === 'string' ? { name: name.slice(0, BABY_NAME_MAX) } : {};
   }
   const type = own(raw, 'type');
   const startAt = own(raw, 'startAt');
@@ -453,13 +416,7 @@ export function parseBackup(text: string, now: number): ParseResult {
   const exportedAt = own(raw, 'exportedAt');
   const babies = own(raw, 'babies');
   const events = own(raw, 'events');
-  const mixes = own(raw, 'mixes');
-  if (
-    !isTime(exportedAt) ||
-    !Array.isArray(babies) ||
-    !Array.isArray(events) ||
-    !Array.isArray(mixes)
-  ) {
+  if (!isTime(exportedAt) || !Array.isArray(babies) || !Array.isArray(events)) {
     return { ok: false, error: 'not-backup' };
   }
   const appVersion = own(raw, 'appVersion');
@@ -484,7 +441,6 @@ export function parseBackup(text: string, now: number): ParseResult {
   const badBirthDate = goodBabies.filter((baby) => withoutBirthDate.has(baby)).length;
   const babyIds = new Set(goodBabies.map((baby) => baby.id));
   const goodEvents = readRows('events', events, (row) => readEvent(row, babyIds), skipped);
-  const goodMixes = readRows('mixes', mixes, readMix, skipped);
   const { settings, ok: settingsOk } = readSettings(own(raw, 'settings'), babyIds);
 
   return {
@@ -498,7 +454,6 @@ export function parseBackup(text: string, now: number): ParseResult {
           : '',
       babies: goodBabies,
       events: goodEvents,
-      mixes: goodMixes,
       settings,
     },
     skipped,

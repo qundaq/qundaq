@@ -221,7 +221,6 @@ test('broken files are refused with the right message, and nothing is written', 
     appVersion: '0.1.0',
     babies: [],
     events: [],
-    mixes: [],
     settings: {},
   };
   const cases: [string, string][] = [
@@ -281,68 +280,6 @@ test('broken files are refused with the right message, and nothing is written', 
 
   await openTab(page, t('tab.home'));
   await expect(page.getByText(t('home.empty'))).toBeVisible();
-});
-
-test('the preview shows a mixes count row, replace-mode mix loss, and names a skipped bad mix', async ({
-  page,
-}) => {
-  // Mixes are seeded through a crafted backup file: only such a file can carry a bad mix, which the app never writes.
-  await addBabyInSettings(page, 'Ada');
-  const T = new Date('2026-09-26T08:00:00+03:00').getTime();
-  const base = {
-    app: 'qundaq',
-    schemaVersion: 2,
-    appVersion: '0.1.0',
-    babies: [],
-    events: [],
-    settings: {},
-  };
-  const night = {
-    id: 'm-night',
-    name: 'Night',
-    layers: [{ soundId: 'white', gain: 0.7 }],
-    createdAt: T,
-    updatedAt: T,
-  };
-
-  // Merge a backup carrying one valid mix: the preview shows the mixes counts row.
-  let sheet = await pickBackupFile(
-    page,
-    JSON.stringify({ ...base, exportedAt: T, mixes: [night] }),
-  );
-  await expect(sheet).toContainText(
-    `${t('import.mixes')}${counts({ add: 1, update: 0, remove: 0, same: 0, keep: 0 })}`,
-  );
-  await sheet.getByRole('button', { name: t('import.applyMerge'), exact: true }).click();
-  await sheet.getByRole('button', { name: t('common.ok'), exact: true }).click();
-
-  // Replacing with a file carrying a new valid mix and a bad one: the bad mix is skipped and named, and
-  // the device's one live mix (just saved above) shows as a loss.
-  const fresh = {
-    id: 'm-fresh',
-    name: 'Fresh',
-    layers: [{ soundId: 'rain', gain: 0.4 }],
-    createdAt: T + 1,
-    updatedAt: T + 1,
-  };
-  const broken = { id: 'm-broken', name: 'Broken', layers: [], createdAt: T + 1, updatedAt: T + 1 };
-  sheet = await pickBackupFile(
-    page,
-    JSON.stringify({ ...base, exportedAt: T + 1, mixes: [fresh, broken] }),
-  );
-  // Still in merge mode (the default): the counts row shows the one addable mix, the bad one skipped.
-  await expect(sheet).toContainText(
-    `${t('import.mixes')}${counts({ add: 1, update: 0, remove: 0, same: 0, keep: 0 })}`,
-  );
-  await sheet.getByText(t('import.skippedDetails'), { exact: true }).click();
-  await expect(sheet.getByRole('listitem')).toHaveText([
-    `${t('import.skippedMix')} Broken: ${t('backup.problem.bad-mix')}`,
-  ]);
-  // Switching to replace: the counts row is not shown there, but the loss line is.
-  await sheet.getByRole('button', { name: t('import.mode.replace'), exact: true }).click();
-  await expect(sheet).toContainText(t('import.replaceMixes', { n: 1 }));
-  await sheet.getByRole('button', { name: t('common.cancel'), exact: true }).click();
-  await expect(sheet).toBeHidden();
 });
 
 test('a running timer in an old backup is stopped at the time of the backup', async ({ page }) => {

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CAP,
   DEFAULT_TIMER,
-  MAX_LAYERS,
   MIN_CAP,
   SOUND_IDS,
   TIMER_CHOICES,
@@ -10,7 +9,6 @@ import {
   isTimerChoice,
   readLastSound,
   readVolumeCap,
-  validMixLayers,
 } from '../../src/domain/sounds';
 
 describe('sound ids', () => {
@@ -72,30 +70,5 @@ describe('readLastSound', () => {
     expect(readLastSound(null)).toBeUndefined();
     expect(readLastSound([stored])).toBeUndefined();
     expect(readLastSound('x')).toBeUndefined();
-  });
-});
-
-describe('validMixLayers', () => {
-  it('accepts 1–MAX_LAYERS unique sound ids of any version, with gains in 0..1', () => {
-    expect(validMixLayers([{ soundId: 'white', gain: 0.7 }])).toBe(true);
-    expect(validMixLayers([{ soundId: 'rain', gain: 0.4 }])).toBe(true); // a removed sound still round-trips
-    expect(MAX_LAYERS).toBe(6);
-  });
-
-  it('rejects an empty list, too many layers, a repeated id, an empty or over-long id and a bad gain', () => {
-    expect(validMixLayers([])).toBe(false);
-    expect(
-      validMixLayers(Array.from({ length: 7 }, (_, i) => ({ soundId: `s${i}`, gain: 0.5 }))),
-    ).toBe(false);
-    expect(
-      validMixLayers([
-        { soundId: 'white', gain: 0.5 },
-        { soundId: 'white', gain: 0.6 },
-      ]),
-    ).toBe(false);
-    expect(validMixLayers([{ soundId: '', gain: 0.5 }])).toBe(false);
-    expect(validMixLayers([{ soundId: 'x'.repeat(41), gain: 0.5 }])).toBe(false);
-    expect(validMixLayers([{ soundId: 'white', gain: 1.1 }])).toBe(false);
-    expect(validMixLayers([{ soundId: 'white', gain: Number.NaN }])).toBe(false);
   });
 });

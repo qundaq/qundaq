@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { countLive } from '../../backup/export';
 import {
   planImport,
   planSignature,
@@ -180,23 +179,11 @@ export function ImportForm({
             babies: n(applied.stats.babies.add),
             events: n(applied.stats.events.add),
           });
-    const mixesChanged =
-      applied.mode === 'merge' &&
-      applied.stats.mixes.add + applied.stats.mixes.update + applied.stats.mixes.remove > 0;
     return (
       <div ref={root}>
         <p role="status" className={styles.ok}>
           {message}
         </p>
-        {mixesChanged && (
-          <p className={styles.ok}>
-            {t('import.done.mergeMixes', {
-              added: n(applied.stats.mixes.add),
-              updated: n(applied.stats.mixes.update),
-              removed: n(applied.stats.mixes.remove),
-            })}
-          </p>
-        )}
         <div className={styles.sheetActions}>
           <Button variant="primary" onClick={onClose}>
             {t('common.ok')}
@@ -322,12 +309,6 @@ export function ImportForm({
                 )}
               </dd>
             </div>
-            {(countLive(backup.mixes) > 0 || countLive(local.mixes) > 0) && (
-              <div>
-                <dt>{t('import.mixes')}</dt>
-                <dd>{counts(plan.stats.mixes)}</dd>
-              </div>
-            )}
           </dl>
           {plan.removedBabies.length > 0 && (
             <p className={styles.warn}>
@@ -353,11 +334,6 @@ export function ImportForm({
               events: formatNumber(locale, plan.stats.localEvents),
             })}
           </p>
-          {plan.stats.localMixes > 0 && (
-            <p className={styles.warn}>
-              {t('import.replaceMixes', { n: formatNumber(locale, plan.stats.localMixes) })}
-            </p>
-          )}
           {plan.loss.events > 0 && plan.loss.newestAt !== null && (
             <p className={styles.warn}>
               {t('import.loss', {

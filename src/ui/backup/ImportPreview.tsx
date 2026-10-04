@@ -63,7 +63,6 @@ export function SkippedList({ skipped }: { skipped: readonly SkippedRow[] }) {
   if (skipped.length === 0) return null;
   const label = (row: SkippedRow) => {
     if (row.list === 'babies') return `${t('import.skippedBaby')}${row.name ? ` ${row.name}` : ''}`;
-    if (row.list === 'mixes') return `${t('import.skippedMix')}${row.name ? ` ${row.name}` : ''}`;
     if (row.type === undefined) return t('import.unknownRow');
     const type = typeLabel(t, row.type);
     return row.startAt === undefined
