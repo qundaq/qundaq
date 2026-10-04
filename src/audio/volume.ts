@@ -8,7 +8,7 @@ import { DEFAULT_CAP, MIN_CAP } from '../domain/sounds';
 export { DEFAULT_CAP, MIN_CAP };
 /** The master slider when nothing was restored (of the capped range). */
 export const DEFAULT_MASTER = 0.6;
-/** The level every voice plays at (gain 0.49): the old default layer level, so a master/cap position is as loud as it always was (R3). */
+/** The level every voice plays at (gain 0.49). */
 export const VOICE_LEVEL = 0.7;
 
 /** A slider value in 0..1; anything else (NaN included) becomes the nearest end, or 0. */

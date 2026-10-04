@@ -1,21 +1,19 @@
 import type { Settings } from '../db/settings';
-import type { Baby, Id, TrackerEvent } from '../domain/types';
+import type { Baby, TrackerEvent } from '../domain/types';
 import type { Locale } from '../i18n';
 
 export const BACKUP_APP = 'qundaq';
 /**
- * The backup file format version (the parent spec's `schemaVersion`). Every new stored field needs a bump
- * here plus a step in migrate.ts, so an older backup still reads; tests/backup/validate.test.ts fails when
- * a stored field is missing from the validator.
+ * The backup file format version (the parent spec's `schemaVersion`). A file with a greater version is
+ * refused; tests/backup/validate.test.ts fails when a stored field is missing from the validator.
  */
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 1;
 export const BACKUP_MIME = 'application/json';
 
 /** The settings a backup carries; the keys in DEVICE_ONLY_SETTINGS stay behind. */
 export interface BackupSettings {
   locale: Locale;
   nightMode: boolean;
-  lastBabyIds: Id[];
 }
 
 /**

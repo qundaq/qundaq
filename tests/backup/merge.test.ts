@@ -48,18 +48,18 @@ function local(parts: Partial<LocalState> = {}): LocalState {
   return {
     babies: [baby('a', 'Ada')],
     events: [],
-    settings: { locale: 'tr', nightMode: false, lastBabyIds: ['a'] },
+    settings: { locale: 'tr', nightMode: false },
     ...parts,
   };
 }
 function backup(parts: Partial<ParsedBackup> = {}): ParsedBackup {
   return {
-    schemaVersion: 2,
+    schemaVersion: 1,
     exportedAt: T + HOUR,
     appVersion: '0.1.0',
     babies: [baby('a', 'Ada')],
     events: [],
-    settings: { locale: 'en', nightMode: true, lastBabyIds: ['a'] },
+    settings: { locale: 'en', nightMode: true },
     ...parts,
   };
 }
@@ -106,7 +106,7 @@ describe('compareRows', () => {
     expect(compareRows(two, one)).toBe('keep');
   });
 
-  it('canonical equality ignores fields outside the known schema, on either side (legacy or unknown keys)', () => {
+  it('canonical equality ignores fields outside the known schema, on either side', () => {
     const mine = { ...event('x'), legacyField: 'old-data' };
     const theirs = { ...event('x'), someFutureField: true };
     expect(canonicalRow(mine)).toBe(canonicalRow(theirs));
@@ -243,17 +243,17 @@ describe('planImport: merge', () => {
     expect(plan.stats.events).toMatchObject({ add: 1, update: 0, keep: 0, deleted: 0 });
   });
 
-  it("keeps the device's settings and keeps only live babies in lastBabyIds", () => {
+  it("keeps the device's settings", () => {
     const plan = planImport(
       local({
         babies: [baby('a'), baby('b')],
-        settings: { locale: 'tr', nightMode: false, lastBabyIds: ['a', 'b', 'gone'] },
+        settings: { locale: 'tr', nightMode: false },
       }),
       backup({ babies: [baby('b', 'b', { deletedAt: T + 1, updatedAt: T + 1 })] }),
       MERGE,
       NOW,
     );
-    expect(plan.settings).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: ['a'] });
+    expect(plan.settings).toEqual({ locale: 'tr', nightMode: false });
   });
 });
 
@@ -327,12 +327,12 @@ describe('the same baby added again', () => {
     const state = local({
       babies: [baby('new-ada', 'Ada', { createdAt: T + HOUR })],
       events: [event('since-wipe', { babyId: 'new-ada' })],
-      settings: { locale: 'tr', nightMode: false, lastBabyIds: ['new-ada'] },
+      settings: { locale: 'tr', nightMode: false },
     });
     const file = backup({
       babies: [baby('old-ada', 'Ada')],
       events: [event('before-wipe', { babyId: 'old-ada' })],
-      settings: { lastBabyIds: [] },
+      settings: {},
     });
     const pairs = findSameBabies(state.babies, file.babies);
     const plan = planImport(state, file, { ...MERGE, sameBabies: pairs }, NOW);
@@ -348,7 +348,6 @@ describe('the same baby added again', () => {
         event('since-wipe', { babyId: 'old-ada' }, { updatedAt: NOW }),
       ]),
     );
-    expect(plan.settings.lastBabyIds).toEqual(['old-ada']);
     expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]);
     // The file's own entry is an add; only the device's entry is a move, so nothing is counted twice.
     expect(plan.stats.events).toEqual({
@@ -428,7 +427,7 @@ describe('the same baby added again', () => {
     const state = local({
       babies: [baby('ada-1', 'Ada')],
       events: [event('mine', { babyId: 'ada-1' })],
-      settings: { locale: 'tr', nightMode: false, lastBabyIds: ['ada-1'] },
+      settings: { locale: 'tr', nightMode: false },
     });
     const file = backup({
       babies: [baby('ada-2', 'ADA', { createdAt: T + HOUR }), baby('c', 'Cal')],
@@ -485,23 +484,23 @@ describe('the same baby added again: cross-merge converges', () => {
     const phoneA = local({
       babies: [baby('ada-1', 'Ada')],
       events: [event('a-only', { babyId: 'ada-1' })],
-      settings: { locale: 'tr', nightMode: false, lastBabyIds: ['ada-1'] },
+      settings: { locale: 'tr', nightMode: false },
     });
     const phoneB = local({
       babies: [baby('ada-2', 'Ada')],
       events: [event('b-only', { babyId: 'ada-2' })],
-      settings: { locale: 'tr', nightMode: false, lastBabyIds: ['ada-2'] },
+      settings: { locale: 'tr', nightMode: false },
     });
     // Each phone's own export of itself, so the other can import it.
     const backupOfA = backup({
       babies: [baby('ada-1', 'Ada')],
       events: [event('a-only', { babyId: 'ada-1' })],
-      settings: { lastBabyIds: ['ada-1'] },
+      settings: {},
     });
     const backupOfB = backup({
       babies: [baby('ada-2', 'Ada')],
       events: [event('b-only', { babyId: 'ada-2' })],
-      settings: { lastBabyIds: ['ada-2'] },
+      settings: {},
     });
 
     const planA = planImport(
@@ -520,8 +519,6 @@ describe('the same baby added again: cross-merge converges', () => {
     // Tie-break by id ('ada-1' < 'ada-2'): both phones pick the same survivor without negotiating.
     expect(planA.moves).toEqual([{ name: 'Ada', events: 1 }]);
     expect(planB.moves).toEqual([{ name: 'Ada', events: 1 }]);
-    expect(planA.settings.lastBabyIds).toEqual(['ada-1']);
-    expect(planB.settings.lastBabyIds).toEqual(['ada-1']);
 
     // Applying each plan on top of its own device converges to one live "Ada" holding both entries.
     for (const state of [applyPlan(phoneA, planA), applyPlan(phoneB, planB)]) {
@@ -545,20 +542,19 @@ describe('the same baby: a later exchange after one phone paired them', () => {
   const phoneA = local({
     babies: [baby('a', 'Ada')],
     events: [event('a1', { babyId: 'a' })],
-    settings: { locale: 'tr', nightMode: false, lastBabyIds: ['a'] },
+    settings: { locale: 'tr', nightMode: false },
   });
   const phoneB = local({
     babies: [baby('b', 'Ada', { createdAt: T + HOUR, updatedAt: T + HOUR })],
     events: [
       event('b1', { babyId: 'b', startAt: T + HOUR }, { createdAt: T + HOUR, updatedAt: T + HOUR }),
     ],
-    settings: { locale: 'tr', nightMode: false, lastBabyIds: ['b'] },
+    settings: { locale: 'tr', nightMode: false },
   });
   const exportOf = (state: LocalState, exportedAt: number) =>
     backup({
       babies: [...state.babies],
       events: [...state.events],
-      settings: { lastBabyIds: state.settings.lastBabyIds },
       exportedAt,
     });
   const merge = (
@@ -599,7 +595,6 @@ describe('the same baby: a later exchange after one phone paired them', () => {
     expect(plan.moves).toEqual([{ name: 'Ada', events: 1 }]);
     expect(plan.hidden).toEqual([]);
     expect(plan.events).toEqual(expect.arrayContaining([{ ...b2, babyId: 'a', updatedAt: T3 }]));
-    expect(plan.settings.lastBabyIds).toEqual(['a']);
     // Nothing live is left on a deleted baby.
     expect(
       second.events.filter(
@@ -712,7 +707,7 @@ describe('planImport: replace', () => {
     const plan = planImport(local({ events: [event('mine')] }), file, REPLACE, NOW);
     expect(plan.babies).toEqual(file.babies);
     expect(plan.events).toEqual(file.events);
-    expect(plan.settings).toEqual({ locale: 'en', nightMode: true, lastBabyIds: ['a'] });
+    expect(plan.settings).toEqual({ locale: 'en', nightMode: true });
     expect(plan.stats).toMatchObject({
       localBabies: 1,
       localEvents: 1,
@@ -724,21 +719,8 @@ describe('planImport: replace', () => {
   });
 
   it("keeps the device's own value for a setting the file could not supply", () => {
-    const plan = planImport(local(), backup({ settings: { lastBabyIds: [] } }), REPLACE, NOW);
-    expect(plan.settings).toEqual({ locale: 'tr', nightMode: false, lastBabyIds: [] });
-  });
-
-  it('drops a dead id from lastBabyIds: missing from the file, or a tombstone in it', () => {
-    const plan = planImport(
-      local(),
-      backup({
-        babies: [baby('a'), baby('z', 'z', { deletedAt: T })],
-        settings: { lastBabyIds: ['a', 'z', 'missing'] },
-      }),
-      REPLACE,
-      NOW,
-    );
-    expect(plan.settings.lastBabyIds).toEqual(['a']);
+    const plan = planImport(local(), backup({ settings: {} }), REPLACE, NOW);
+    expect(plan.settings).toEqual({ locale: 'tr', nightMode: false });
   });
 
   it('counts the device entries that replace would lose: missing from the file, or changed after it', () => {
@@ -874,7 +856,7 @@ describe('planImport: running timers', () => {
     const state = local({
       babies: [baby('new-ada', 'Ada', { createdAt: T + HOUR })],
       events: [running('since-wipe', T + 2 * HOUR, 'new-ada')],
-      settings: { locale: 'tr', nightMode: false, lastBabyIds: [] },
+      settings: { locale: 'tr', nightMode: false },
     });
     const file = backup({
       babies: [baby('old-ada', 'Ada')],
@@ -900,7 +882,7 @@ describe('planImport: running timers', () => {
     const state = local({
       babies: [baby('ada-1', 'Ada')],
       events: [running('since', T + 2 * HOUR, 'ada-1')],
-      settings: { locale: 'tr', nightMode: false, lastBabyIds: [] },
+      settings: { locale: 'tr', nightMode: false },
     });
     const file = backup({
       babies: [baby('ada-2', 'Ada', { createdAt: T + HOUR })],

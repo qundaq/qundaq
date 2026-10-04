@@ -55,7 +55,7 @@ function snapshot(): Snapshot {
         extra: 7,
       },
     ],
-    settings: { locale: 'tr', nightMode: true, lastBabyIds: ['b1'] },
+    settings: { locale: 'tr', nightMode: true },
   };
 }
 
@@ -69,7 +69,7 @@ describe('buildBackup', () => {
     expect(backup.babies.map((baby) => baby.id)).toEqual(['b1', 'b2']);
     expect(backup.babies[1]).toMatchObject({ deletedAt: T + 5 });
     expect(backup.events).toHaveLength(3);
-    expect(backup.settings).toEqual({ locale: 'tr', nightMode: true, lastBabyIds: ['b1'] });
+    expect(backup.settings).toEqual({ locale: 'tr', nightMode: true });
   });
 
   it('drops the storage-only open marker and nothing else', () => {
@@ -138,9 +138,9 @@ describe('buildBackup', () => {
       theme: 'light',
     };
     expect(Object.keys(deviceOnly).sort()).toEqual([...DEVICE_ONLY_SETTINGS].sort());
-    const settings = { locale: 'en' as const, nightMode: false, lastBabyIds: [], ...deviceOnly };
+    const settings = { locale: 'en' as const, nightMode: false, ...deviceOnly };
     const backup = buildBackup({ ...snapshot(), settings }, { exportedAt: T, appVersion: '0.1.0' });
-    expect(backup.settings).toEqual({ locale: 'en', nightMode: false, lastBabyIds: [] });
+    expect(backup.settings).toEqual({ locale: 'en', nightMode: false });
     for (const key of DEVICE_ONLY_SETTINGS) expect(serializeBackup(backup)).not.toContain(key);
   });
 
@@ -179,7 +179,7 @@ describe('serializeBackup', () => {
     const backup = buildBackup(snapshot(), { exportedAt: T, appVersion: '0.1.0' });
     const text = serializeBackup(backup);
     expect(text).not.toContain('\n');
-    expect(text.startsWith('{"app":"qundaq","schemaVersion":2,')).toBe(true);
+    expect(text.startsWith('{"app":"qundaq","schemaVersion":1,')).toBe(true);
     expect(JSON.parse(text)).toEqual(backup);
   });
 });

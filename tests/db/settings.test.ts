@@ -21,7 +21,6 @@ describe('settings repository', () => {
       locale: 'en',
       nightMode: false,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 
@@ -31,13 +30,11 @@ describe('settings repository', () => {
       locale: 'tr',
       nightMode: true,
       theme: 'dark',
-      lastBabyIds: [],
     });
     expect(await loadSettings(db, 'en')).toEqual({
       locale: 'tr',
       nightMode: true,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 
@@ -49,7 +46,6 @@ describe('settings repository', () => {
       locale: 'en',
       nightMode: true,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 
@@ -62,7 +58,6 @@ describe('settings repository', () => {
       locale: 'en',
       nightMode: true,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 
@@ -73,7 +68,6 @@ describe('settings repository', () => {
       locale: 'en',
       nightMode: true,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 
@@ -84,7 +78,6 @@ describe('settings repository', () => {
       locale: 'tr',
       nightMode: false,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 
@@ -98,16 +91,7 @@ describe('settings repository', () => {
       nightMode: true,
       theme: 'dark',
       extra: 1,
-      lastBabyIds: [],
     });
-  });
-
-  it('keeps a valid lastBabyIds list and drops an invalid one', async () => {
-    const db = freshDb();
-    await saveSettings(db, { lastBabyIds: ['a', 'b'] }, 'tr');
-    expect((await loadSettings(db, 'tr')).lastBabyIds).toEqual(['a', 'b']);
-    await db.settings.put({ id: 'app', locale: 'tr', nightMode: false, lastBabyIds: 'a' } as never);
-    expect((await loadSettings(db, 'tr')).lastBabyIds).toEqual([]);
   });
 
   it('validates the theme and defaults it to dark', async () => {
@@ -116,7 +100,6 @@ describe('settings repository', () => {
       id: 'app',
       locale: 'tr',
       nightMode: false,
-      lastBabyIds: [],
       theme: 'purple',
     } as never);
     expect((await loadSettings(db, 'tr')).theme).toBe('dark');
@@ -133,7 +116,6 @@ describe('backup times in the settings row', () => {
       locale: 'tr',
       nightMode: false,
       theme: 'dark',
-      lastBabyIds: [],
       lastBackupAt: 1000,
       backupReminderSnoozedUntil: 2000,
     });
@@ -141,7 +123,6 @@ describe('backup times in the settings row', () => {
       id: 'app',
       locale: 'tr',
       nightMode: false,
-      lastBabyIds: [],
       lastBackupAt: 'yesterday',
       backupReminderSnoozedUntil: Number.NaN,
     } as never);
@@ -149,7 +130,6 @@ describe('backup times in the settings row', () => {
       locale: 'tr',
       nightMode: false,
       theme: 'dark',
-      lastBabyIds: [],
     });
   });
 });
@@ -162,7 +142,6 @@ describe('sound settings in the settings row', () => {
       locale: 'tr',
       nightMode: false,
       theme: 'dark',
-      lastBabyIds: [],
       volumeCap: 0.8,
     });
     for (const bad of [5, 0.1, Number.NaN, '0.5', null]) {
@@ -170,14 +149,12 @@ describe('sound settings in the settings row', () => {
         id: 'app',
         locale: 'tr',
         nightMode: false,
-        lastBabyIds: [],
         volumeCap: bad,
       } as never);
       expect(await loadSettings(db, 'tr'), String(bad)).toEqual({
         locale: 'tr',
         nightMode: false,
         theme: 'dark',
-        lastBabyIds: [],
       });
     }
   });
@@ -197,26 +174,23 @@ describe('sound settings in the settings row', () => {
         id: 'app',
         locale: 'tr',
         nightMode: false,
-        lastBabyIds: [],
         lastSound: bad,
       } as never);
       expect(await loadSettings(db, 'tr'), JSON.stringify(bad)).toEqual({
         locale: 'tr',
         nightMode: false,
         theme: 'dark',
-        lastBabyIds: [],
       });
     }
   });
 
-  it('loads a stored old multi-layer selection as nothing selected, keeping the master and the chip', async () => {
+  it('loads a stored selection of an unknown sound as nothing selected, keeping the master and the chip', async () => {
     const db = freshDb();
     await db.settings.put({
       id: 'app',
       locale: 'tr',
       nightMode: false,
-      lastBabyIds: [],
-      lastSound: { layers: [{ soundId: 'rain', level: 0.7 }], master: 0.4, timerMin: 15 },
+      lastSound: { soundId: 'pink', master: 0.4, timerMin: 15 },
     } as never);
     expect((await loadSettings(db, 'tr')).lastSound).toEqual({
       soundId: null,

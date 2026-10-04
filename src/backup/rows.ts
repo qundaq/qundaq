@@ -24,8 +24,8 @@ function sortKeys(value: unknown): unknown {
 
 /**
  * Every field a baby or an event row can legitimately have (the storage-only `open` marker is not
- * one of them, so it drops out on its own). A device row may also carry a legacy or otherwise unknown
- * field from an older version of the app; canonicalRow ignores those too, on both sides, so two rows that
+ * one of them, so it drops out on its own). A device row may also carry an unknown field; canonicalRow
+ * ignores those too, on both sides, so two rows that
  * agree on every field the current app understands compare equal regardless of what else either one is
  * carrying.
  */

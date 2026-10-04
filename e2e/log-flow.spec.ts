@@ -435,7 +435,7 @@ test('the height budget: two running timers still fit above the tab bar on an iP
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
-test('a card with two strips from legacy data (a running sleep and a running feed together) can stop either', async ({
+test('a card with two strips from imported data (a running sleep and a running feed together) can stop either', async ({
   page,
 }) => {
   // The one-timer-per-baby rule (spec §6.3) only guards new writes; data written before this plan (or
@@ -446,7 +446,7 @@ test('a card with two strips from legacy data (a running sleep and a running fee
   const babyId = await babyIdOf(page, 'Ada');
   const at = Date.now() - 10 * 60_000;
   await putRawEvent(page, {
-    id: 'legacy-sleep',
+    id: 'running-sleep',
     type: 'sleep',
     babyId,
     startAt: at,
@@ -455,7 +455,7 @@ test('a card with two strips from legacy data (a running sleep and a running fee
     open: 1,
   });
   await putRawEvent(page, {
-    id: 'legacy-feed',
+    id: 'running-feed',
     type: 'breastfeed',
     babyId,
     startAt: at,

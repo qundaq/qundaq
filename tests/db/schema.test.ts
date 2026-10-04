@@ -1,45 +1,20 @@
 import 'fake-indexeddb/auto';
-import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
-import { openDb } from '../../src/db/db';
-import { loadSettings } from '../../src/db/settings';
-
-const V2_STORES = {
-  settings: 'id',
-  babies: 'id, createdAt',
-  events: 'id, babyId, type, startAt, [babyId+startAt], updatedAt',
-};
+import { openDb, type EventRow } from '../../src/db/db';
 
 describe('schema', () => {
-  it('upgrades a version-1 database without losing settings', async () => {
-    const name = `test-${crypto.randomUUID()}`;
-    const v1 = new Dexie(name);
-    v1.version(1).stores({ settings: 'id' });
-    await v1.open();
-    await v1.table('settings').put({ id: 'app', locale: 'en', nightMode: true });
-    v1.close();
-
-    const db = openDb(name);
-    expect(await loadSettings(db, 'tr')).toEqual({
-      locale: 'en',
-      nightMode: true,
-      theme: 'dark',
-      lastBabyIds: [],
-    });
-    expect(await db.babies.count()).toBe(0);
-    expect(await db.events.count()).toBe(0);
-    expect(db.verno).toBe(4);
+  it('opens at its single version with the settings, babies and events tables', async () => {
+    const db = openDb(`test-${crypto.randomUUID()}`);
+    await db.open();
+    expect(db.verno).toBe(1);
+    expect(db.tables.map((table) => table.name).sort()).toEqual(['babies', 'events', 'settings']);
     await db.delete();
   });
 
-  it('v3 flags the running, non-deleted events of a version-2 database', async () => {
-    const name = `test-${crypto.randomUUID()}`;
-    const v2 = new Dexie(name);
-    v2.version(1).stores({ settings: 'id' });
-    v2.version(2).stores(V2_STORES);
-    await v2.open();
+  it('keeps only running, non-deleted events in the sparse open index', async () => {
+    const db = openDb(`test-${crypto.randomUUID()}`);
     const base = { babyId: 'a', createdAt: 1, updatedAt: 1 };
-    await v2.table('events').bulkAdd([
+    const rows: EventRow[] = [
       { ...base, id: 'running-sleep', type: 'sleep', startAt: 100 },
       {
         ...base,
@@ -51,10 +26,8 @@ describe('schema', () => {
       { ...base, id: 'finished', type: 'sleep', startAt: 100, endAt: 200 },
       { ...base, id: 'deleted-running', type: 'sleep', startAt: 100, deletedAt: 150 },
       { ...base, id: 'diaper', type: 'diaper', startAt: 100, wet: true, dirty: false },
-    ]);
-    v2.close();
-
-    const db = openDb(name);
+    ];
+    await db.events.bulkAdd(rows);
     expect((await db.events.where('open').equals(1).primaryKeys()).sort()).toEqual([
       'running-feed',
       'running-sleep',
@@ -62,49 +35,6 @@ describe('schema', () => {
     expect(await db.events.get('finished')).not.toHaveProperty('open');
     expect(await db.events.get('deleted-running')).not.toHaveProperty('open');
     expect(await db.events.count()).toBe(5);
-    expect(db.verno).toBe(4);
-    await db.delete();
-  });
-
-  it('v4 keeps the events, their running index and the settings of a version-3 database', async () => {
-    const name = `test-${crypto.randomUUID()}`;
-    const v3 = new Dexie(name);
-    v3.version(1).stores({ settings: 'id' });
-    v3.version(2).stores(V2_STORES);
-    v3.version(3).stores({ ...V2_STORES, events: `${V2_STORES.events}, open` });
-    await v3.open();
-    await v3.table('settings').put({ id: 'app', locale: 'tr', nightMode: true });
-    await v3.table('events').bulkAdd([
-      {
-        id: 'running',
-        type: 'sleep',
-        babyId: 'a',
-        startAt: 100,
-        createdAt: 1,
-        updatedAt: 1,
-        open: 1,
-      },
-      {
-        id: 'done',
-        type: 'sleep',
-        babyId: 'a',
-        startAt: 100,
-        endAt: 200,
-        createdAt: 1,
-        updatedAt: 1,
-      },
-    ]);
-    v3.close();
-
-    const db = openDb(name);
-    expect(db.verno).toBe(4);
-    expect(await db.events.where('open').equals(1).primaryKeys()).toEqual(['running']);
-    expect(await loadSettings(db, 'en')).toEqual({
-      locale: 'tr',
-      nightMode: true,
-      theme: 'dark',
-      lastBabyIds: [],
-    });
     await db.delete();
   });
 });

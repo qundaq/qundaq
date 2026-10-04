@@ -1,14 +1,11 @@
 import { readLastSound, readVolumeCap, type LastSound } from '../domain/sounds';
 import { readThemeChoice, type ThemeChoice } from '../domain/theme';
-import type { Id } from '../domain/types';
 import { LOCALES, type Locale } from '../i18n';
 import type { TrackerDb } from './db';
 
 export interface Settings {
   locale: Locale;
   nightMode: boolean;
-  /** Unused since the log sheet opens from a baby's card (Plan 8); kept so older backups and phones still validate. */
-  lastBabyIds: Id[];
   /** Settings → Theme. Never exported: a display preference of this device. */
   theme: ThemeChoice;
   /** When this device last saved a JSON backup (a completed share, or a download the user confirmed). Never exported. */
@@ -30,7 +27,7 @@ const OPTIONAL_TIMES = ['lastBackupAt', 'backupReminderSnoozedUntil'] as const;
 const SETTINGS_ID = 'app';
 
 export function defaultSettings(locale: Locale): Settings {
-  return { locale, nightMode: false, theme: 'dark', lastBabyIds: [] };
+  return { locale, nightMode: false, theme: 'dark' };
 }
 
 export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promise<Settings> {
@@ -38,8 +35,7 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
   const defaults = defaultSettings(fallbackLocale);
   if (!row) return defaults;
 
-  // Spread stored fields over the defaults so fields added by later versions survive a save,
-  // then validate the fields this version knows about.
+  // Spread stored fields over the defaults, then validate each of them below.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to drop the property
   const { id: _id, ...rest } = row;
   const stored: Record<string, unknown> = rest;
@@ -48,12 +44,8 @@ export async function loadSettings(db: TrackerDb, fallbackLocale: Locale): Promi
     : defaults.locale;
   const nightMode = typeof stored.nightMode === 'boolean' ? stored.nightMode : defaults.nightMode;
   const theme = readThemeChoice(stored.theme);
-  const lastBabyIds =
-    Array.isArray(stored.lastBabyIds) && stored.lastBabyIds.every((id) => typeof id === 'string')
-      ? stored.lastBabyIds
-      : defaults.lastBabyIds;
 
-  const settings: Settings = { ...defaults, ...stored, locale, nightMode, theme, lastBabyIds };
+  const settings: Settings = { ...defaults, ...stored, locale, nightMode, theme };
   for (const key of OPTIONAL_TIMES) {
     const value = stored[key];
     if (!(typeof value === 'number' && Number.isFinite(value))) delete settings[key];

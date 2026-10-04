@@ -105,7 +105,7 @@ describe('export, then read back', () => {
     await deleteBaby(db, cal.id, T + 1);
     await saveSettings(
       db,
-      { locale: 'en', nightMode: true, lastBabyIds: [ada.id], lastBackupAt: T, volumeCap: 0.9 },
+      { locale: 'en', nightMode: true, lastBackupAt: T, volumeCap: 0.9 },
       'tr',
     );
 
@@ -121,7 +121,6 @@ describe('export, then read back', () => {
     expect(result.backup.settings).toEqual({
       locale: 'en',
       nightMode: true,
-      lastBabyIds: [ada.id],
     });
   });
 
@@ -210,7 +209,7 @@ describe('applyImport', () => {
       ...extra,
     }) as TrackerEvent;
   const file = (parts: Partial<ParsedBackup> = {}): ParsedBackup => ({
-    schemaVersion: 2,
+    schemaVersion: 1,
     exportedAt: T + 1,
     appVersion: '0.1.0',
     babies: [baby('b-file', 'Ben')],
@@ -218,7 +217,7 @@ describe('applyImport', () => {
       sleep('file-running', 'b-file', T),
       sleep('file-done', 'b-file', T - DAY, { endAt: T - DAY + 1 }),
     ],
-    settings: { locale: 'en', nightMode: true, lastBabyIds: ['b-file'] },
+    settings: { locale: 'en', nightMode: true },
     ...parts,
   });
 
@@ -230,7 +229,7 @@ describe('applyImport', () => {
   async function seedDevice(db: TrackerDb) {
     const ada = await addBaby(db, { name: 'Ada', color: '#ff9ecb' }, T);
     await logEvents(db, [{ type: 'sleep', babyId: ada.id, startAt: T }], T);
-    await saveSettings(db, { lastBabyIds: [ada.id], lastBackupAt: T - DAY }, 'tr');
+    await saveSettings(db, { lastBackupAt: T - DAY }, 'tr');
     return ada;
   }
 
@@ -255,7 +254,6 @@ describe('applyImport', () => {
       locale: 'tr',
       nightMode: false,
       theme: 'dark',
-      lastBabyIds: [ada.id],
       lastBackupAt: T - DAY,
     });
   });
@@ -282,7 +280,6 @@ describe('applyImport', () => {
       locale: 'en',
       nightMode: true,
       theme: 'dark',
-      lastBabyIds: ['b-file'],
       lastBackupAt: T - DAY,
     });
   });
@@ -316,14 +313,12 @@ describe('applyImport', () => {
       [{ type: 'diaper', babyId: again.id, startAt: T + 2 * HOUR, wet: true, dirty: false }],
       T + 2 * HOUR,
     );
-    await saveSettings(db, { lastBabyIds: [again.id] }, 'tr');
     const backup = file({
       babies: [baby('old-ada', 'Ada')],
       events: [
         sleep('file-running', 'old-ada', T),
         sleep('file-done', 'old-ada', T - DAY, { endAt: T - DAY + 1 }),
       ],
-      settings: { lastBabyIds: [] },
     });
     const now = T + 3 * HOUR;
     const local = await readSnapshot(db, 'tr');
@@ -352,7 +347,6 @@ describe('applyImport', () => {
       ['sleep', 'old-ada', T + 2 * HOUR],
     ]);
     expect(await db.events.get('file-running')).toMatchObject({ endAt: T + 2 * HOUR });
-    expect(await loadSettings(db, 'tr')).toMatchObject({ lastBabyIds: ['old-ada'] });
   });
 
   it('keeps lastBackupAt and the reminder snooze in either mode', async () => {

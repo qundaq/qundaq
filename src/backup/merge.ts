@@ -167,21 +167,6 @@ function recount(
   if (to !== undefined) table.stats[to] += 1;
 }
 
-/** Remapped through `rename`, kept only for babies that are live afterwards, without duplicates. */
-function liveIds(
-  ids: readonly Id[],
-  babies: ReadonlyMap<Id, Baby>,
-  rename: ReadonlyMap<Id, Id> = new Map(),
-): Id[] {
-  const out: Id[] = [];
-  for (const id of ids) {
-    const next = rename.get(id) ?? id;
-    const baby = babies.get(next);
-    if (baby && isLive(baby) && !out.includes(next)) out.push(next);
-  }
-  return out;
-}
-
 /** The stale timers and the repaired rows, for either mode. `device`: the device's rows as the merge sees them. */
 function repair(
   merged: Map<Id, TrackerEvent>,
@@ -240,7 +225,6 @@ function replacePlan(
     settings: {
       locale: backup.settings.locale ?? local.settings.locale,
       nightMode: backup.settings.nightMode ?? local.settings.nightMode,
-      lastBabyIds: liveIds(backup.settings.lastBabyIds, babies),
     },
     stats: {
       babies: count(backup.babies),
@@ -409,7 +393,6 @@ function mergePlan(
     settings: {
       locale: local.settings.locale,
       nightMode: local.settings.nightMode,
-      lastBabyIds: liveIds(local.settings.lastBabyIds, babies.result, rename),
     },
     stats: {
       babies: babies.stats,

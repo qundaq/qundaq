@@ -48,8 +48,8 @@ export interface LastSound {
 
 /**
  * The stored last selection, checked field by field: a master in 0..1 and a timer chip, or it is dropped
- * whole (undefined). A sound id this version does not know — including the old multi-layer shape, which
- * has none — reads back as nothing selected, so the master and the chip survive an upgrade.
+ * whole (undefined). A sound id this version does not know (or none) reads back as nothing selected, so
+ * the master and the chip are kept.
  */
 export function readLastSound(value: unknown): LastSound | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;

@@ -56,7 +56,6 @@ export function buildBackup(snapshot: Snapshot, meta: BackupMeta): BackupFile {
     settings: {
       locale: snapshot.settings.locale,
       nightMode: snapshot.settings.nightMode,
-      lastBabyIds: [...snapshot.settings.lastBabyIds],
     },
   };
 }

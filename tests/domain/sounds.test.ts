@@ -53,12 +53,6 @@ describe('readLastSound', () => {
     expect(readLastSound({ ...stored, soundId: null })).toEqual({ ...stored, soundId: null });
   });
 
-  it('reads an old multi-layer value as "nothing selected", keeping the master and the chip (R9)', () => {
-    expect(
-      readLastSound({ layers: [{ soundId: 'white', level: 0.7 }], master: 0.4, timerMin: null }),
-    ).toEqual({ soundId: null, master: 0.4, timerMin: null });
-  });
-
   it('reads a removed sound as nothing selected', () => {
     expect(readLastSound({ ...stored, soundId: 'pink' })).toEqual({ ...stored, soundId: null });
   });

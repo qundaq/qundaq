@@ -50,7 +50,7 @@ function file(parts: Record<string, unknown> = {}): string {
     appVersion: '0.1.0',
     babies: [baby()],
     events: [],
-    settings: { locale: 'tr', nightMode: false, lastBabyIds: ['b1'] },
+    settings: { locale: 'tr', nightMode: false },
     ...parts,
   });
 }
@@ -285,7 +285,7 @@ describe('whitelisting', () => {
 
   // Every stored field must be read back. Adding a field to Baby, an event type or Settings makes these
   // samples fail to compile (they are Required<…>); once completed, the test fails until the validator
-  // knows the field. Then bump BACKUP_VERSION and add a migration step.
+  // knows the field.
   it('keeps every field of every stored type', () => {
     const b: Required<Baby> = {
       id: 'b1',
@@ -378,7 +378,6 @@ describe('whitelisting', () => {
       locale: 'en',
       nightMode: true,
       theme: 'light',
-      lastBabyIds: ['b1'],
       lastBackupAt: T,
       backupReminderSnoozedUntil: T,
       volumeCap: 0.7,
@@ -494,16 +493,11 @@ describe('warnings', () => {
   });
 
   it('falls back field by field when the settings are unreadable', () => {
-    const result = ok(
-      parseBackup(
-        file({ settings: { locale: 'de', nightMode: true, lastBabyIds: ['b1', 'gone', 7] } }),
-        NOW,
-      ),
-    );
-    expect(result.backup.settings).toEqual({ nightMode: true, lastBabyIds: ['b1'] });
+    const result = ok(parseBackup(file({ settings: { locale: 'de', nightMode: true } }), NOW));
+    expect(result.backup.settings).toEqual({ nightMode: true });
     expect(result.warnings.settings).toBe(true);
     const missing = ok(parseBackup(file({ settings: null }), NOW));
-    expect(missing.backup.settings).toEqual({ lastBabyIds: [] });
+    expect(missing.backup.settings).toEqual({});
     expect(missing.warnings.settings).toBe(true);
   });
 

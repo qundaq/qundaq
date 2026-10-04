@@ -35,7 +35,6 @@ import {
   type Row,
 } from './fields';
 import { BACKUP_APP, BACKUP_VERSION } from './format';
-import { migrateBackup, type RawBackup } from './migrate';
 
 /** Files above this are refused before reading: parsing much more could get the app killed on an older iPhone. */
 export const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
@@ -91,7 +90,6 @@ export interface BackupWarnings {
 export interface ParsedSettings {
   locale?: Locale;
   nightMode?: boolean;
-  lastBabyIds: Id[];
 }
 
 export interface ParsedBackup {
@@ -351,27 +349,18 @@ function readRows<T extends { id: Id }>(
   return rows;
 }
 
-function readSettings(
-  raw: unknown,
-  babyIds: ReadonlySet<Id>,
-): { settings: ParsedSettings; ok: boolean } {
-  if (!isRecord(raw)) return { settings: { lastBabyIds: [] }, ok: false };
+function readSettings(raw: unknown): { settings: ParsedSettings; ok: boolean } {
+  if (!isRecord(raw)) return { settings: {}, ok: false };
   const locale = own(raw, 'locale');
   const nightMode = own(raw, 'nightMode');
-  const lastBabyIds = own(raw, 'lastBabyIds');
   const localeOk = LOCALES.includes(locale as Locale);
   const nightOk = typeof nightMode === 'boolean';
-  const idsOk = Array.isArray(lastBabyIds);
   return {
     settings: {
       ...(localeOk ? { locale: locale as Locale } : {}),
       ...(nightOk ? { nightMode } : {}),
-      // Ids of babies that are not in the file are dropped silently: they only preselect chips.
-      lastBabyIds: idsOk
-        ? lastBabyIds.filter((id): id is Id => typeof id === 'string' && babyIds.has(id))
-        : [],
     },
-    ok: localeOk && nightOk && idsOk,
+    ok: localeOk && nightOk,
   };
 }
 
@@ -407,12 +396,7 @@ export function parseBackup(text: string, now: number): ParseResult {
     return { ok: false, error: 'not-backup' };
   if (version > BACKUP_VERSION) return { ok: false, error: 'newer-version' };
 
-  let raw: RawBackup;
-  try {
-    raw = migrateBackup(parsed, version);
-  } catch {
-    return { ok: false, error: 'not-backup' };
-  }
+  const raw: Record<string, unknown> = parsed;
   const exportedAt = own(raw, 'exportedAt');
   const babies = own(raw, 'babies');
   const events = own(raw, 'events');
@@ -441,7 +425,7 @@ export function parseBackup(text: string, now: number): ParseResult {
   const badBirthDate = goodBabies.filter((baby) => withoutBirthDate.has(baby)).length;
   const babyIds = new Set(goodBabies.map((baby) => baby.id));
   const goodEvents = readRows('events', events, (row) => readEvent(row, babyIds), skipped);
-  const { settings, ok: settingsOk } = readSettings(own(raw, 'settings'), babyIds);
+  const { settings, ok: settingsOk } = readSettings(own(raw, 'settings'));
 
   return {
     ok: true,
