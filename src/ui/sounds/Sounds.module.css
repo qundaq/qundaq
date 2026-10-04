@@ -36,10 +36,19 @@
   color: var(--live);
   font-weight: 600;
 }
+/* Paused (or selected, waiting to be resumed): the live accent's border without the fill, so the tile
+   that a tap resumes is still found at a glance. */
+.tilePaused {
+  border: 1px solid color-mix(in srgb, var(--live) 40%, transparent);
+  color: var(--live);
+}
+/* Only the name is dimmed: the note keeps full --muted on --surface-2, so it stays readable (≥ 4.5:1). */
 .tileUnavailable {
-  opacity: 0.55;
   color: var(--muted);
   cursor: default;
+}
+.tileUnavailable .tileName {
+  opacity: 0.55;
 }
 .tileNote {
   font-size: 13px;

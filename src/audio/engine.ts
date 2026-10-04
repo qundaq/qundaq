@@ -98,7 +98,6 @@ interface Graph {
 }
 
 interface Voice {
-  soundId: SoundId;
   source: BufferSourceLike;
   node: GainLike;
   gain: Param;
@@ -131,6 +130,8 @@ class Engine {
   private graph: Graph | null = null;
   private cap = DEFAULT_CAP;
   private voice: Voice | null = null;
+  /** Voices a switch left fading out: forgotten as the current voice, but still sounding until they end. */
+  private readonly fading = new Set<Voice>();
   private readonly loops = new Map<SoundId, CachedLoop>();
   private suspendTimer: number | null = null;
   private wallTimer: number | null = null;
@@ -358,9 +359,9 @@ class Engine {
     }
 
     if (!this.voice) {
-      // A voice that starts at full gain with no fade of its own needs the transport at 0 first: a pause's or
-      // a stop's own fade (0.3 s) may still be mid-ramp here. Without a voice to start (a pause then play by
-      // a double tap), the transport turns back from where it is: a cut would be a click.
+      // A voice that starts at full gain with no fade of its own needs the transport at 0 first: a pause's own
+      // fade (0.3 s) may still be mid-ramp here. Without a voice to start (a pause then play by a double tap),
+      // the transport turns back from where it is: a cut would be a click.
       if (this.loops.has(current)) {
         const t = graph.context.currentTime;
         graph.transport.hold(t);
@@ -397,7 +398,7 @@ class Engine {
   stop(): void {
     this.clearTimer();
     this.cancelSuspend();
-    this.dropVoice(0);
+    this.dropVoice(0); // also cuts a voice still fading out from a switch
 
     const wasStopped = this.state.status === 'stopped';
     this.update({ status: 'stopped', endsAt: null, loading: null });
@@ -508,20 +509,30 @@ class Engine {
     }
 
     source.start();
-    this.voice = { soundId, source, node, gain };
+    this.voice = { source, node, gain };
   }
 
-  /** The current voice leaves: faded out over `fade` seconds, or at once. */
+  /**
+   * The current voice leaves: faded out over `fade` seconds (a switch), or at once. At once also cuts any
+   * voice an earlier switch left fading out: it is only used while the transport is silent or about to be,
+   * and a fading voice frozen by a suspended context would otherwise play its tail under the next fade-in.
+   */
   private dropVoice(fade: number): void {
-    const voice = this.voice;
     const graph = this.graph;
-    if (!voice || !graph) return;
+    if (!graph) return;
+    if (fade <= 0) this.cutFading();
+    const voice = this.voice;
+    if (!voice) return;
     this.voice = null;
     const t = graph.context.currentTime;
     if (fade > 0) {
       voice.gain.hold(t);
       voice.gain.ramp(0, t + fade);
-      voice.source.onended = () => voice.node.disconnect();
+      this.fading.add(voice);
+      voice.source.onended = () => {
+        this.fading.delete(voice);
+        voice.node.disconnect();
+      };
       voice.source.stop(t + fade + 0.05);
     } else {
       voice.source.stop();
@@ -530,6 +541,17 @@ class Engine {
     }
 
     this.markIdle();
+  }
+
+  /** Stops and disconnects, at once, every voice still fading out from a switch. */
+  private cutFading(): void {
+    for (const voice of this.fading) {
+      voice.source.onended = null;
+      voice.source.stop();
+      voice.source.disconnect();
+      voice.node.disconnect();
+    }
+    this.fading.clear();
   }
 
   /** Brings the transport up to full over START_FADE_SECONDS from wherever it is (0 after a stop, a pause or an interruption). */
@@ -551,7 +573,9 @@ class Engine {
     this.update({ loading: soundId });
     this.deps.load(graph.context, soundId).then(
       (buffer) => {
-        this.loops.set(soundId, { buffer, idleSince: null });
+        // A second load of the same sound (selected again while the first was in flight) must not replace a
+        // buffer a playing voice already uses.
+        if (!this.loops.has(soundId)) this.loops.set(soundId, { buffer, idleSince: null });
         if (this.state.loading === soundId) this.update({ loading: null });
         const status = this.state.status;
         if (this.state.current === soundId && (status === 'playing' || status === 'interrupted'))

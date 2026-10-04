@@ -125,7 +125,8 @@ test('makes no network requests after the first load', async ({ page, context, b
   await openTab(page, t('tab.summary'));
   await expect(page.getByRole('heading', { name: t('summary.week') })).toBeVisible();
 
-  // Sounds are generated on the device, and the source list comes from the cache.
+  // A sound plays offline (the audio stub answers its file in the page, never the network), and the
+  // source list comes from the cache.
   await openTab(page, t('tab.sounds'));
   await tile(page, t('sound.white')).click();
   await expect(soundStatus(page)).toHaveText(

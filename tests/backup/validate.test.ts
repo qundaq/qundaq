@@ -196,7 +196,7 @@ describe('rows that fail their checks are skipped and reported', () => {
     ]);
   });
 
-  it('keeps a mix whose sound this version does not know: it comes from a newer version and is skipped only when played', () => {
+  it('keeps a mix whose sound this version does not know: a saved mix round-trips whatever its sound ids', () => {
     const newer = mix('m1', {
       layers: [
         { soundId: 'future-sound', gain: 0.5 },

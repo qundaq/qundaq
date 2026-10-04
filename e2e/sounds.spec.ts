@@ -43,6 +43,11 @@ test('one sound plays at a time; the tile is the play control; the now-playing b
   await expect(soundStatus(page)).toHaveText(
     `${t('sounds.status.paused')} · ${t('sounds.remaining', { m: 60 })}`,
   );
+  // The paused tile stays marked: it is the one a tap resumes.
+  await expect(tile(page, t('sound.train'))).toHaveAttribute('data-state', 'paused');
+  await expect(tile(page, t('sound.train'))).toHaveAccessibleName(
+    t('sounds.tile', { name: t('sound.train'), action: t('sounds.resume') }),
+  );
   await tile(page, t('sound.train')).click();
   await expect(soundStatus(page)).toHaveText(playing(t('sound.train')));
 
@@ -75,7 +80,7 @@ test('one sound plays at a time; the tile is the play control; the now-playing b
   await expect(bar).toHaveCount(0);
 });
 
-test('the 15-minute timer counts down and stops the sound; the tile restarts it with the same chip; the selection survives a reload', async ({
+test('the 15-minute timer counts down and stops the sound; the tile restarts it with the same chip; the master and the chip survive a reload and nothing plays by itself', async ({
   page,
 }) => {
   await page.clock.install({ time: NIGHT });
@@ -111,10 +116,11 @@ test('the 15-minute timer counts down and stops the sound; the tile restarts it 
   await page.clock.fastForward(60 * 60_000);
   await expect(soundStatus(page)).toHaveText(white);
 
-  // The selection, the master and the chip come back after a reload; nothing plays by itself.
+  // The master and the chip come back after a reload; nothing plays by itself (a stopped tile reads off).
   await page.reload();
   await openTab(page, t('tab.sounds'));
   await expect(soundStatus(page)).toHaveText(t('sounds.status.stopped'));
+  await expect(tile(page, t('sound.white'))).toHaveAttribute('data-state', 'off');
   await expect(tile(page, t('sound.white'))).toHaveAccessibleName(endsWithPlay);
   await expect(page.getByLabel(t('sounds.master'), { exact: true })).toHaveValue('0.3');
   await expect(

@@ -24,10 +24,24 @@ describe('SoundTile', () => {
     );
   });
 
-  it('an unavailable tile says so, is aria-disabled and carries no play action in its name', () => {
+  it('an unavailable tile says so, in its name too, and is aria-disabled', () => {
     const html = render(<SoundTile name="Train" state="unavailable" onSelect={() => {}} />);
     expect(html).toContain('aria-disabled="true"');
     expect(html).toContain('This sound isn’t available right now.');
-    expect(html).toContain('aria-label="Train"');
+    expect(html).toContain('aria-label="Train: This sound isn’t available right now."');
+    // Only the name is dimmed: the note is not inside it, so it keeps full contrast.
+    expect(html).toContain('<span class="tileName">Train</span><span class="tileNote">');
+  });
+
+  it.each([
+    ['off', 'tile'],
+    ['loading', 'tile tileOn'],
+    ['playing', 'tile tileOn'],
+    ['paused', 'tile tilePaused'],
+    ['unavailable', 'tile tileUnavailable'],
+  ] as const)('a %s tile has the classes "%s", with no stray spaces', (state, classes) => {
+    const html = render(<SoundTile name="Waves" state={state} onSelect={() => {}} />);
+    expect(html).toContain(`class="${classes}"`);
+    expect(html).toContain(`data-state="${state}"`);
   });
 });

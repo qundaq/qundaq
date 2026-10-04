@@ -41,7 +41,7 @@ describe('mixes repository', () => {
     expect(await listMixes(db)).toHaveLength(2);
   });
 
-  it('refuses a blank or too long name, and layers that are not 1–6 known unique sounds', async () => {
+  it('refuses a blank or too long name, and layers that are not 1–6 unique sound ids of 1–40 characters with gains in 0..1', async () => {
     const db = freshDb();
     await expect(saveMix(db, '  ', LAYERS)).rejects.toEqual(new ValidationError(['name-required']));
     await expect(saveMix(db, 'x'.repeat(41), LAYERS)).rejects.toEqual(

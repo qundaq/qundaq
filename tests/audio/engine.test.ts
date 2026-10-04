@@ -385,6 +385,25 @@ describe('loading and unavailable sounds (R8)', () => {
     expect(context.sources).toHaveLength(1);
     expect(deps.load).toHaveBeenCalledTimes(1);
   });
+
+  it('a second load of the same sound does not replace the buffer a playing voice already uses', async () => {
+    const { engine, deps, context } = setup();
+    const waiting = deferLoads(deps);
+    engine.select('white');
+    engine.select('train');
+    engine.select('white'); // the first white load is still in flight: a second one starts
+    expect(waiting.map((entry) => entry.id)).toEqual(['white', 'train', 'white']);
+    const first = context.createBuffer(1, 100, 48_000);
+    waiting[0]!.resolve(first);
+    await flush();
+    expect(context.sources[0]?.buffer).toBe(first);
+    waiting[2]!.resolve(context.createBuffer(1, 100, 48_000));
+    await flush();
+    engine.stop();
+    engine.play(); // from the cache
+    expect(context.sources).toHaveLength(2);
+    expect(context.sources[1]?.buffer).toBe(first);
+  });
 });
 
 describe('the master slider and the cap (R1)', () => {
@@ -812,17 +831,69 @@ describe('pause, resume and interruptions (R14)', () => {
     expect(deps.pendingTimers).toEqual([EVICT_AFTER_MS + 1000]);
   });
 
-  it('stop during a switch cuts the new voice and silences the fading one through the transport', async () => {
+  it('stop during a switch cuts both voices at once, the one still fading out included', async () => {
     const { engine, context } = await playing('white');
     engine.select('train');
     await flush();
-    engine.stop();
     const [oldSource, newSource] = context.sources;
+    const oldNode = context.voiceGain(oldSource!)!;
+    engine.stop();
     expect(newSource?.stops).toEqual([undefined]);
     expect(newSource?.disconnected).toBe(true);
-    // The old voice was handed its own stop when the switch began; the transport is cut to 0 for both.
-    expect(oldSource?.stops).toEqual([context.currentTime + SWITCH_FADE_SECONDS + 0.05]);
+    // Its scheduled end would freeze in the suspended context and play under the next fade-in: cut too.
+    expect(oldSource?.stops.at(-1)).toBeUndefined();
+    expect(oldSource?.stops).toHaveLength(2);
+    expect(oldSource?.disconnected).toBe(true);
+    expect(oldNode.disconnected).toBe(true);
     expect(context.graph.transport.gain.valueAt(context.currentTime)).toBe(0);
+  });
+
+  it('a switch whose file fails to load stops with the old voice cut too, not left fading (R8)', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { engine, deps, context } = await playing('white');
+    const waiting = deferLoads(deps);
+    engine.select('train');
+    const [oldSource] = context.sources;
+    const oldNode = context.voiceGain(oldSource!)!;
+    expect(oldSource?.stops).toEqual([context.currentTime + SWITCH_FADE_SECONDS + 0.05]);
+    waiting[0]!.reject(new Error('HTTP 404'));
+    await flush();
+    expect(engine.getSnapshot()).toMatchObject({ status: 'stopped', unavailable: ['train'] });
+    expect(oldSource?.stops.at(-1)).toBeUndefined();
+    expect(oldSource?.disconnected).toBe(true);
+    expect(oldNode.disconnected).toBe(true);
+    error.mockRestore();
+  });
+
+  it('a pause inside a switch, then another tile: no voice from before is left to sound under the new one', async () => {
+    const { engine, deps, context } = await playing('white');
+    engine.select('train');
+    await flush();
+    deps.advance(500); // inside the 2 s switch: white is still fading out
+    engine.pause();
+    deps.advance(1000); // suspended: white's own ramp and scheduled end are frozen
+    engine.select('waves');
+    await flush();
+    expect(engine.getSnapshot()).toMatchObject({ status: 'playing', current: 'waves' });
+    expect(context.sources).toHaveLength(3);
+    const [white, train, waves] = context.sources;
+    for (const source of [white, train]) {
+      expect(source?.stops.at(-1)).toBeUndefined();
+      expect(source?.disconnected).toBe(true);
+    }
+    expect(waves?.stops).toEqual([]);
+  });
+
+  it('a fading voice that already ended is not stopped again', async () => {
+    const { engine, context } = await playing('white');
+    engine.select('train');
+    await flush();
+    const [oldSource] = context.sources;
+    const oldNode = context.voiceGain(oldSource!)!;
+    oldSource!.onended?.(new Event('ended')); // the browser reached its scheduled stop
+    expect(oldNode.disconnected).toBe(true);
+    engine.stop();
+    expect(oldSource?.stops).toHaveLength(1);
   });
 
   it('the session says active with an expired timer while interrupted: stopped wins, no resume', async () => {
