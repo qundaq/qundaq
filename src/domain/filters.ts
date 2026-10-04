@@ -11,14 +11,15 @@ export function visibleEvents<T extends { babyId: Id | null }>(
   return events.filter((event) => event.babyId === null || liveBabyIds.has(event.babyId));
 }
 
-export type TypeFilter = 'all' | 'feeding' | 'sleep' | 'diaper' | 'other';
+export type TypeFilter = 'all' | 'feeding' | 'sleep' | 'diaper' | 'pump' | 'other';
 export const TYPE_FILTERS: readonly TypeFilter[] = ['all', 'feeding', 'sleep', 'diaper', 'other'];
 
 const TYPES: Record<Exclude<TypeFilter, 'all'>, readonly EventType[]> = {
   feeding: ['breastfeed', 'bottle'],
   sleep: ['sleep'],
   diaper: ['diaper'],
-  other: ['pump', 'growth', 'temperature', 'medication', 'healthNote'],
+  pump: ['pump'],
+  other: ['growth', 'temperature', 'medication', 'healthNote'],
 };
 
 /** `babyId` null means every baby, pumps included; a baby id leaves pumps out (they belong to no baby). */

@@ -332,6 +332,7 @@ export const tr = {
   'log.type.feeding': 'Beslenme',
   'log.type.sleep': 'Uyku',
   'log.type.diaper': 'Bez',
+  'log.type.pump': 'Sağım',
   'log.type.other': 'Diğer',
   'log.empty': 'Bu gün için kayıt yok.',
   'log.emptyFiltered': 'Filtreye uyan kayıt yok.',

@@ -26,10 +26,18 @@ describe('matchesFilters', () => {
     expect(matchesFilters({ babyId: 'a', type: 'sleep' }, null, 'feeding')).toBe(false);
     expect(matchesFilters({ babyId: 'a', type: 'sleep' }, null, 'sleep')).toBe(true);
     expect(matchesFilters({ babyId: 'a', type: 'diaper' }, null, 'diaper')).toBe(true);
-    for (const type of ['pump', 'growth', 'temperature', 'medication', 'healthNote'] as const) {
+    for (const type of ['growth', 'temperature', 'medication', 'healthNote'] as const) {
       expect(matchesFilters({ babyId: 'a', type }, null, 'other')).toBe(true);
     }
     expect(matchesFilters({ babyId: 'a', type: 'diaper' }, null, 'other')).toBe(false);
+  });
+
+  it('pump has its own filter and is not in "other"', () => {
+    expect(matchesFilters({ babyId: null, type: 'pump' }, null, 'pump')).toBe(true);
+    expect(matchesFilters({ babyId: null, type: 'pump' }, null, 'other')).toBe(false);
+    expect(matchesFilters({ babyId: null, type: 'pump' }, 'a', 'pump')).toBe(false);
+    expect(matchesFilters({ babyId: 'a', type: 'growth' }, null, 'pump')).toBe(false);
+    expect(matchesFilters({ babyId: 'a', type: 'sleep' }, null, 'pump')).toBe(false);
   });
 });
 

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addDays } from '../../src/domain/days';
-import { dailyTotals, growthSeries, pumpTotalMl, weekTotals } from '../../src/domain/summary';
+import {
+  dailyTotals,
+  growthSeries,
+  pumpReport,
+  pumpTotalMl,
+  weekTotals,
+} from '../../src/domain/summary';
 import { HOUR, MINUTE } from '../../src/domain/time';
 import type { EventDraft, TrackerEvent } from '../../src/domain/types';
 
@@ -186,6 +192,88 @@ describe('pumpTotalMl', () => {
       ),
     ];
     expect(pumpTotalMl(events, at(9, 25), at(9, 26))).toBe(150);
+  });
+});
+
+describe('pumpReport', () => {
+  const pump = (startAt: number, sides: { mlLeft?: number; mlRight?: number }, extra = {}) =>
+    ev({ type: 'pump', babyId: null, startAt, ...sides }, extra);
+
+  it('is all zeros for no events, with a zero-filled day per calendar day', () => {
+    expect(pumpReport([], at(9, 23), at(9, 26))).toEqual({
+      sessions: 0,
+      totalMl: 0,
+      leftMl: 0,
+      rightMl: 0,
+      perDay: [
+        { day: at(9, 23), ml: 0 },
+        { day: at(9, 24), ml: 0 },
+        { day: at(9, 25), ml: 0 },
+      ],
+      averagePerDay: 0,
+    });
+  });
+
+  it('reports one session', () => {
+    const report = pumpReport(
+      [pump(at(9, 25, 7), { mlLeft: 60, mlRight: 50 })],
+      at(9, 25),
+      at(9, 26),
+    );
+    expect(report).toEqual({
+      sessions: 1,
+      totalMl: 110,
+      leftMl: 60,
+      rightMl: 50,
+      perDay: [{ day: at(9, 25), ml: 110 }],
+      averagePerDay: 110,
+    });
+  });
+
+  it('counts a missing or non-finite side as 0', () => {
+    const report = pumpReport(
+      [
+        pump(at(9, 25, 7), { mlRight: 40 }),
+        pump(at(9, 25, 9), { mlLeft: Number.NaN, mlRight: 10 }),
+      ],
+      at(9, 25),
+      at(9, 26),
+    );
+    expect(report).toMatchObject({ sessions: 2, totalMl: 50, leftMl: 0, rightMl: 50 });
+  });
+
+  it('puts each pump on its day and excludes deleted, non-pump, baby and out-of-range events', () => {
+    const events = [
+      pump(at(9, 23, 8), { mlLeft: 30 }),
+      pump(at(9, 25, 8), { mlLeft: 20, mlRight: 20 }),
+      pump(at(9, 26), { mlLeft: 99 }),
+      pump(at(9, 22, 23), { mlLeft: 99 }),
+      pump(at(9, 24, 8), { mlLeft: 99 }, { deletedAt: at(9, 24, 9) }),
+      ev({ type: 'bottle', babyId: 'a', startAt: at(9, 24, 10), ml: 120, contents: 'formula' }),
+    ];
+    const report = pumpReport(events, at(9, 23), at(9, 26));
+    expect(report.sessions).toBe(2);
+    expect(report.totalMl).toBe(70);
+    expect(report.perDay).toEqual([
+      { day: at(9, 23), ml: 30 },
+      { day: at(9, 24), ml: 0 },
+      { day: at(9, 25), ml: 40 },
+    ]);
+  });
+
+  it('rounds the daily average', () => {
+    const report = pumpReport([pump(at(9, 24, 8), { mlLeft: 100 })], at(9, 23), at(9, 26));
+    expect(report.averagePerDay).toBe(33);
+    const two = pumpReport([pump(at(9, 24, 8), { mlLeft: 101 })], at(9, 24), at(9, 26));
+    expect(two.averagePerDay).toBe(51);
+  });
+
+  it('has the right number of days across a DST change', () => {
+    expect(pumpReport([], at(10, 24), at(10, 27)).perDay.map((d) => d.day)).toEqual([
+      at(10, 24),
+      at(10, 25),
+      at(10, 26),
+    ]);
   });
 });
 

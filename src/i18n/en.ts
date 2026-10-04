@@ -334,6 +334,7 @@ export const en: Record<MessageKey, string> = {
   'log.type.feeding': 'Feeding',
   'log.type.sleep': 'Sleep',
   'log.type.diaper': 'Diaper',
+  'log.type.pump': 'Pump',
   'log.type.other': 'Other',
   'log.empty': 'No entries for this day.',
   'log.emptyFiltered': 'No entries match the filters.',

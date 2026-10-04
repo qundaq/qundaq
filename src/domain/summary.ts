@@ -1,5 +1,5 @@
 import { compareIds } from './ids';
-import { addDays, overlapMs } from './days';
+import { addDays, dayOffset, overlapMs } from './days';
 import type { Id, Side, TrackerEvent } from './types';
 
 export interface DailyTotals {
@@ -96,7 +96,25 @@ export function dailyTotals(
 
 /** Millilitres pumped (both sides) by pumps that started in [from, to). Pumps belong to no baby. */
 export function pumpTotalMl(events: readonly TrackerEvent[], from: number, to: number): number {
-  let total = 0;
+  return pumpReport(events, from, to).totalMl;
+}
+
+export interface PumpReport {
+  sessions: number;
+  totalMl: number;
+  leftMl: number;
+  rightMl: number;
+  perDay: { day: number; ml: number }[]; // one entry per calendar day of [from, to), oldest first
+  averagePerDay: number;
+}
+
+/** Live baby-less pumps that started in [from, to): sessions, ml per side, ml per day and the daily average. */
+export function pumpReport(events: readonly TrackerEvent[], from: number, to: number): PumpReport {
+  const perDay: { day: number; ml: number }[] = [];
+  for (let day = from; day < to; day = addDays(day, 1)) perDay.push({ day, ml: 0 });
+  let sessions = 0;
+  let leftMl = 0;
+  let rightMl = 0;
   for (const event of events) {
     if (
       event.type !== 'pump' ||
@@ -105,9 +123,23 @@ export function pumpTotalMl(events: readonly TrackerEvent[], from: number, to: n
       event.startAt >= to
     )
       continue;
-    total += finite(event.mlLeft) + finite(event.mlRight);
+    const left = finite(event.mlLeft);
+    const right = finite(event.mlRight);
+    sessions += 1;
+    leftMl += left;
+    rightMl += right;
+    const entry = perDay[dayOffset(from, event.startAt)];
+    if (entry) entry.ml += left + right;
   }
-  return total;
+  const totalMl = leftMl + rightMl;
+  return {
+    sessions,
+    totalMl,
+    leftMl,
+    rightMl,
+    perDay,
+    averagePerDay: perDay.length === 0 ? 0 : Math.round(totalMl / perDay.length),
+  };
 }
 
 /** Seven entries: the day starting at `lastDayStart` first, followed by the six days before it. */
