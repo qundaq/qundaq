@@ -2,11 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { isAboveDefaultCap, percent } from '../../audio/volume';
 import { DEFAULT_CAP, MIN_CAP } from '../../domain/sounds';
 import { useT } from '../app/I18nProvider';
-import { Card } from '../shared/Card';
+import { Card, CardTitle } from '../shared/Card';
 import styles from './Settings.module.css';
 
 /** A slider move is saved this long after it stops: every move would otherwise be a write. */
 const SAVE_AFTER_MS = 300;
+
+/**
+ * The value a slider move needs saved, or null when it is already the last one handed to the save. Compared
+ * with the last value handed over, not the stored cap: a move back to the stored value while a higher one is
+ * still being saved is a change, and must be saved too.
+ */
+export function capToSave(value: number, lastSent: number): number | null {
+  return value === lastSent ? null : value;
+}
 
 /**
  * Settings → volume safety cap (settings.cap.title): the upper bound of the Sounds tab's volume (a slider value in 0.2–1).
@@ -18,39 +27,45 @@ export function CapCard({ cap, onChange }: { cap: number; onChange: (cap: number
   const [value, setValue] = useState(cap);
   const onChangeRef = useRef(onChange);
   const pending = useRef<number | null>(null);
+  const lastSent = useRef(cap);
   useEffect(() => {
     onChangeRef.current = onChange;
   });
 
   // A saved move coming back must not undo a newer one still waiting to be saved (a lower cap chosen meanwhile).
   useEffect(() => {
-    if (pending.current === null) setValue(cap);
+    if (pending.current === null) {
+      lastSent.current = cap;
+      setValue(cap);
+    }
   }, [cap]);
 
   useEffect(() => {
-    if (value === cap) {
-      pending.current = null;
-      return;
-    }
-    pending.current = value;
+    const toSave = capToSave(value, lastSent.current);
+    pending.current = toSave;
+    if (toSave === null) return;
     const handle = window.setTimeout(() => {
       pending.current = null;
-      onChangeRef.current(value);
+      lastSent.current = toSave;
+      onChangeRef.current(toSave);
     }, SAVE_AFTER_MS);
     return () => window.clearTimeout(handle);
-  }, [value, cap]);
+  }, [value]);
 
   // A move still pending when the card goes away (a tab switch right after it) is saved then.
   useEffect(
     () => () => {
-      if (pending.current !== null) onChangeRef.current(pending.current);
+      if (pending.current !== null) {
+        lastSent.current = pending.current;
+        onChangeRef.current(pending.current);
+      }
     },
     [],
   );
 
   return (
     <Card>
-      <h2>{t('settings.cap.title')}</h2>
+      <CardTitle>{t('settings.cap.title')}</CardTitle>
       <p className={styles.hint}>{t('settings.cap.hint')}</p>
       <input
         type="range"

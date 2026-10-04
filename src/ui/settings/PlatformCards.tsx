@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { applyUpdate, checkForUpdate, hasWaitingUpdate } from '../../platform/sw-client';
 import { useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
-import { Card } from '../shared/Card';
+import { Card, CardTitle } from '../shared/Card';
 import { Icon } from '../shared/Icon';
 import { useOfflineStatus, usePersistenceState } from '../shared/usePlatformStatus';
 import styles from './Settings.module.css';
@@ -12,7 +12,7 @@ export function OfflineCard() {
   const status = useOfflineStatus();
   return (
     <Card>
-      <h2>{t('settings.offline.title')}</h2>
+      <CardTitle>{t('settings.offline.title')}</CardTitle>
       {status?.state === 'ready' && (
         <p className={styles.status}>
           <Icon name="check" size={16} className={styles.ok} />
@@ -53,7 +53,7 @@ export function StorageCard() {
   if (state === null) return null;
   return (
     <Card>
-      <h2>{t('settings.storage.title')}</h2>
+      <CardTitle>{t('settings.storage.title')}</CardTitle>
       {state === 'persisted' ? (
         <p className={styles.status}>
           <Icon name="check" size={16} className={styles.ok} />
@@ -88,7 +88,7 @@ export function UpdateCard() {
 
   return (
     <Card>
-      <h2>{t('settings.update.title')}</h2>
+      <CardTitle>{t('settings.update.title')}</CardTitle>
       <p className={styles.hint}>{t('settings.update.hint')}</p>
       {state === 'ready' ? (
         <>

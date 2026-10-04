@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 import styles from './Card.module.css';
 
@@ -32,4 +32,9 @@ export function Card({
       {children}
     </Tag>
   );
+}
+
+/** A card's title inside a labelled section: an h3 under the section's h2, looking like a card's h2. */
+export function CardTitle({ children }: { children: ReactNode }) {
+  return <h3 className={styles.title}>{children}</h3>;
 }

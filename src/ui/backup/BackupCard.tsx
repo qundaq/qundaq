@@ -1,6 +1,6 @@
 import { useLocale, useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
-import { Card } from '../shared/Card';
+import { Card, CardTitle } from '../shared/Card';
 import { useNow } from '../shared/useNow';
 import styles from './Backup.module.css';
 import { RestoreButton } from './RestoreButton';
@@ -25,7 +25,7 @@ export function BackupCard({
   const now = useNow();
   return (
     <Card>
-      <h2>{t('backup.title')}</h2>
+      <CardTitle>{t('backup.title')}</CardTitle>
       <p>{lastBackupText(t, locale, lastBackupAt, now)}</p>
       <p className={styles.hint}>{t('backup.hint')}</p>
       <div className={styles.actions}>

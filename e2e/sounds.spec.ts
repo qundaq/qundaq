@@ -229,6 +229,26 @@ test('a lower cap chosen while the previous move is still being saved is kept', 
   await expect(cap).toHaveValue('0.3');
 });
 
+test('a move back to the stored cap while a higher one is being saved is saved too', async ({
+  page,
+}) => {
+  await page.clock.install({ time: NIGHT });
+  await page.clock.pauseAt(new Date(NIGHT.getTime() + 60_000));
+  await page.goto('./');
+  await openTab(page, t('tab.settings'));
+  const cap = page.getByLabel(t('settings.cap.title'));
+  await expect(cap).toHaveValue('0.5');
+  await holdSettingsWrites(page);
+  await cap.fill('0.8');
+  await page.clock.runFor(300);
+  // The finger returns to the stored value before the first save lands.
+  await cap.fill('0.5');
+  await page.clock.runFor(300);
+  await releaseSettingsWrites(page);
+  await expect.poll(() => storedCapAndMaster(page)).toMatchObject({ volumeCap: 0.5 });
+  await expect(cap).toHaveValue('0.5');
+});
+
 test('the real AudioContext builds the graph and plays without errors', async ({
   page,
   browserName,

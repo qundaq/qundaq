@@ -8,6 +8,10 @@
 .card h2 {
   margin-bottom: var(--space-2);
 }
+.title {
+  font: var(--font-heading);
+  margin-bottom: var(--space-2);
+}
 .accent {
   border-left-width: 4px;
 }

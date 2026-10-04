@@ -7,7 +7,7 @@ import { BabiesCard } from '../babies/BabiesCard';
 import { BackupCard, type BackupActions } from '../backup/BackupCard';
 import { useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
-import { Card } from '../shared/Card';
+import { Card, CardTitle } from '../shared/Card';
 import { Chip } from '../shared/Chip';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { CapCard } from './CapCard';
@@ -36,7 +36,7 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
 
       <SettingsSection label={t('settings.section.appearance')}>
         <Card>
-          <h2>{t('settings.language')}</h2>
+          <CardTitle>{t('settings.language')}</CardTitle>
           <div className={styles.segmented} role="group" aria-label={t('settings.language')}>
             {LOCALES.map((locale) => (
               <Chip
@@ -51,7 +51,7 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
         </Card>
 
         <Card>
-          <h2>{t('settings.theme.title')}</h2>
+          <CardTitle>{t('settings.theme.title')}</CardTitle>
           <div className={styles.segmented} role="group" aria-label={t('settings.theme.title')}>
             {THEME_CHOICES.map((choice) => (
               <Chip
@@ -97,12 +97,12 @@ export function SettingsScreen({ settings, onChange, backup }: Props) {
 
       <SettingsSection label={t('settings.section.about')}>
         <Card>
-          <h2>{t('settings.privacy.title')}</h2>
+          <CardTitle>{t('settings.privacy.title')}</CardTitle>
           <p>{t('settings.privacy.body')}</p>
         </Card>
 
         <Card>
-          <h2>{t('settings.about.title')}</h2>
+          <CardTitle>{t('settings.about.title')}</CardTitle>
           <p className={styles.hint} data-testid="app-version">
             {t('settings.about.version', { version: __APP_VERSION__, commit: __APP_COMMIT__ })}
           </p>

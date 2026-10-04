@@ -5,7 +5,7 @@ import type { Baby } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
-import { Card } from '../shared/Card';
+import { Card, CardTitle } from '../shared/Card';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useSheetSession } from '../shared/Sheet';
 import { BabyFormDialog } from './BabyFormDialog';
@@ -21,7 +21,7 @@ export function BabiesCard() {
 
   return (
     <Card>
-      <h2>{t('babies.title')}</h2>
+      <CardTitle>{t('babies.title')}</CardTitle>
       <ul className={styles.list}>
         {babies.map((baby) => (
           <li key={baby.id}>
