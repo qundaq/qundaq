@@ -136,7 +136,10 @@ test('makes no network requests after the first load', async ({ page, context, b
   await openTab(page, t('tab.settings'));
   await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
   const sources = page.getByRole('dialog', { name: t('settings.sources') });
-  await expect(sources).toContainText('| file |');
+  await expect(sources).toContainText('| white.m4a |');
+  await expect(sources).toContainText('| waves.m4a |');
+  await expect(sources).toContainText('| windchime.m4a |');
+  await expect(sources).toContainText('| airplane.m4a |');
   await sources.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   await expect(sources).toBeHidden();
 
@@ -171,5 +174,39 @@ test('makes no network requests after the first load', async ({ page, context, b
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
 
+  expect(leaked).toEqual([]);
+});
+
+test('serves the real recordings from the cache with the network off', async ({
+  page,
+  context,
+  browserName,
+}) => {
+  test.skip(browserName === 'webkit', WEBKIT_SKIP);
+  await installAndWaitForOfflineReady(page);
+  await page.reload(); // now controlled by the service worker
+
+  const leaked: string[] = [];
+  await context.route('**/*', (route) => {
+    const url = route.request().url();
+    if (!isBrowserSwUpdateCheck(url)) leaked.push(url);
+    return route.abort();
+  });
+  await context.setOffline(true);
+
+  const sizes = await page.evaluate(async () => {
+    const out: { id: string; ok: boolean; bytes: number }[] = [];
+    for (const id of ['white', 'waves', 'windchime', 'airplane']) {
+      const response = await fetch(`sounds/${id}.m4a`);
+      out.push({ id, ok: response.ok, bytes: (await response.arrayBuffer()).byteLength });
+    }
+    return out;
+  });
+  expect(sizes.map((s) => s.id)).toEqual(['white', 'waves', 'windchime', 'airplane']);
+  for (const s of sizes) {
+    expect(s.ok, `${s.id} answered`).toBe(true);
+    expect(s.bytes, `${s.id} size`).toBeGreaterThan(10_000);
+    expect(s.bytes, `${s.id} size`).toBeLessThanOrEqual(1_000_000);
+  }
   expect(leaked).toEqual([]);
 });

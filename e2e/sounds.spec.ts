@@ -199,7 +199,10 @@ test('raising the cap warns and never makes the sound louder; the sound sources 
 
   await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
   const sheet = page.getByRole('dialog', { name: t('settings.sources') });
-  await expect(sheet).toContainText('| file |');
+  await expect(sheet).toContainText('| white.m4a |');
+  await expect(sheet).toContainText('| waves.m4a |');
+  await expect(sheet).toContainText('| windchime.m4a |');
+  await expect(sheet).toContainText('| airplane.m4a |');
   await sheet.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   await expect(sheet).toBeHidden();
 });

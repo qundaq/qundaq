@@ -43,7 +43,10 @@ test('using the app triggers no CSP violations', async ({ page }) => {
   await nav.getByRole('button', { name: t('tab.settings'), exact: true }).click();
   await page.getByRole('button', { name: t('settings.sources'), exact: true }).click();
   const sources = page.getByRole('dialog', { name: t('settings.sources') });
-  await expect(sources).toContainText('| file |');
+  await expect(sources).toContainText('| white.m4a |');
+  await expect(sources).toContainText('| waves.m4a |');
+  await expect(sources).toContainText('| windchime.m4a |');
+  await expect(sources).toContainText('| airplane.m4a |');
   await sources.getByRole('button', { name: t('common.dismiss'), exact: true }).click();
   const nightSwitch = page.getByRole('switch');
   await nightSwitch.click();

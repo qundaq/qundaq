@@ -8,3 +8,5 @@ public/icons/
 public/sounds/*.wav
 public/sounds/*.mp3
 public/sounds/*.m4a
+# The tests and e2e match exact "| id.m4a |" rows, which prettier would pad.
+public/sounds/SOURCES.md
