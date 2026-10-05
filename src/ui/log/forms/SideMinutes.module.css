@@ -34,6 +34,14 @@
 .empty {
   border: 1px dashed var(--border);
 }
+/* A measured value (from the timer, not typed): an outlined box, the number muted and regular until changed. */
+.measured {
+  border: 1px solid var(--border);
+}
+.measured .input {
+  color: var(--muted);
+  font-weight: 400;
+}
 /* A chosen value: a filled box, the number in full strength. */
 .filled {
   border: 1px solid transparent;

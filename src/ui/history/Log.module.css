@@ -232,6 +232,10 @@ li:first-child > .dayHeading {
 .pumpReport p + p {
   margin-top: var(--space-1);
 }
+/* One part of a report line ("Sol 71 dk"): a narrow screen wraps between the parts, never inside one. */
+.keep {
+  white-space: nowrap;
+}
 .muted {
   color: var(--muted);
 }

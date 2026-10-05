@@ -146,6 +146,43 @@ describe('stopPump', () => {
     expect(change!.after).not.toHaveProperty('mlLeft');
   });
 
+  it('corrected minutes move the start so the time range matches them; measured ones keep the timer range', async () => {
+    const db = freshDb();
+    // Ran 4 minutes on the left, corrected to 6: the row reads 6 minutes, ending now.
+    const [left] = await startPump(db, 'L', NOW - 4 * MINUTE);
+    const corrected = await stopPump(db, left!.after.id, NOW, { minLeft: 6, minRight: null });
+    expect(corrected!.after).toMatchObject({ startAt: NOW - 6 * MINUTE, endAt: NOW, minLeft: 6 });
+    // One after the other: a right side added to a left timer adds up.
+    const [one] = await startPump(db, 'L', NOW + MINUTE - 10 * MINUTE);
+    const added = await stopPump(db, one!.after.id, NOW + MINUTE, { minLeft: 10, minRight: 5 });
+    expect(added!.after).toMatchObject({ startAt: NOW + MINUTE - 15 * MINUTE });
+    // Both at once: the longer side sets the start, never the sum.
+    const [both] = await startPump(db, 'B', NOW + 2 * MINUTE - 20 * MINUTE);
+    const together = await stopPump(db, both!.after.id, NOW + 2 * MINUTE, {
+      minLeft: 25,
+      minRight: 20,
+    });
+    expect(together!.after).toMatchObject({ startAt: NOW + 2 * MINUTE - 25 * MINUTE });
+    // A chosen earlier end with corrected minutes: back from that end.
+    const [late] = await startPump(db, 'R', NOW + 3 * MINUTE - 30 * MINUTE);
+    const ended = await stopPump(
+      db,
+      late!.after.id,
+      NOW + 3 * MINUTE,
+      { minLeft: null, minRight: 12 },
+      NOW + 3 * MINUTE - 5 * MINUTE,
+    );
+    expect(ended!.after).toMatchObject({
+      startAt: NOW + 3 * MINUTE - 17 * MINUTE,
+      endAt: NOW + 3 * MINUTE - 5 * MINUTE,
+    });
+    // Measured minutes (no minutes in the patch, only ml): the timer's own range stays.
+    const start = NOW + 4 * MINUTE - 4 * MINUTE - 20 * SECOND;
+    const [measured] = await startPump(db, 'L', start);
+    const kept = await stopPump(db, measured!.after.id, NOW + 4 * MINUTE, { mlLeft: 40 });
+    expect(kept!.after).toMatchObject({ startAt: start, endAt: NOW + 4 * MINUTE, minLeft: 4 });
+  });
+
   it('refuses corrections that break the pumping rules and changes nothing', async () => {
     const db = freshDb();
     const [started] = await startPump(db, 'L', NOW - 15 * MINUTE);

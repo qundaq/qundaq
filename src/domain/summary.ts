@@ -109,8 +109,9 @@ export interface PumpReport {
 }
 
 /**
- * Live baby-less pumps that started in [from, to): sessions, ml and minutes per side and per day, and the
- * daily averages. A running pump counts as a session with nothing recorded yet.
+ * Live, finished baby-less pumps that started in [from, to): sessions, ml and minutes per side and per day,
+ * and the daily averages. A running pump is left out until it stops: it has no minutes or ml yet, and a
+ * session of nothing would only lower the averages.
  */
 export function pumpReport(events: readonly TrackerEvent[], from: number, to: number): PumpReport {
   const perDay: { day: number; ml: number }[] = [];
@@ -128,6 +129,7 @@ export function pumpReport(events: readonly TrackerEvent[], from: number, to: nu
     if (
       event.type !== 'pump' ||
       event.deletedAt !== undefined ||
+      event.endAt === undefined ||
       event.startAt < from ||
       event.startAt >= to
     )

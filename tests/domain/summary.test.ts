@@ -252,16 +252,31 @@ describe('pumpReport', () => {
     });
   });
 
-  it('counts missing or non-finite minutes as 0, and a running pump as a session with nothing yet', () => {
+  it('counts missing or non-finite minutes as 0', () => {
     const report = pumpReport(
-      [
-        pump(at(9, 25, 7), { minLeft: Number.NaN, minRight: 10 }),
-        ev({ type: 'pump', babyId: null, startAt: at(9, 25, 9), side: 'B' }),
-      ],
+      [pump(at(9, 25, 7), { minLeft: Number.NaN, minRight: 10 })],
       at(9, 25),
       at(9, 26),
     );
-    expect(report).toMatchObject({ sessions: 2, totalMin: 10, leftMin: 0, rightMin: 10 });
+    expect(report).toMatchObject({ sessions: 1, totalMin: 10, leftMin: 0, rightMin: 10 });
+  });
+
+  it('leaves a running pump out until it is finished: no session, no minutes, no day', () => {
+    const running = ev({ type: 'pump', babyId: null, startAt: at(9, 25, 9), side: 'B' });
+    expect(pumpReport([running], at(9, 25), at(9, 26))).toMatchObject({
+      sessions: 0,
+      totalMin: 0,
+      totalMl: 0,
+      perDayMin: [{ day: at(9, 25), min: 0 }],
+    });
+    const report = pumpReport([pump(at(9, 25, 7), { minLeft: 12 }), running], at(9, 25), at(9, 26));
+    expect(report).toMatchObject({ sessions: 1, totalMin: 12, averageMinPerDay: 12 });
+    // Once finished it counts like any other pump.
+    const finished = { ...running, endAt: at(9, 25, 9) + 20 * MINUTE, minLeft: 20, minRight: 20 };
+    expect(pumpReport([finished], at(9, 25), at(9, 26))).toMatchObject({
+      sessions: 1,
+      totalMin: 40,
+    });
   });
 
   it('counts a missing or non-finite side as 0', () => {

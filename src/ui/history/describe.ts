@@ -212,6 +212,33 @@ export function sideTotals(
     .join(' · ');
 }
 
+/**
+ * What a finished pump recorded: "Left 12 min · Right 10 min · 90 ml" — minutes first, then the ml as one
+ * total; a pump with ml only keeps them per side ("Left 60 ml · Right 40 ml"). The log row and the toast of a
+ * stopped pump both read it, so they always agree.
+ */
+export function pumpDetail(
+  t: TranslateFn,
+  locale: Locale,
+  event: Extract<TrackerEvent, { type: 'pump' }>,
+): string {
+  const ml = (value: number) => t('unit.ml', { ml: formatNumber(locale, value) });
+  const minutes: string[] = [];
+  if (event.minLeft !== undefined)
+    minutes.push(`${t('side.L.button')} ${t('time.minutes', { m: event.minLeft })}`);
+  if (event.minRight !== undefined)
+    minutes.push(`${t('side.R.button')} ${t('time.minutes', { m: event.minRight })}`);
+  const amounts = [event.mlLeft, event.mlRight].filter((value) => value !== undefined);
+  if (minutes.length > 0)
+    return amounts.length === 0
+      ? minutes.join(' · ')
+      : [...minutes, ml(amounts.reduce((sum, value) => sum + value, 0))].join(' · ');
+  const parts: string[] = [];
+  if (event.mlLeft !== undefined) parts.push(`${t('side.L.button')} ${ml(event.mlLeft)}`);
+  if (event.mlRight !== undefined) parts.push(`${t('side.R.button')} ${ml(event.mlRight)}`);
+  return parts.join(' · ');
+}
+
 /** One line of detail per entry for the log (history) list. Tolerates rows with missing optional fields. */
 export function describeEvent(
   t: TranslateFn,
@@ -244,27 +271,12 @@ export function describeEvent(
       if (event.consistency) parts.push(t(`consistency.${event.consistency}`));
       return parts.join(' · ');
     }
-    case 'pump': {
+    case 'pump':
       if (event.endAt === undefined)
         return event.side === undefined
           ? t('log.ongoing')
           : `${t(`side.${event.side}.button`)} · ${t('log.ongoing')}`;
-      const minutes: string[] = [];
-      if (event.minLeft !== undefined)
-        minutes.push(`${t('side.L.button')} ${t('time.minutes', { m: event.minLeft })}`);
-      if (event.minRight !== undefined)
-        minutes.push(`${t('side.R.button')} ${t('time.minutes', { m: event.minRight })}`);
-      const amounts = [event.mlLeft, event.mlRight].filter((value) => value !== undefined);
-      // Minutes first, then the ml as one total; a pump with ml only keeps them per side.
-      if (minutes.length > 0)
-        return amounts.length === 0
-          ? minutes.join(' · ')
-          : [...minutes, ml(amounts.reduce((sum, value) => sum + value, 0))].join(' · ');
-      const parts: string[] = [];
-      if (event.mlLeft !== undefined) parts.push(`${t('side.L.button')} ${ml(event.mlLeft)}`);
-      if (event.mlRight !== undefined) parts.push(`${t('side.R.button')} ${ml(event.mlRight)}`);
-      return parts.join(' · ');
-    }
+      return pumpDetail(t, locale, event);
     case 'growth': {
       const parts: string[] = [];
       if (event.weightG !== undefined)

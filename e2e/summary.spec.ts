@@ -45,7 +45,7 @@ async function expectTile(page: Page, key: SummaryTileKey, value: string, diff?:
 
 async function expectZeroTiles(page: Page) {
   await expectTile(page, 'sleep', formatDuration(t, 0));
-  await expectTile(page, 'feeds', '0');
+  await expectTile(page, 'breastfeed', '0');
   await expectTile(page, 'bottle', t('unit.ml', { ml: 0 }));
   await expectTile(page, 'diapers', '0');
 }
@@ -93,8 +93,25 @@ function stepDay(page: Page, direction: 'previous' | 'next') {
     .click();
 }
 
-function plus(kind: 'count' | 'ml' | 'duration', value: string | number) {
+function plus(kind: 'count' | 'ml' | 'duration' | 'minutes', value: string | number) {
   return t(`summary.diff.${kind}`, { sign: '+', value });
+}
+
+const minutesOf = (m: number) => t('time.minutes', { m });
+/** The breastfeeding tile's value in its full form: "2 (30 min)". */
+const breastfeeds = (n: number, m: number) => `${n} ${t('summary.tile.breastfeed.minutes', { m })}`;
+/** The bottle tile's value: "1 (90 ml)". */
+const bottles = (n: number, ml: number) => `${n} ${t('summary.tile.bottle.ml', { ml })}`;
+
+/** Logs a finished breastfeed from the first card's sheet ("log afterwards"). */
+async function logBreastfeedAfterwards(
+  page: Page,
+  entry: { left?: number; right?: number; end: string },
+) {
+  await cardAction(page, 'breastfeed').click();
+  const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+  await logFeedAfterwards(sheet, entry);
+  await expect(sheet).toBeHidden();
 }
 
 test("the tiles show the day's totals and their diffs; the day before reads zero; coming back restores them", async ({
@@ -115,14 +132,9 @@ test("the tiles show the day's totals and their diffs; the day before reads zero
       formatDuration(t, 40 * MINUTE),
       plus('duration', formatDuration(t, 40 * MINUTE)),
     );
-    // A bottle counts as a feed too.
-    await expectTile(page, 'feeds', '1', plus('count', 1));
-    await expectTile(
-      page,
-      'bottle',
-      t('unit.ml', { ml: 90 }),
-      plus('ml', t('unit.ml', { ml: 90 })),
-    );
+    // A bottle is no breastfeed: that tile stays empty, and the bottle tile counts it with its ml.
+    await expectTile(page, 'breastfeed', '0');
+    await expectTile(page, 'bottle', bottles(1, 90), plus('ml', t('unit.ml', { ml: 90 })));
     await expectTile(page, 'diapers', '1', plus('count', 1));
   };
   await today();
@@ -155,9 +167,50 @@ test('a tile diff reads up, down or the same against the day before', async ({ p
     // a true minus sign (U+2212), as the tile writes it
     t('summary.diff.duration', { sign: '−', value: formatDuration(t, HOUR) }),
   );
-  await expectTile(page, 'feeds', '1', t('summary.diff.same.count', { value: '1' }));
-  await expectTile(page, 'bottle', t('unit.ml', { ml: 90 }), plus('ml', t('unit.ml', { ml: 30 })));
+  // Bottles only on both days: no breastfeed, no minutes to compare.
+  await expectTile(page, 'breastfeed', '0');
+  await expectTile(page, 'bottle', bottles(1, 90), plus('ml', t('unit.ml', { ml: 30 })));
   await expectTile(page, 'diapers', '2', plus('count', 1));
+});
+
+test('the breastfeeding tile counts breastfeeds only, with their minutes, and compares the minutes', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  // The 23rd: one feed of 20 minutes. The 24th: nothing. Today: Left 10 + Right 5, then Left 15, and a bottle.
+  await logBreastfeedAfterwards(page, { left: 20, end: '2026-09-23T12:00' });
+  await logBreastfeedAfterwards(page, { left: 10, right: 5, end: '2026-09-25T06:00' });
+  await logBreastfeedAfterwards(page, { left: 15, end: '2026-09-25T08:30' });
+  await logBottle(page, 90);
+
+  await openTab(page, t('tab.summary'));
+  await expectTile(page, 'breastfeed', breastfeeds(2, 30), plus('minutes', minutesOf(30)));
+  await expectTile(page, 'bottle', bottles(1, 90), plus('ml', t('unit.ml', { ml: 90 })));
+  // A day without breastfeeding after one with: the full form, so the value and its diff share a unit.
+  await stepDay(page, 'previous');
+  await expectTile(
+    page,
+    'breastfeed',
+    breastfeeds(0, 0),
+    t('summary.diff.minutes', { sign: '−', value: minutesOf(20) }),
+  );
+  await stepDay(page, 'previous');
+  await expectTile(page, 'breastfeed', breastfeeds(1, 20), plus('minutes', minutesOf(20)));
+});
+
+test('a breastfeed across midnight gives the next day its minutes alone, without a "0" count', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  // 30 minutes ending at 00:20: ten before midnight (where it started and counts), twenty after.
+  await logBreastfeedAfterwards(page, { left: 30, end: '2026-09-25T00:20' });
+
+  await openTab(page, t('tab.summary'));
+  await expectTile(page, 'breastfeed', minutesOf(20), plus('minutes', minutesOf(10)));
+  await stepDay(page, 'previous');
+  await expectTile(page, 'breastfeed', breastfeeds(1, 10), plus('minutes', minutesOf(10)));
 });
 
 test('a sleep across midnight counts on both days; the week chart has seven bars and fits 320px', async ({
@@ -278,7 +331,7 @@ test('the day strip shows sleep and feeds on one timeline per baby, with a now t
     formatDuration(t, HOUR),
     plus('duration', formatDuration(t, HOUR)),
   );
-  await expectTile(page, 'feeds', '0');
+  await expectTile(page, 'breastfeed', '0');
   await expect(strip).toBeVisible();
 
   await page.setViewportSize({ width: 320, height: 700 });
@@ -475,11 +528,17 @@ test('every record type shows up in the log and the summary, without CSP violati
     formatDuration(t, HOUR),
     plus('duration', formatDuration(t, HOUR)),
   );
-  // The breastfeed and the bottle.
-  await expectTile(page, 'feeds', '2', plus('count', 2));
-  await expectTile(page, 'bottle', t('unit.ml', { ml: 90 }), plus('ml', t('unit.ml', { ml: 90 })));
+  // The breastfeed with its minutes; the bottle on its own tile.
+  await expectTile(page, 'breastfeed', breastfeeds(1, 15), plus('minutes', minutesOf(15)));
+  await expectTile(page, 'bottle', bottles(1, 90), plus('ml', t('unit.ml', { ml: 90 })));
   await expectTile(page, 'diapers', '1', plus('count', 1));
-  await expect(page.getByTestId('summary-pump')).toContainText(t('pump.report.total', { ml: 60 }));
+  await expect(page.getByTestId('summary-pump')).toContainText(
+    t('pump.report.totals', {
+      total: t('unit.ml', { ml: 60 }),
+      l: t('unit.ml', { ml: 60 }),
+      r: t('unit.ml', { ml: 0 }),
+    }),
+  );
   // Every inline-styled piece of the dashboard is on screen for the CSP check.
   const strip = dayStrip(
     page,
@@ -544,7 +603,12 @@ for (const width of [320, 414]) {
   });
 }
 
-test('the pumping card and the Pumping chart follow the seven days, whichever baby is picked', async ({
+const minutes = (m: number) => t('time.minutes', { m });
+const ml = (value: number) => t('unit.ml', { ml: value });
+const pumpTotals = (unit: (n: number) => string, total: number, l: number, r: number) =>
+  t('pump.report.totals', { total: unit(total), l: unit(l), r: unit(r) });
+
+test('the pumping card and the Pumping chart report minutes and follow the seven days, whichever baby is picked', async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
@@ -553,46 +617,75 @@ test('the pumping card and the Pumping chart follow the seven days, whichever ba
   await expect(page.getByTestId('summary-pump')).toHaveCount(0);
 
   await openTab(page, t('tab.home'));
-  const logPump = async (end: string, mlLeft: number, mlRight?: number) => {
+  const logPump = async (
+    end: string,
+    entry: { left?: number; right?: number; mlLeft?: number },
+  ) => {
     const sheet = await openPump(page);
-    await logPumpAfterwards(sheet, { mlLeft, mlRight, end });
+    await logPumpAfterwards(sheet, { ...entry, end });
     await expect(sheet).toBeHidden();
   };
-  await logPump('2026-09-22T09:00', 80, 60);
-  await logPump('2026-09-25T08:00', 70);
+  await logPump('2026-09-22T09:00', { left: 30, right: 25 });
+  await logPump('2026-09-25T08:00', { left: 20, mlLeft: 70 });
 
   await openTab(page, t('tab.summary'));
   const card = page.getByTestId('summary-pump');
   await expect(card).toContainText(t('pump.report.sessions.one'));
-  await expect(card).toContainText(t('pump.report.total', { ml: 70 }));
-  await expect(card).toContainText(t('pump.report.sides', { l: 70, r: 0 }));
-  await expect(card).toContainText(t('pump.report.week', { ml: 210 }));
-  await expect(card).toContainText(t('pump.report.average', { ml: 30 }));
+  // Minutes first; the ml on their own line because this day has some.
+  await expect(card).toContainText(pumpTotals(minutes, 20, 20, 0));
+  await expect(card).toContainText(pumpTotals(ml, 70, 70, 0));
+  await expect(card).toContainText(t('pump.report.week', { amount: `${minutes(75)} · ${ml(70)}` }));
+  await expect(card).toContainText(
+    t('pump.report.average', { amount: `${minutes(11)} · ${ml(10)}` }),
+  );
 
   const week = summaryCard(page, t('summary.week'));
   await expect(week.getByRole('radio')).toHaveCount(3);
   await week.getByRole('radio', { name: t('summary.week.metric.pump') }).click();
+  // Minutes per day, since the week has minutes: 55 and 20 on a 100 ceiling.
+  await expect(week.getByText(t('summary.week.pump.min'), { exact: true })).toBeVisible();
   const bars = week.getByTestId('week-pump-bar');
   await expect(bars).toHaveCount(7);
-  await expect(week.getByTestId('week-axis-left').locator('span')).toHaveText(['200', '100', '0']);
-  await expect(bars.nth(6).locator('div')).toHaveAttribute('style', /height: 35%/);
-  await expect(bars.nth(3).locator('div')).toHaveAttribute('style', /height: 70%/);
+  await expect(week.getByTestId('week-axis-left').locator('span')).toHaveText(['100', '50', '0']);
+  await expect(bars.nth(6).locator('div')).toHaveAttribute('style', /height: 20%/);
+  await expect(bars.nth(3).locator('div')).toHaveAttribute('style', /height: 55%/);
   await expect(bars.nth(4).locator('div')).toHaveAttribute('style', /height: 0%/);
+  await expect(week.getByRole('img')).toHaveAttribute('aria-label', new RegExp(minutes(55)));
 
   // Pumps belong to no baby: the other baby sees the same chart and card.
   await page.getByRole('radio', { name: 'Cal', exact: true }).click();
-  await expect(card).toContainText(t('pump.report.week', { ml: 210 }));
+  await expect(card).toContainText(t('pump.report.week', { amount: `${minutes(75)} · ${ml(70)}` }));
   await expect(bars).toHaveCount(7);
   await expect(week.getByRole('radio', { name: t('summary.week.metric.pump') })).toHaveAttribute(
     'aria-checked',
     'true',
   );
 
-  // A day with no pump keeps the 7-day lines; Sleep and Feeding are untouched.
+  // A day with no pump keeps the 7-day lines; on the 24th the window has minutes only.
   await stepDay(page, 'previous');
   await expect(card).not.toContainText(t('pump.report.sessions.one'));
-  await expect(card).toContainText(t('pump.report.week', { ml: 140 }));
-  await expect(card).toContainText(t('pump.report.average', { ml: 20 }));
+  await expect(card).toContainText(t('pump.report.week', { amount: minutes(55) }));
+  await expect(card).toContainText(t('pump.report.average', { amount: minutes(8) }));
+  await expect(card).not.toContainText(ml(0));
   await week.getByRole('radio', { name: t('summary.week.metric.sleep') }).click();
   await expect(week.getByText(t('summary.week.empty'))).toBeVisible();
+});
+
+test('a week pumped in ml only still reports and charts ml', async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  const sheet = await openPump(page);
+  await logPumpAfterwards(sheet, { mlLeft: 80, mlRight: 60, end: '2026-09-24T09:00' });
+  await expect(sheet).toBeHidden();
+
+  await openTab(page, t('tab.summary'));
+  const card = page.getByTestId('summary-pump');
+  await expect(card).toContainText(t('pump.report.week', { amount: ml(140) }));
+  await expect(card).toContainText(t('pump.report.average', { amount: ml(20) }));
+  await expect(card).not.toContainText(minutes(0));
+  const week = summaryCard(page, t('summary.week'));
+  await week.getByRole('radio', { name: t('summary.week.metric.pump') }).click();
+  await expect(week.getByText(t('summary.week.pump.ml'), { exact: true })).toBeVisible();
+  await expect(week.getByTestId('week-axis-left').locator('span')).toHaveText(['200', '100', '0']);
+  await expect(week.getByRole('img')).toHaveAttribute('aria-label', new RegExp(ml(140)));
 });

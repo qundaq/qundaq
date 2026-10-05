@@ -27,6 +27,7 @@ import { DayStrip, type DayStripBaby } from './DayStrip';
 import { PumpCard } from './PumpCard';
 import { GrowthChart } from './GrowthChart';
 import { SummaryTiles } from './SummaryTiles';
+import { pumpChartSeries } from './dashboardModel';
 import { WeekChart, type Metric } from './WeekChart';
 import styles from './Summary.module.css';
 
@@ -176,7 +177,7 @@ function SummaryBody({
       <PumpCard day={dayPump} week={weekPump} />
       <WeekChart
         week={weekTotals(events, baby.id, day, now)}
-        pump={weekPump.perDay}
+        pump={pumpChartSeries(weekPump)}
         today={startOfDay(now)}
         metric={weekMetric}
         onMetric={onWeekMetric}

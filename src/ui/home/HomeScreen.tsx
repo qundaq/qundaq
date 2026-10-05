@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { backupReminder, snoozeUntil } from '../../backup/reminder';
 import { listBabies } from '../../db/babies';
 import {
@@ -68,6 +68,25 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   const busy = useRef<Set<Id>>(new Set());
   const nameOf = (id: Id) => babies?.find((b) => b.id === id)?.name ?? '';
   const undoToast = useUndoToast(nameOf);
+  // Stopping the pump here (the strip's Stop or its sheet) removes the control that had the focus; the
+  // pumping button that comes back takes it, once the sheet has closed and the strip is gone.
+  const pumpButton = useRef<HTMLButtonElement>(null);
+  const refocusPump = useRef(false);
+  const runningPumpId = events === undefined ? null : (runningPump(events)?.id ?? null);
+  useEffect(() => {
+    if (!refocusPump.current || runningPumpId !== null || request !== null) return;
+    refocusPump.current = false;
+    // Only focus that was lost with the strip or its sheet (WebKit can leave it on the closed sheet's
+    // button for a moment): never taken from a control the parent moved to since.
+    const active = document.activeElement;
+    if (
+      active === null ||
+      active === document.body ||
+      !active.isConnected ||
+      active.closest('dialog:not([open])') !== null
+    )
+      pumpButton.current?.focus();
+  }, [runningPumpId, request]);
 
   // Nothing shows until the banner decision is known too, so the cards never appear without it first.
   if (babies === undefined || events === undefined || hasEvents === undefined)
@@ -128,15 +147,21 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
         <PumpStrip
           pump={pump}
           onOpen={openPump}
-          onStop={() =>
+          onStop={() => {
+            refocusPump.current = true;
             act(pump.id, () =>
-              stopPump(db, pump.id).then((change) => change && undoToast([change])),
-            )
-          }
+              stopPump(db, pump.id)
+                .then((change) => change && undoToast([change]))
+                .catch((error: unknown) => {
+                  refocusPump.current = false;
+                  throw error;
+                }),
+            );
+          }}
           hint={forgotHint(t('home.pump'), pump.id, openPump)}
         />
       ) : (
-        <PumpButton onOpen={setRequest} />
+        <PumpButton ref={pumpButton} onOpen={setRequest} />
       )}
       {babies.length === 0 ? (
         <Card className={styles.empty}>
@@ -211,6 +236,9 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
         babies={babies}
         events={events}
         onClose={() => setRequest(null)}
+        onPumpStopped={() => {
+          refocusPump.current = true;
+        }}
       />
       <EditSheet event={editing} babies={babies} onClose={() => setEditing(null)} />
     </section>

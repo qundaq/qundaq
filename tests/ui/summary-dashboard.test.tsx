@@ -14,6 +14,7 @@ import { PumpCard } from '../../src/ui/summary/PumpCard';
 import { pumpReport } from '../../src/domain/summary';
 import { axisWidthPx } from '../../src/ui/summary/chartGeometry';
 import { WeekChart } from '../../src/ui/summary/WeekChart';
+import type { PumpChartSeries } from '../../src/ui/summary/dashboardModel';
 import { weekdayShort } from '../../src/ui/history/describe';
 
 const t = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
@@ -68,13 +69,19 @@ describe('SummaryTiles', () => {
   it('renders the four tiles in order, each with its value', () => {
     const html = render(
       <SummaryTiles
-        totals={totals({ sleepMs: 9 * HOUR + 20 * MINUTE, feeds: 6, bottleMl: 120, diapers: 7 })}
+        totals={totals({
+          sleepMs: 9 * HOUR + 20 * MINUTE,
+          feeds: 6,
+          bottles: 1,
+          bottleMl: 120,
+          diapers: 7,
+        })}
         previous={totals({ sleepMs: 9 * HOUR, feeds: 6, bottleMl: 90, diapers: 6 })}
       />,
     );
     const order = [
       t('summary.tile.sleep'),
-      t('summary.tile.feeds'),
+      t('summary.tile.breastfeed'),
       t('summary.tile.bottle'),
       t('summary.tile.diapers'),
     ];
@@ -85,20 +92,70 @@ describe('SummaryTiles', () => {
       last = at;
     }
     expect(html).toContain(formatDuration(t, 9 * HOUR + 20 * MINUTE));
-    expect(html).toContain('6');
-    expect(html).toContain(t('unit.ml', { ml: 120 }));
+    // 6 feeds of which 1 bottle: 5 breastfeeds; the bottle on its own tile with its ml.
+    expect(html).toContain(`<span class="tilePart">5</span>`);
+    expect(html).toContain(t('summary.tile.bottle.ml', { ml: 120 }));
     expect(html).toContain('7');
   });
 
   it('omits a tile’s diff line when both days are zero, and shows it otherwise', () => {
     const withData = render(
-      <SummaryTiles totals={totals({ feeds: 6 })} previous={totals({ feeds: 6 })} />,
+      <SummaryTiles totals={totals({ diapers: 6 })} previous={totals({ diapers: 6 })} />,
     );
     expect(withData).toContain(
       t('summary.diff.same.count', { value: formatTileValue(t, 'count', 6) }),
     );
     const empty = render(<SummaryTiles totals={totals()} previous={totals()} />);
     expect(empty).not.toMatch(/\btileDiff\b/);
+  });
+
+  /** A tile's value and diff lines, as text. */
+  const tileLines = (html: string, key: string) => {
+    const tile = html.split('data-testid="summary-tile-').find((part) => part.startsWith(key))!;
+    const lines = [...tile.matchAll(/<div class="(tileValue|tileDiff)">(.*?)<\/div>/g)];
+    return lines.map((line) => line[2]!.replace(/<[^>]+>/g, ''));
+  };
+
+  it('shows the breastfeeds (not the bottles) with their minutes, the diff in minutes, in both locales', () => {
+    const today = totals({ feeds: 6, bottles: 1, breastMs: 90 * MINUTE, bottleMl: 120 });
+    const yesterday = totals({ feeds: 7, breastMs: 70 * MINUTE });
+    const turkish = render(<SummaryTiles totals={today} previous={yesterday} />);
+    expect(turkish).toContain(t('summary.tile.breastfeed'));
+    expect(tileLines(turkish, 'breastfeed')).toEqual([
+      `5 ${t('summary.tile.breastfeed.minutes', { m: 90 })}`,
+      t('summary.diff.minutes', { sign: '+', value: t('time.minutes', { m: 20 }) }),
+    ]);
+    expect(tileLines(turkish, 'bottle')).toEqual([
+      `1 ${t('summary.tile.bottle.ml', { ml: 120 })}`,
+      t('summary.diff.ml', { sign: '+', value: t('unit.ml', { ml: 120 }) }),
+    ]);
+    const english = renderToStaticMarkup(
+      <I18nProvider locale="en">
+        <SummaryTiles totals={today} previous={yesterday} />
+      </I18nProvider>,
+    );
+    expect(english).toContain('>Breastfeeding<');
+    expect(tileLines(english, 'breastfeed')).toEqual(['5 (90 min)', '+20 min from the day before']);
+    expect(tileLines(english, 'bottle')).toEqual(['1 (120 ml)', '+120 ml from the day before']);
+  });
+
+  it('wraps a tile value only between its parts', () => {
+    const html = render(
+      <SummaryTiles totals={totals({ feeds: 1, breastMs: 15 * MINUTE })} previous={totals()} />,
+    );
+    expect(html).toContain(
+      `<span class="tilePart">1</span></span><span> <span class="tilePart">${t('summary.tile.breastfeed.minutes', { m: 15 })}</span>`,
+    );
+  });
+
+  it('a day of bottles only leaves the breastfeeding tile empty', () => {
+    const html = render(
+      <SummaryTiles
+        totals={totals({ feeds: 3, bottles: 3, bottleMl: 270 })}
+        previous={totals({ feeds: 2, bottles: 2 })}
+      />,
+    );
+    expect(tileLines(html, 'breastfeed')).toEqual(['0']);
   });
 });
 
@@ -164,11 +221,21 @@ describe('WeekChart', () => {
   }));
   // The chart lists oldest first; `week` is newest first.
   const chronological = [...week].reverse();
-  const noPump = chronological.map((day) => ({ day: day.dayStart, ml: 0 }));
-  const pumped = chronological.map((day, i) => ({
-    day: day.dayStart,
-    ml: i === 6 ? 1200 : i === 4 ? 340 : 0,
-  }));
+  const noPump: PumpChartSeries = {
+    unit: 'ml',
+    days: chronological.map((day) => ({ day: day.dayStart, value: 0 })),
+  };
+  const pumped: PumpChartSeries = {
+    unit: 'ml',
+    days: chronological.map((day, i) => ({
+      day: day.dayStart,
+      value: i === 6 ? 1200 : i === 4 ? 340 : 0,
+    })),
+  };
+  const pumpedMinutes: PumpChartSeries = {
+    unit: 'min',
+    days: chronological.map((day, i) => ({ day: day.dayStart, value: i === 6 ? 95 : 0 })),
+  };
 
   it('shows Sleep when told to, with a Segmented tab and seven day labels', () => {
     const html = render(
@@ -256,8 +323,27 @@ describe('WeekChart', () => {
     expect(width).toBe(axisWidthPx([0, 1000, 2000]));
     expect(width).toBeGreaterThanOrEqual(32);
     expect(html).toContain(`dualLabelsSpacer" style="width:${width}px"`);
-    const summary = pumped
-      .map((entry) => `${weekdayShort('tr', entry.day)} ${t('unit.ml', { ml: entry.ml })}`)
+    const summary = pumped.days
+      .map((entry) => `${weekdayShort('tr', entry.day)} ${t('unit.ml', { ml: entry.value })}`)
+      .join(', ');
+    expect(html).toContain(`role="img" aria-label="${summary}"`);
+    expect(html).toContain(t('summary.week.pump.ml'));
+    expect(html).not.toContain(t('summary.week.pump.min'));
+  });
+
+  it('plots minutes when the series is in minutes: caption, ticks and text alternative in minutes', () => {
+    const html = render(
+      <WeekChart pump={pumpedMinutes} week={week} today={T} metric="pump" onMetric={() => {}} />,
+    );
+    expect(html).toContain(t('summary.week.pump.min'));
+    expect(html).not.toContain(t('summary.week.pump.ml'));
+    // 95 min on a 100 ceiling: ticks 0, 50, 100, and the axis as wide as its three-digit label.
+    expect(html).toContain('height:95%');
+    expect(html).toMatch(/week-axis-left"[^>]*><span>100<\/span><span>50<\/span><span>0<\/span>/);
+    const width = Number(/week-axis-left" style="width:(\d+)px/.exec(html)![1]);
+    expect(width).toBe(axisWidthPx([0, 50, 100]));
+    const summary = pumpedMinutes.days
+      .map((entry) => `${weekdayShort('tr', entry.day)} ${t('time.minutes', { m: entry.value })}`)
       .join(', ');
     expect(html).toContain(`role="img" aria-label="${summary}"`);
   });
@@ -278,52 +364,90 @@ describe('WeekChart', () => {
 
 describe('PumpCard', () => {
   const D = new Date(2026, 8, 27).getTime();
-  const pump = (startAt: number, mlLeft?: number, mlRight?: number): TrackerEvent => ({
+  type Amounts = { minLeft?: number; minRight?: number; mlLeft?: number; mlRight?: number };
+  const pump = (startAt: number, amounts: Amounts): TrackerEvent => ({
     id: String(startAt),
     type: 'pump',
     babyId: null,
     startAt,
     endAt: startAt,
-    mlLeft,
-    mlRight,
+    ...amounts,
     createdAt: 0,
     updatedAt: 0,
   });
   const card = (events: TrackerEvent[]) => {
     const to = D + DAY;
+    // The card's text, without the spans that keep each " · " part of a line on one line.
     return render(
       <PumpCard day={pumpReport(events, D, to)} week={pumpReport(events, D - 6 * DAY, to)} />,
-    );
+    ).replace(/<\/?span[^>]*>/g, '');
   };
+  const min = (m: number) => t('time.minutes', { m });
+  const ml = (value: number) => t('unit.ml', { ml: value });
+  const totals = (unit: (n: number) => string, total: number, l: number, r: number) =>
+    t('pump.report.totals', { total: unit(total), l: unit(l), r: unit(r) });
 
-  it('shows the day’s sessions, total and sides, then the 7 days and their daily average', () => {
+  it('in minutes: the day’s sessions, totals and sides in minutes, then the 7 days and their average', () => {
     const html = card([
-      pump(D + 8 * HOUR, 60, 40),
-      pump(D + 15 * HOUR, undefined, 50),
-      pump(D - 2 * DAY + HOUR, 70),
+      pump(D + 8 * HOUR, { minLeft: 30, minRight: 25 }),
+      pump(D + 15 * HOUR, { minRight: 20 }),
+      pump(D - 2 * DAY + HOUR, { minLeft: 15 }),
     ]);
     expect(html).toContain('data-testid="summary-pump"');
-    expect(html).toContain(t('pump.report.sessions', { n: 2 }));
     expect(html).toMatch(/<section[^>]*aria-labelledby="([^"]+)"[\s\S]*<h2 id="\1"/);
-    expect(html).toContain(t('pump.report.total', { ml: 150 }));
-    expect(html).toContain(t('pump.report.sides', { l: 60, r: 90 }));
-    expect(html).toContain(t('pump.report.week', { ml: 220 }));
-    expect(html).toContain(t('pump.report.average', { ml: 31 }));
+    expect(html).toContain(t('pump.report.sessions', { n: 2 }));
+    expect(html).toContain(totals(min, 75, 30, 45));
+    expect(html).toContain(t('pump.report.week', { amount: min(90) }));
+    expect(html).toContain(t('pump.report.average', { amount: min(13) }));
+    expect(html).not.toContain(' ml');
   });
 
-  it('is no card at all when the 7 days have no pump', () => {
+  it('mixed: the ml line follows the minutes line; the 7-day lines name both units', () => {
+    const html = card([
+      pump(D + 8 * HOUR, { minLeft: 30, minRight: 25, mlLeft: 60, mlRight: 40 }),
+      pump(D - 2 * DAY + HOUR, { minLeft: 15, mlLeft: 70 }),
+    ]);
+    expect(html).toContain(`<p>${totals(min, 55, 30, 25)}</p><p>${totals(ml, 100, 60, 40)}</p>`);
+    expect(html).toContain(t('pump.report.week', { amount: `${min(70)} · ${ml(170)}` }));
+    expect(html).toContain(t('pump.report.average', { amount: `${min(10)} · ${ml(24)}` }));
+  });
+
+  it('ml only: the ml lines as before pumping had minutes', () => {
+    const html = card([
+      pump(D + 8 * HOUR, { mlLeft: 60, mlRight: 40 }),
+      pump(D + 15 * HOUR, { mlRight: 50 }),
+      pump(D - 2 * DAY + HOUR, { mlLeft: 70 }),
+    ]);
+    expect(html).toContain(t('pump.report.sessions', { n: 2 }));
+    expect(html).toContain(totals(ml, 150, 60, 90));
+    expect(html).toContain(t('pump.report.week', { amount: ml(220) }));
+    expect(html).toContain(t('pump.report.average', { amount: ml(31) }));
+    expect(html).not.toContain(min(0));
+  });
+
+  it('is no card at all when the 7 days have no pump, nor while the only pump still runs', () => {
     expect(card([])).toBe('');
+    const running: TrackerEvent = {
+      id: 'r',
+      type: 'pump',
+      babyId: null,
+      startAt: D + 8 * HOUR,
+      side: 'B',
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    expect(card([running])).toBe('');
   });
 
   it('says "1 session" with the singular text', () => {
-    expect(card([pump(D + 8 * HOUR, 60)])).toContain(t('pump.report.sessions.one'));
+    expect(card([pump(D + 8 * HOUR, { minLeft: 10 })])).toContain(t('pump.report.sessions.one'));
   });
 
   it('keeps the 7-day lines alone when only the shown day has no pump', () => {
-    const html = card([pump(D - 3 * DAY + HOUR, 70)]);
-    expect(html).toContain(t('pump.report.week', { ml: 70 }));
-    expect(html).toContain(t('pump.report.average', { ml: 10 }));
+    const html = card([pump(D - 3 * DAY + HOUR, { minLeft: 70 })]);
+    expect(html).toContain(t('pump.report.week', { amount: min(70) }));
+    expect(html).toContain(t('pump.report.average', { amount: min(10) }));
     expect(html).not.toContain(t('pump.report.sessions', { n: 0 }));
-    expect(html).not.toContain(t('pump.report.sides', { l: 0, r: 0 }));
+    expect(html).not.toContain(totals(min, 0, 0, 0));
   });
 });

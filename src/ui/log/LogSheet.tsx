@@ -25,6 +25,7 @@ import {
   type MedicationInput,
   type OtherType,
   type SheetInput,
+  type SheetKind,
 } from './drafts';
 import { BottleForm, DiaperForm } from './forms/care';
 import { NoteField, type FormProps } from './forms/fields';
@@ -48,9 +49,11 @@ interface Props {
   /** Home's recent events with every running timer: the defaults, the one-timer note and the stop form read them. */
   events: readonly TrackerEvent[];
   onClose: () => void;
+  /** The running pump was stopped from its sheet (Home moves the focus to the pumping button that returns). */
+  onPumpStopped?: () => void;
 }
 
-export function LogSheet({ request, babies, events, onClose }: Props) {
+export function LogSheet({ request, babies, events, onClose, onPumpStopped }: Props) {
   const t = useT();
   const session = useSheetSession(request);
   // The "Other" sheet (quick.other, other.title) opens on a list of its four types; picking one shows
@@ -69,7 +72,8 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
         ? (current?.type ?? null)
         : session.value.kind;
   // The standalone pumping request names no baby: the entry is the parent's.
-  const requestBabyId = session && session.value.kind !== 'pump' ? session.value.babyId : null;
+  const babyRequest = session && session.value.kind !== 'pump' ? session.value : null;
+  const requestBabyId = babyRequest?.babyId ?? null;
   const nameOf = (id: Id) => babies.find((baby) => baby.id === id)?.name ?? '';
   const undoToast = useUndoToast(nameOf);
   // A feed or sleep sheet opened for a baby whose timer of that kind runs stops it instead; "other" never
@@ -115,7 +119,10 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
             pump={runningPump}
             babies={babies}
             onClose={onClose}
-            onStopped={(change) => undoToast([change])}
+            undoToast={(changes) => {
+              if (changes.length > 0) onPumpStopped?.();
+              undoToast(changes);
+            }}
           />
         ) : inputKind === 'pump' ? (
           <PumpForm key={session.id} babies={babies} onClose={onClose} undoToast={undoToast} />
@@ -127,10 +134,10 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
             onClose={onClose}
             onStopped={(change) => undoToast([change])}
           />
-        ) : inputKind === 'breastfeed' && requestBabyId !== null ? (
+        ) : babyRequest === null ? null : inputKind === 'breastfeed' ? (
           <FeedForm
             key={session.id}
-            babyId={requestBabyId}
+            babyId={babyRequest.babyId}
             babies={babies}
             events={events}
             nameOf={nameOf}
@@ -139,9 +146,9 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
           />
         ) : (
           <LogForm
-            key={session.value.kind === 'other' ? `${session.id}-${current?.pick}` : session.id}
-            kind={session.value.kind}
-            babyId={requestBabyId}
+            key={babyRequest.kind === 'other' ? `${session.id}-${current?.pick}` : session.id}
+            kind={babyRequest.kind}
+            babyId={babyRequest.babyId}
             inputKind={inputKind}
             babies={babies}
             events={events}
@@ -162,9 +169,9 @@ function OtherListStep({ onPick }: { onPick: (type: OtherType) => void }) {
 }
 
 interface FormArgs {
-  kind: LogRequest['kind'];
-  /** The card's baby (the pumping sheet, which names none, has its own forms). */
-  babyId: Id | null;
+  /** A card's sheet: the pumping sheet, which names no baby, has its own forms. */
+  kind: SheetKind;
+  babyId: Id;
   inputKind: InputKind;
   babies: readonly Baby[];
   events: readonly TrackerEvent[];
@@ -197,7 +204,7 @@ function LogForm({
   const [time, setTime] = useState<TimeChoice>(NOW_CHOICE);
   // The baby's last bottle is the opening baby's, taken once, so it does not move while the sheet is open.
   const [lastBottleInput] = useState(() =>
-    inputKind === 'bottle' && babyId !== null ? lastBottle(events, babyId) : null,
+    inputKind === 'bottle' ? lastBottle(events, babyId) : null,
   );
   const [input, setInput] = useState<SheetInput>(() => firstInput(inputKind, lastBottleInput));
   const [mode, setMode] = useState<TimerMode>('start');
@@ -222,13 +229,7 @@ function LogForm({
       return;
     }
     void save(
-      (now) =>
-        buildDrafts(
-          input,
-          babyId === null ? [] : [babyId],
-          resolveTimeChoice(time, now),
-          noted ? note : '',
-        ),
+      (now) => buildDrafts(input, [babyId], resolveTimeChoice(time, now), noted ? note : ''),
       // A started timer ends each baby's other running timer at its start (the one-timer note says so).
       starting,
     );
@@ -239,9 +240,7 @@ function LogForm({
       {sleep && (
         <TimerFields input={sleep} mode={mode} onModeChange={setMode} onChange={setInput} />
       )}
-      {starting && babyId !== null && (
-        <OneTimerNote kind="sleep" babyIds={[babyId]} events={events} nameOf={nameOf} />
-      )}
+      {starting && <OneTimerNote kind="sleep" babyIds={[babyId]} events={events} nameOf={nameOf} />}
       {input.kind === 'bottle' && (
         <BottleForm
           value={input.value}
@@ -311,7 +310,7 @@ function FeedForm({
   nameOf,
   onClose,
   undoToast,
-}: Omit<FormArgs, 'kind' | 'inputKind' | 'babyId'> & { babyId: Id }) {
+}: Omit<FormArgs, 'kind' | 'inputKind'>) {
   const t = useT();
   const ids = useId();
   // The side due next is the opening baby's, taken once, so it does not move while the sheet is open.
@@ -388,7 +387,7 @@ function FeedForm({
       </section>
       <section aria-labelledby={`${ids}-later`} className={styles.later}>
         <h3 id={`${ids}-later`} className={styles.sectionTitle}>
-          {t('feed.later')}
+          {t('entry.later')}
         </h3>
         <SideMinutes
           values={minutes}
@@ -397,7 +396,7 @@ function FeedForm({
           maxTotal={FEED_MAX_MIN}
         />
         <FoldedTimeChips
-          button={(when) => t('feed.endAt', { when })}
+          button={(when) => t('entry.endAt', { when })}
           label={t('time.ended')}
           value={endTime}
           onChange={setEndTime}

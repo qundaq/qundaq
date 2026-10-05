@@ -1,7 +1,8 @@
 import type { EventChange } from '../../db/events';
 import type { Id, TrackerEvent } from '../../domain/types';
+import type { Locale } from '../../i18n';
 import type { TranslateFn } from '../app/I18nProvider';
-import { typeLabel } from '../history/describe';
+import { pumpDetail, typeLabel } from '../history/describe';
 import { formatDuration } from '../shared/format';
 
 function who(t: TranslateFn, rows: readonly TrackerEvent[], nameOf: (id: Id) => string): string {
@@ -13,10 +14,12 @@ function who(t: TranslateFn, rows: readonly TrackerEvent[], nameOf: (id: Id) => 
 
 /**
  * The toast after a write. A save names what it created (a timer it also stopped was announced in the
- * sheet beforehand, and a pump start names its side); a stop says how long the timer ran.
+ * sheet beforehand, and a pump start names its side); a stop says how long the timer ran, and a stopped
+ * pump what it recorded (its minutes, maybe corrected in the stop sheet, as its log row reads them).
  */
 export function undoMessage(
   t: TranslateFn,
+  locale: Locale,
   changes: readonly EventChange[],
   nameOf: (babyId: Id) => string,
 ): string {
@@ -24,8 +27,9 @@ export function undoMessage(
   if (created.length === 0) {
     const stopped = changes.map((change) => change.after);
     const first = stopped[0]!;
+    if (first.type === 'pump')
+      return t('toast.pumpEnded', { detail: pumpDetail(t, locale, first) });
     const duration = formatDuration(t, (first.endAt ?? first.startAt) - first.startAt);
-    if (first.type === 'pump') return t('toast.pumpEnded', { duration });
     const name = who(t, stopped, nameOf);
     return first.type === 'sleep'
       ? t('toast.wokeUp', { who: name, duration })

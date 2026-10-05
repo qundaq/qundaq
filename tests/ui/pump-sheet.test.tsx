@@ -9,6 +9,7 @@ import { I18nProvider } from '../../src/ui/app/I18nProvider';
 import { PumpStrip } from '../../src/ui/home/PumpStrip';
 import { LogSheet } from '../../src/ui/log/LogSheet';
 import { PumpMlFields, measuredMinutes, pumpStopPatch } from '../../src/ui/log/forms/pump';
+import { SideMinutes, chipTap } from '../../src/ui/log/forms/SideMinutes';
 
 // Expected UI text, built from the dictionary the sheet renders (tr): never a Turkish literal here.
 const tt = (key: MessageKey, vars?: Record<string, string | number>) => translate('tr', key, vars);
@@ -37,19 +38,19 @@ describe('the pumping sheet', () => {
     for (const side of ['L', 'R', 'B'] as const)
       expect(html).toContain(`>${tt(`side.${side}.button`)}</span>`);
     // The start buttons come before "log afterwards".
-    expect(html.indexOf(tt('side.B.button'))).toBeLessThan(html.indexOf(tt('feed.later')));
+    expect(html.indexOf(tt('side.B.button'))).toBeLessThan(html.indexOf(tt('entry.later')));
   });
 
   it('logs afterwards in minutes per side, with ml and the note behind their own buttons', () => {
     const html = sheet();
-    expect(html).toContain(tt('feed.later'));
+    expect(html).toContain(tt('entry.later'));
     expect(html).toContain(
       `aria-label="${tt('sideMinutes.value', { side: tt('side.L.button') })}"`,
     );
     expect(html).toContain(tt('pump.addMl'));
     expect(html).toContain(tt('note.add'));
     expect(html).not.toContain(tt('pump.ml', { side: tt('side.L.button') }));
-    expect(html).toContain(tt('feed.endAt', { when: tt('time.foldedNow') }));
+    expect(html).toContain(tt('entry.endAt', { when: tt('time.foldedNow') }));
   });
 
   it('keeps Save disabled with a hint until minutes or ml are filled', () => {
@@ -71,9 +72,55 @@ describe('the pumping sheet', () => {
     );
     expect(html).toContain(`>${tt('timer.stop')}</button>`);
   });
+
+  it('shows the measured minutes muted and tied to their caption until the parent changes them', () => {
+    const html = sheet([pump({ side: 'R' })]);
+    const caption = new RegExp(`<p id="([^"]+)"[^>]*>${tt('pump.measured')}</p>`).exec(html)!;
+    expect(caption).not.toBeNull();
+    // Both number fields are described by the caption.
+    expect(html.match(new RegExp(`aria-describedby="${caption[1]}"`, 'g'))).toHaveLength(2);
+    // The measured side's box has the muted look; the empty side keeps the empty one.
+    const box = (side: 'L' | 'R') =>
+      new RegExp(
+        `<label class="([^"]+)"><input[^>]*aria-label="${tt('sideMinutes.value', { side: tt(`side.${side}.button`) })}"`,
+      ).exec(html)![1]!;
+    expect(box('R')).toMatch(/\bmeasured\b/);
+    expect(box('R')).not.toMatch(/\bfilled\b/);
+    expect(box('L')).toMatch(/\bempty\b/);
+  });
+});
+
+describe('the measured minutes and the chips', () => {
+  it('shows no chip as chosen while the value is measured, so the matching chip is not a toggle', () => {
+    const chips = (measured: boolean) =>
+      render(
+        <SideMinutes
+          values={{ left: 10, right: null }}
+          onChange={() => {}}
+          max={180}
+          measured={measured}
+        />,
+      ).match(/aria-checked="true"/g)?.length ?? 0;
+    expect(chips(true)).toBe(0);
+    expect(chips(false)).toBe(1);
+  });
+
+  it('a tap on the chip matching the measured minutes keeps them; once chosen, the same tap clears', () => {
+    expect(chipTap(10, 10, 180, true)).toBe(10);
+    expect(chipTap(10, 15, 180, true)).toBe(15);
+    expect(chipTap(10, 10, 180, false)).toBeNull();
+  });
 });
 
 describe('the ml fields', () => {
+  it('sit under their own "Amount (ml)" heading, so they never read as more minute rows', () => {
+    const html = render(<PumpMlFields value={{ mlLeft: '', mlRight: '' }} onChange={() => {}} />);
+    const group = /role="group" aria-labelledby="([^"]+)"/.exec(html)![1]!;
+    expect(html).toContain(`<span id="${group}" class="mlTitle">${tt('sheet.amount')}</span>`);
+    expect(html.match(new RegExp(`>${tt('pump.mlUnit')}</span>`, 'g'))).toHaveLength(2);
+    expect(translate('en', 'pump.mlUnit')).toBe('ml');
+  });
+
   it('are two named text fields with the numeric keypad, side by side', () => {
     const html = render(<PumpMlFields value={{ mlLeft: '60', mlRight: '' }} onChange={() => {}} />);
     expect(html).toContain(`aria-label="${tt('pump.ml', { side: tt('side.L.button') })}"`);
@@ -120,6 +167,11 @@ describe('the running pump strip', () => {
     expect(html).toMatch(/<section[^>]*aria-label=/);
     expect(html).toContain(tt('strip.pumping', { side: tt('side.B.button') }));
     expect(html).toContain('aria-haspopup="dialog"');
+    // The open button's name is stable: what runs and what a tap does, never the ticking clock.
+    const what = tt('strip.pumping', { side: tt('side.B.button') });
+    expect(html).toContain(`aria-label="${attr(tt('strip.pump.open', { what }))}"`);
+    expect(html).toMatch(/aria-haspopup="dialog" aria-label="[^"]*"/);
+    expect(/aria-haspopup="dialog" aria-label="([^"]*)"/.exec(html)![1]).not.toMatch(/\d/);
     expect(html).toContain(`aria-label="${tt('timer.stopPump')}"`);
     expect(html).toContain(`>${tt('timer.stop')}</button>`);
     expect(html).toContain('data-testid="live-text"');

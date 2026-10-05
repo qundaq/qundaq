@@ -128,6 +128,10 @@
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+/* A part of a tile value ("5 times", "(90 min)"): a narrow tile wraps between the parts, never inside one. */
+.tilePart {
+  white-space: nowrap;
+}
 .tileDiff {
   margin-top: 2px;
   font: var(--font-caption);
@@ -259,6 +263,11 @@
 .barLabelToday {
   color: var(--text);
   font-weight: 600;
+}
+.chartUnit {
+  margin-top: var(--space-2);
+  font: var(--font-caption);
+  color: var(--muted);
 }
 .chartRow {
   display: flex;

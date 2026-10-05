@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 import { cx } from './cx';
 import { Icon } from './Icon';
 import type { IconName } from './icons';
@@ -13,6 +13,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: IconName;
   /** Danger only: the two-step delete's "tap again" state; the label changes too, never colour alone. */
   armed?: boolean;
+  /** The native button, for a caller that moves the focus to it. */
+  ref?: Ref<HTMLButtonElement>;
 }
 
 /** The one button. Rule: at most one `primary` button per region — a screen, a sheet, or a card that owns an action (a baby card with a running timer). */

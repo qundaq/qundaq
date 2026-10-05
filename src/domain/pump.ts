@@ -1,6 +1,6 @@
 import { MAX_PUMP_MIN } from './rules';
 import { MINUTE } from './time';
-import type { TrackerEvent } from './types';
+import type { PumpSide, TrackerEvent } from './types';
 
 export type PumpEvent = Extract<TrackerEvent, { type: 'pump' }>;
 
@@ -15,6 +15,22 @@ export function pumpMinutes(ms: number): number {
  */
 export function pumpStartAt(endAt: number, minLeft = 0, minRight = 0): number {
   return endAt - (minLeft + minRight) * MINUTE;
+}
+
+/**
+ * When a pump began whose minutes were corrected as it stopped, so its time range matches them (the rule
+ * the edit sheet uses): back from its end by the longer side when the timer ran on both sides at once
+ * ('B'), otherwise by their sum (pumpStartAt: one side after the other). No minutes left (ml only): a moment.
+ */
+export function correctedPumpStartAt(
+  endAt: number,
+  side: PumpSide | undefined,
+  minLeft = 0,
+  minRight = 0,
+): number {
+  return side === 'B'
+    ? endAt - Math.max(minLeft, minRight) * MINUTE
+    : pumpStartAt(endAt, minLeft, minRight);
 }
 
 /**

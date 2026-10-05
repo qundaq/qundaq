@@ -425,35 +425,91 @@ describe('DayList formatting cost', () => {
 
 describe('the pumping report', () => {
   const day = (d: number) => new Date(2026, 8, d).getTime();
-  const pump = (id: string, d: number, mlLeft?: number, mlRight?: number): TrackerEvent => ({
+  type Amounts = { minLeft?: number; minRight?: number; mlLeft?: number; mlRight?: number };
+  const pump = (id: string, d: number, amounts: Amounts): TrackerEvent => ({
     id,
     type: 'pump',
     babyId: null,
     startAt: new Date(2026, 8, d, 9, 0).getTime(),
     endAt: new Date(2026, 8, d, 9, 0).getTime(),
-    ...(mlLeft !== undefined ? { mlLeft } : {}),
-    ...(mlRight !== undefined ? { mlRight } : {}),
+    ...amounts,
     createdAt: 0,
     updatedAt: 0,
   });
-  const events = [pump('p1', 25, 80, 60), pump('p2', 26, 70)];
-  const card = (from: number, to: number, multiDay: boolean, list = events) =>
+  const min = (m: number) => t('time.minutes', { m });
+  const ml = (value: number) => t('unit.ml', { ml: value });
+  const totals = (unit: (n: number) => string, total: number, l: number, r: number) =>
+    t('pump.report.totals', { total: unit(total), l: unit(l), r: unit(r) });
+  // ml only, as logged before pumping had minutes.
+  const events = [pump('p1', 25, { mlLeft: 80, mlRight: 60 }), pump('p2', 26, { mlLeft: 70 })];
+  const markup = (from: number, to: number, multiDay: boolean, list = events) =>
     render(<PumpReportCard report={pumpReport(list, from, to)} multiDay={multiDay} />);
+  // The card's text, without the spans that keep each " · " part of a line on one line.
+  const card = (from: number, to: number, multiDay: boolean, list = events) =>
+    markup(from, to, multiDay, list).replace(/<\/?span[^>]*>/g, '');
 
-  it('shows sessions, total, sides and, for several days, the daily average', () => {
+  it('in minutes: the totals and sides in minutes, no ml line, the daily average in minutes', () => {
+    const minutes = [
+      pump('m1', 25, { minLeft: 30, minRight: 25 }),
+      pump('m2', 26, { minLeft: 20, minRight: 20 }),
+    ];
+    const html = card(day(25), day(27), true, minutes);
+    expect(html).toContain(t('pump.report.sessions', { n: 2 }));
+    expect(html).toContain(totals(min, 95, 50, 45));
+    expect(html).not.toContain(ml(0));
+    expect(html).toContain(t('pump.report.average', { amount: min(48) }));
+  });
+  it('mixed: minutes first, then the ml on a line of their own; the average names both', () => {
+    const mixed = [
+      pump('m1', 25, { minLeft: 30, minRight: 25, mlLeft: 120, mlRight: 90 }),
+      pump('m2', 26, { minLeft: 40 }),
+    ];
+    const html = card(day(25), day(27), true, mixed);
+    const minutesLine = totals(min, 95, 70, 25);
+    const mlLine = totals(ml, 210, 120, 90);
+    expect(html).toContain(`<p>${minutesLine}</p><p>${mlLine}</p>`);
+    expect(html).toContain(t('pump.report.average', { amount: `${min(48)} · ${ml(105)}` }));
+  });
+  it('ml only: the ml lines as before, no minutes anywhere', () => {
     const html = card(day(25), day(27), true);
     expect(html).toContain(t('pump.report.title'));
     expect(html).toContain(t('pump.report.sessions', { n: 2 }));
-    expect(html).toContain(t('pump.report.total', { ml: 210 }));
-    expect(html).toContain(t('pump.report.sides', { l: 150, r: 60 }));
-    expect(html).toContain(t('pump.report.average', { ml: 105 }));
+    expect(html).toContain(totals(ml, 210, 150, 60));
+    expect(html).toContain(t('pump.report.average', { amount: ml(105) }));
+    expect(html).not.toContain(min(0));
+  });
+  it('wraps a line on a narrow screen only between its parts, never inside one', () => {
+    const html = markup(day(25), day(27), true, [pump('m', 25, { minLeft: 71, minRight: 37 })]);
+    expect(html).toContain(`<span class="keep">${t('side.R.button')} ${min(37)}</span></span></p>`);
+    expect(html).toContain(`<span class="keep">${t('side.L.button')} ${min(71)}</span> · </span>`);
+  });
+  it('formats large amounts with the locale (a thousands separator)', () => {
+    const big = [pump('b1', 25, { mlLeft: 600, mlRight: 600 })];
+    expect(card(day(25), day(26), false, big)).toContain(
+      totals((value) => t('unit.ml', { ml: value.toLocaleString('tr') }), 1200, 600, 600),
+    );
   });
   it('has no average for one day', () => {
     const html = card(day(25), day(26), false);
     expect(html).toContain(t('pump.report.sessions.one'));
     expect(translate('en', 'pump.report.sessions.one')).toBe('1 session');
     expect(html).toMatch(/<section[^>]*aria-labelledby="([^"]+)"[\s\S]*<h2 id="\1"/);
-    expect(html).not.toContain(t('pump.report.average', { ml: 140 }));
+    expect(html).not.toContain(t('pump.report.average', { amount: ml(140) }));
+  });
+  it('leaves out a running pump: no card while the only pump still runs', () => {
+    const running: TrackerEvent = {
+      id: 'r',
+      type: 'pump',
+      babyId: null,
+      startAt: day(25) + 9 * 3_600_000,
+      side: 'L',
+      createdAt: 0,
+      updatedAt: 0,
+    };
+    expect(card(day(25), day(26), false, [running])).toBe('');
+    expect(card(day(25), day(26), false, [running, ...events])).toContain(
+      t('pump.report.sessions.one'),
+    );
   });
   it('is no card at all when no pump started in the range', () => {
     expect(card(day(20), day(22), true)).toBe('');

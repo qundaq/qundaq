@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { startPump, stopPump, type EventChange, type PumpPatch } from '../../../db/events';
 import { db } from '../../../db/instance';
 import { NOW_CHOICE, resolveTimeChoice, type TimeChoice } from '../../../domain/entryTime';
@@ -8,14 +8,18 @@ import { MINUTE } from '../../../domain/time';
 import type { Baby, PumpSide, Side } from '../../../domain/types';
 import { useT } from '../../app/I18nProvider';
 import { Button } from '../../shared/Button';
-import { messageFor, useReportError } from '../../shared/ErrorBanner';
 import { Icon } from '../../shared/Icon';
 import { LiveDuration } from '../../shared/LiveDuration';
 import { SheetFooter } from '../../shared/Sheet';
-import { useMounted } from '../../shared/useMounted';
 import { useNow } from '../../shared/useNow';
 import { FoldedTimeChips } from '../TimeChips';
-import { buildDrafts, hasPumpAmounts, pumpAmounts, type PumpInput } from '../drafts';
+import {
+  DEFAULT_INPUTS,
+  buildDrafts,
+  hasPumpAmounts,
+  pumpAmounts,
+  type PumpInput,
+} from '../drafts';
 import { useEntrySave } from '../useEntrySave';
 import styles from '../LogSheet.module.css';
 import { NoteField } from './fields';
@@ -60,7 +64,10 @@ export function PumpSidePicker({
   );
 }
 
-/** Two compact ml fields side by side, labelled by side; they fit a 320 px screen. */
+/**
+ * Two compact ml fields side by side under their own "Amount (ml)" heading, so they never read as more
+ * minute rows; each labelled by side. They fit a 320 px screen.
+ */
 export function PumpMlFields({
   value,
   onChange,
@@ -71,34 +78,40 @@ export function PumpMlFields({
   autoFocus?: boolean;
 }) {
   const t = useT();
+  const titleId = useId();
   return (
-    <div className={styles.mlRow}>
-      {ML_SIDES.map((side) => {
-        const key = side === 'L' ? 'mlLeft' : 'mlRight';
-        const name = t(`side.${side}.button`);
-        return (
-          <label key={side} className={styles.mlField}>
-            <span className={styles.mlLabel}>{name}</span>
-            <span className={styles.mlBox}>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="0"
-                aria-label={t('pump.ml', { side: name })}
-                // Only the left field takes the focus when the fields are revealed.
-                autoFocus={autoFocus === true && side === 'L'}
-                className={styles.mlInput}
-                value={value[key]}
-                onChange={(event) => onChange({ ...value, [key]: event.target.value })}
-              />
-              <span aria-hidden="true" className={styles.mlUnit}>
-                ml
+    <div role="group" aria-labelledby={titleId} className={styles.mlGroup}>
+      <span id={titleId} className={styles.mlTitle}>
+        {t('sheet.amount')}
+      </span>
+      <div className={styles.mlRow}>
+        {ML_SIDES.map((side) => {
+          const key = side === 'L' ? 'mlLeft' : 'mlRight';
+          const name = t(`side.${side}.button`);
+          return (
+            <label key={side} className={styles.mlField}>
+              <span className={styles.mlLabel}>{name}</span>
+              <span className={styles.mlBox}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="0"
+                  aria-label={t('pump.ml', { side: name })}
+                  // Only the left field takes the focus when the fields are revealed.
+                  autoFocus={autoFocus === true && side === 'L'}
+                  className={styles.mlInput}
+                  value={value[key]}
+                  onChange={(event) => onChange({ ...value, [key]: event.target.value })}
+                />
+                <span aria-hidden="true" className={styles.mlUnit}>
+                  {t('pump.mlUnit')}
+                </span>
               </span>
-            </span>
-          </label>
-        );
-      })}
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -165,12 +178,7 @@ export function PumpForm({
 }) {
   const t = useT();
   const ids = useId();
-  const [value, setValue] = useState<PumpInput>({
-    minLeft: null,
-    minRight: null,
-    mlLeft: '',
-    mlRight: '',
-  });
+  const [value, setValue] = useState<PumpInput>(DEFAULT_INPUTS.pump);
   const [mlOpen, setMlOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -216,7 +224,7 @@ export function PumpForm({
       </section>
       <section aria-labelledby={`${ids}-later`} className={styles.later}>
         <h3 id={`${ids}-later`} className={styles.sectionTitle}>
-          {t('feed.later')}
+          {t('entry.later')}
         </h3>
         <SideMinutes
           values={minutes}
@@ -243,7 +251,7 @@ export function PumpForm({
         )}
         {noteOpen && <NoteField value={note} required={false} autoFocus onChange={setNote} />}
         <FoldedTimeChips
-          button={(when) => t('feed.endAt', { when })}
+          button={(when) => t('entry.endAt', { when })}
           label={t('time.ended')}
           value={endTime}
           onChange={setEndTime}
@@ -300,37 +308,31 @@ export function PumpStopForm({
   pump,
   babies,
   onClose,
-  onStopped,
+  undoToast,
 }: {
   pump: PumpEvent;
   babies: readonly Baby[];
   onClose: () => void;
-  onStopped: (change: EventChange) => void;
+  undoToast: (changes: readonly EventChange[]) => void;
 }) {
   const t = useT();
+  const ids = useId();
   const now = useNow(1000);
   const [end, setEnd] = useState<TimeChoice>(NOW_CHOICE);
   const [edited, setEdited] = useState<SideValues | null>(null);
   const [ml, setMl] = useState<MlValues>({ mlLeft: '', mlRight: '' });
   const [mlOpen, setMlOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false); // only for `disabled`; the ref below is the real guard
-  const submitting = useRef(false);
-  const mounted = useMounted();
-  const report = useReportError();
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- as the other sheets: a stale error goes with any change
-  useEffect(() => setError(null), [end, edited, ml]);
+  const { error, setError, pending, run } = useEntrySave(babies, onClose, undoToast);
+  // As in the other sheets: a stale error goes the moment the form changes.
+  useEffect(() => setError(null), [end, edited, ml, setError]);
 
+  const measured = edited === null;
   const shown = edited ?? measuredMinutes(pump, resolveTimeChoice(end, now));
   const side = pump.side === undefined ? null : t(`side.${pump.side}.button`);
 
-  const submit = async (event: FormEvent) => {
+  const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (submitting.current) return;
-    submitting.current = true;
-    setPending(true);
-    const at = Date.now();
-    try {
+    void run(async (at) => {
       const change = await stopPump(
         db,
         pump.id,
@@ -338,33 +340,38 @@ export function PumpStopForm({
         pumpStopPatch(edited, ml),
         end.kind === 'now' ? undefined : resolveTimeChoice(end, at),
       );
-      onClose();
-      if (change) onStopped(change);
-    } catch (failure) {
-      // Dismissed while stopping: the form and its error line are gone, so the app's banner says it.
-      if (!mounted()) {
-        report(failure);
-        return;
-      }
-      setError(messageFor(t, failure, babies));
-      submitting.current = false;
-      setPending(false);
-    }
+      // Already stopped elsewhere: the sheet just closes, with nothing to undo.
+      return change ? [change] : [];
+    });
   };
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate>
+    <form onSubmit={submit} noValidate>
       <p className={styles.running}>
         <span>{side === null ? t('home.pump') : t('strip.pumping', { side })}</span>
         <LiveDuration since={pump.startAt} />
       </p>
-      <SideMinutes values={shown} onChange={setEdited} max={MAX_PUMP_MIN} />
-      {edited === null && <p className={styles.hint}>{t('pump.measured')}</p>}
+      <SideMinutes
+        values={shown}
+        onChange={setEdited}
+        max={MAX_PUMP_MIN}
+        // Corrected minutes set the session's start (one side after the other unless both at once), so
+        // both sides together stay within the longest session, as in the other pump sheets.
+        maxTotal={pump.side === 'B' ? undefined : PUMP_TOTAL_MIN}
+        // From the timer until the parent changes them: muted, and the caption says where they come from.
+        measured={measured}
+        describedBy={measured ? `${ids}-measured` : undefined}
+      />
+      {measured && (
+        <p id={`${ids}-measured`} className={styles.hint}>
+          {t('pump.measured')}
+        </p>
+      )}
       <div className={styles.extras}>
         <OptionalMl value={ml} onChange={setMl} open={mlOpen} onOpen={() => setMlOpen(true)} />
       </div>
       <FoldedTimeChips
-        button={(when) => t('feed.endAt', { when })}
+        button={(when) => t('entry.endAt', { when })}
         label={t('time.end')}
         value={end}
         onChange={setEnd}

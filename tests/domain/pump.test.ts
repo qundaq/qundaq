@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { finishedPump, pumpMinutes, pumpStartAt } from '../../src/domain/pump';
+import {
+  correctedPumpStartAt,
+  finishedPump,
+  pumpMinutes,
+  pumpStartAt,
+} from '../../src/domain/pump';
 import { MAX_PUMP_MIN, validateEvent } from '../../src/domain/rules';
 import { HOUR, MINUTE } from '../../src/domain/time';
 import type { PumpSide, TrackerEvent } from '../../src/domain/types';
@@ -35,6 +40,20 @@ describe('pumpStartAt', () => {
     expect(pumpStartAt(NOW, 15)).toBe(NOW - 15 * MINUTE);
     expect(pumpStartAt(NOW, undefined, 8)).toBe(NOW - 8 * MINUTE);
     expect(pumpStartAt(NOW)).toBe(NOW);
+  });
+});
+
+describe('correctedPumpStartAt', () => {
+  const END = 10 * HOUR;
+  it('one side or one after the other: back by the sum; both at once: by the longer side', () => {
+    expect(correctedPumpStartAt(END, 'L', 6)).toBe(END - 6 * MINUTE);
+    expect(correctedPumpStartAt(END, 'R', 10, 5)).toBe(END - 15 * MINUTE);
+    expect(correctedPumpStartAt(END, 'B', 25, 20)).toBe(END - 25 * MINUTE);
+    expect(correctedPumpStartAt(END, 'B', undefined, 14)).toBe(END - 14 * MINUTE);
+  });
+  it('no minutes left (ml only): a moment', () => {
+    expect(correctedPumpStartAt(END, 'L')).toBe(END);
+    expect(correctedPumpStartAt(END, 'B')).toBe(END);
   });
 });
 

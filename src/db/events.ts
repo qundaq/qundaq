@@ -7,7 +7,7 @@ import {
   validateEvent,
   type RuleViolation,
 } from '../domain/rules';
-import { finishedPump } from '../domain/pump';
+import { correctedPumpStartAt, finishedPump } from '../domain/pump';
 import { DAY } from '../domain/time';
 import { foldCase } from '../domain/text';
 import type {
@@ -334,7 +334,8 @@ const PUMP_STOP_CHECKS: readonly RuleViolation[] = ['pump-empty', 'pump-invalid'
 /**
  * Finishes a running pump at `now`, or at `at` when the stop sheet chose an earlier end (never before the
  * pump began, never in the future): the elapsed minutes (rounded, 1 to MAX_PUMP_MIN) go on the side it ran
- * on, both for 'B', the side is dropped, then `patch` is applied. Only the pumping rules are checked (a
+ * on, both for 'B', the side is dropped, then `patch` is applied; corrected minutes move the start so the
+ * range matches them (correctedPumpStartAt). Only the pumping rules are checked (a
  * ValidationError otherwise, and nothing changes), so Home's "Stop" works whatever else the row holds (a
  * long note, a clock that has drifted); like stopTimer, a stop is never refused for having run too long.
  * Returns the change for undo, or null if the pump has already finished.
@@ -359,6 +360,15 @@ export async function stopPump(
       if (value === null) delete finished[key];
       else if (value !== undefined) finished[key] = value;
     }
+    // Minutes corrected in the stop sheet: the time range follows them, as after an edit. Measured
+    // minutes (no minutes in the patch) keep the timer's own range.
+    if (patch.minLeft !== undefined || patch.minRight !== undefined)
+      finished.startAt = correctedPumpStartAt(
+        finished.endAt ?? finished.startAt,
+        event.side,
+        finished.minLeft,
+        finished.minRight,
+      );
     const violations = validateEvent(finished, [], now, id).filter((violation) =>
       PUMP_STOP_CHECKS.includes(violation),
     );

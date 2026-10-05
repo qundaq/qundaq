@@ -31,7 +31,14 @@ export function PumpStrip({
   return (
     <section aria-label={t('strip.pump.region')} className={styles.pumpRunning}>
       <div className={styles.strip}>
-        <button type="button" className={styles.stripOpen} aria-haspopup="dialog" onClick={onOpen}>
+        <button
+          type="button"
+          className={styles.stripOpen}
+          aria-haspopup="dialog"
+          // A stable name, without the ticking clock: what runs and what the tap does.
+          aria-label={t('strip.pump.open', { what: caption })}
+          onClick={onOpen}
+        >
           <Icon name="droplets" className={styles.stripIcon} />
           <span className={styles.stripText}>
             <span className={styles.stripCaption}>{caption}</span>

@@ -255,12 +255,20 @@
   gap: 0 var(--space-2);
   margin-bottom: var(--space-1);
 }
+/* The ml fields under their own heading, so they never read as two more minute rows. */
+.mlGroup {
+  margin-bottom: var(--space-3);
+}
+.mlTitle {
+  display: block;
+  margin-bottom: var(--space-1);
+  font: var(--font-heading);
+}
 /* Two compact ml fields side by side; each shrinks with the screen, so the row never overflows. */
 .mlRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
 }
 .mlField {
   display: grid;
@@ -268,7 +276,8 @@
   min-width: 0;
 }
 .mlLabel {
-  font: var(--font-heading);
+  font: var(--font-caption);
+  color: var(--muted);
 }
 .mlBox {
   display: flex;

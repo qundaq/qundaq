@@ -726,19 +726,28 @@ test.describe('editing and deleting', () => {
   });
 });
 
-test('the pumping filter reports the range: sessions, total, sides and the daily average', async ({
+test('the pumping filter reports the range in minutes, with the ml beside them; a running pump waits until it stops', async ({
   page,
 }) => {
   await addBabyInSettings(page, 'Ada');
   await addBabyInSettings(page, 'Cal');
   await openTab(page, t('tab.home'));
-  const logPump = async (end: string, mlLeft: number, mlRight?: number) => {
+  const logPump = async (
+    end: string,
+    entry: { left?: number; right?: number; mlLeft?: number },
+  ) => {
     const sheet = await openPump(page);
-    await logPumpAfterwards(sheet, { mlLeft, mlRight, end });
+    await logPumpAfterwards(sheet, { ...entry, end });
     await expect(sheet).toBeHidden();
   };
-  await logPump('2026-09-24T09:00', 80, 60);
-  await logPump('2026-09-25T08:00', 70);
+  await logPump('2026-09-24T09:00', { left: 30, right: 25 });
+  await logPump('2026-09-25T08:00', { left: 20, mlLeft: 70 });
+  // A pump still running: listed, but not in the report until it stops.
+  await (
+    await openPump(page)
+  )
+    .getByRole('button', { name: t('side.R.button'), exact: true })
+    .click();
 
   await openTab(page, t('tab.log'));
   const sheet = await openRangeSheet(page);
@@ -751,16 +760,50 @@ test('the pumping filter reports the range: sessions, total, sides and the daily
   )
     .getByRole('button', { name: t('log.type.pump'), exact: true })
     .click();
+  await page.keyboard.press('Escape');
+  const minutes = (m: number) => t('time.minutes', { m });
+  const ml = (value: number) => t('unit.ml', { ml: value });
+  const totals = (unit: (n: number) => string, total: number, l: number, r: number) =>
+    t('pump.report.totals', { total: unit(total), l: unit(l), r: unit(r) });
   const report = page.getByTestId('pump-report');
   await expect(report).toContainText(t('pump.report.title'));
-  await expect(report).toContainText(t('pump.report.sessions', { n: 2 }));
-  await expect(report).toContainText(t('pump.report.total', { ml: 210 }));
-  await expect(report).toContainText(t('pump.report.sides', { l: 150, r: 60 }));
-  await expect(report).toContainText(t('pump.report.average', { ml: 30 }));
-  await expect(logRows(page)).toHaveCount(2);
+  await expect(report.locator('p')).toHaveText([
+    t('pump.report.sessions', { n: 2 }),
+    totals(minutes, 75, 50, 25),
+    totals(ml, 70, 70, 0),
+    t('pump.report.average', { amount: `${minutes(11)} · ${ml(10)}` }),
+  ]);
+  await expect(logRows(page)).toHaveCount(3);
+
+  // Stopped, it counts: 12 minutes on the right.
+  await page.clock.fastForward('12:00');
+  await openTab(page, t('tab.home'));
+  await page.getByRole('button', { name: t('timer.stopPump'), exact: true }).click();
+  await openTab(page, t('tab.log'));
+  await expect(report).toContainText(t('pump.report.sessions', { n: 3 }));
+  await expect(report).toContainText(totals(minutes, 87, 50, 37));
 
   // Pumps belong to no baby: one baby's filter leaves the empty text and no report.
   await (await filterGroup(page, 'baby')).getByRole('button', { name: 'Ada', exact: true }).click();
   await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
   await expect(report).toHaveCount(0);
+});
+
+test('a range pumped in ml only reports ml, as before minutes', async ({ page }) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  const sheet = await openPump(page);
+  await logPumpAfterwards(sheet, { mlLeft: 80, mlRight: 60 });
+  await expect(sheet).toBeHidden();
+  await openTab(page, t('tab.log'));
+  await (
+    await filterGroup(page, 'type')
+  )
+    .getByRole('button', { name: t('log.type.pump'), exact: true })
+    .click();
+  const ml = (value: number) => t('unit.ml', { ml: value });
+  await expect(page.getByTestId('pump-report').locator('p')).toHaveText([
+    t('pump.report.sessions.one'),
+    t('pump.report.totals', { total: ml(140), l: ml(80), r: ml(60) }),
+  ]);
 });

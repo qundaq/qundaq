@@ -214,8 +214,11 @@ test('the pump timer: Left starts it, the strip replaces the button and runs bes
   await expect(strip.getByTestId('live-text')).toContainText('12:0');
   await stop.click();
   await expect(strip).toHaveCount(0);
-  await expect(page.getByText(t('toast.pumpEnded', { duration: minutes(12) }))).toBeVisible();
-  await expect(page.getByRole('button', { name: t('home.pump'), exact: true })).toBeVisible();
+  await expect(
+    page.getByText(t('toast.pumpEnded', { detail: `${left} ${minutes(12)}` })),
+  ).toBeVisible();
+  // The focus that went with the strip lands on the pumping button that came back.
+  await expect(page.getByRole('button', { name: t('home.pump'), exact: true })).toBeFocused();
   await expect(babyCard(page, 'Ada')).toContainText(t('strip.feeding', { side: right }));
 
   await openTab(page, t('tab.log'));
@@ -263,9 +266,11 @@ test('the strip survives tab changes and a reload; its sheet corrects the minute
   await expect(strip).toContainText(t('strip.pumping', { side: right }));
   await expect(strip.getByTestId('live-text')).toContainText('8:0');
 
+  // The open button's name is stable while the clock ticks.
   await strip
     .getByRole('button', {
-      name: new RegExp(`^${escapeRegExp(t('strip.pumping', { side: right }))}`),
+      name: t('strip.pump.open', { what: t('strip.pumping', { side: right }) }),
+      exact: true,
     })
     .click();
   const sheet = page.getByRole('dialog', { name: t('sheet.pump.title'), exact: true });
@@ -279,12 +284,17 @@ test('the strip survives tab changes and a reload; its sheet corrects the minute
   await sheet.getByRole('button', { name: t('timer.stop'), exact: true }).click();
   await expect(sheet).toBeHidden();
   await expect(strip).toHaveCount(0);
-  await expect(page.getByText(t('toast.pumpEnded', { duration: minutes(8) }))).toBeVisible();
+  // The toast says what was recorded (the corrected minutes and the ml), as the row does.
+  const recorded = `${right} ${minutes(15)} · ${t('unit.ml', { ml: 80 })}`;
+  await expect(page.getByText(t('toast.pumpEnded', { detail: recorded }))).toBeVisible();
+  await expect(page.getByRole('button', { name: t('home.pump'), exact: true })).toBeFocused();
 
   await openTab(page, t('tab.log'));
   await expect(logRows(page).first()).toContainText(
     `${right} ${minutes(15)} · ${t('unit.ml', { ml: 80 })}`,
   );
+  // The corrected minutes set the time range: 15 minutes ending at the stop, not the 8 the timer ran.
+  await expect(logRows(page).first()).toContainText('09:53 – 10:08');
 });
 
 test('a second start ends the first pump: one pump runs at a time', async ({ page }) => {

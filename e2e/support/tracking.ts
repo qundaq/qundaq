@@ -135,7 +135,7 @@ export function timeGroup(sheet: Locator, label: string) {
 }
 
 /** The button of a folded time row in the feed sheet ("Start: now · change"), whatever time it says. */
-export function foldedTimeButton(sheet: Locator, key: 'feed.startAt' | 'feed.endAt') {
+export function foldedTimeButton(sheet: Locator, key: 'feed.startAt' | 'entry.endAt') {
   const [before, after] = t(key).split('{when}').map(escapeRegExp);
   return sheet.getByRole('button', { name: new RegExp(`^${before}.+${after}$`) });
 }
@@ -146,9 +146,9 @@ export async function openFeedStart(sheet: Locator) {
   return timeGroup(sheet, t('time.start'));
 }
 
-/** Opens the feed sheet's end time chips in "log afterwards" (feed.endAt) and returns them. */
+/** Opens the feed sheet's end time chips in "log afterwards" (entry.endAt) and returns them. */
 export async function openFeedEnd(sheet: Locator) {
-  await foldedTimeButton(sheet, 'feed.endAt').click();
+  await foldedTimeButton(sheet, 'entry.endAt').click();
   return timeGroup(sheet, t('time.ended'));
 }
 
@@ -162,7 +162,7 @@ export function sideMinutesField(sheet: Locator, side: 'L' | 'R') {
 }
 
 /**
- * Logs a finished feed from an open feed sheet ("log afterwards", feed.later): types the minutes per side
+ * Logs a finished feed from an open feed sheet ("log afterwards", entry.later): types the minutes per side
  * and, when given, picks the end time ("2026-09-25T09:50"), then saves.
  */
 export async function logFeedAfterwards(
@@ -217,7 +217,7 @@ export function pumpMlField(sheet: Locator, side: 'L' | 'R') {
 }
 
 /**
- * Logs a finished pump from an open pumping sheet ("log afterwards", feed.later): minutes per side, ml
+ * Logs a finished pump from an open pumping sheet ("log afterwards", entry.later): minutes per side, ml
  * per side (revealing the ml fields first) and, when given, the end time ("2026-09-25T09:50"); then saves.
  */
 export async function logPumpAfterwards(
@@ -240,7 +240,7 @@ export function pumpStrip(page: Page) {
   return page.getByRole('region', { name: t('strip.pump.region'), exact: true });
 }
 
-export type SummaryTileKey = 'sleep' | 'feeds' | 'bottle' | 'diapers';
+export type SummaryTileKey = 'sleep' | 'breastfeed' | 'bottle' | 'diapers';
 
 /** The lines of one of the summary tab's four hero tiles (summary.tile.*): its label, its value and, when there is one, its diff. */
 export function summaryTileLines(page: Page, key: SummaryTileKey) {

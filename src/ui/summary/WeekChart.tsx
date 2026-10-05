@@ -6,7 +6,7 @@ import { Card } from '../shared/Card';
 import { formatDuration } from '../shared/format';
 import { Segmented } from '../shared/Segmented';
 import { axisWidthPx } from './chartGeometry';
-import { niceCeiling, weekAxis } from './dashboardModel';
+import { niceCeiling, weekAxis, type PumpChartSeries } from './dashboardModel';
 import styles from './Summary.module.css';
 
 export type Metric = 'sleep' | 'feeding' | 'pump';
@@ -24,8 +24,8 @@ export function WeekChart({
   onMetric,
 }: {
   week: readonly { dayStart: number; totals: DailyTotals }[];
-  /** The pumped ml per day over the same seven days, oldest first (pumps belong to no baby). */
-  pump: readonly { day: number; ml: number }[];
+  /** The pumping per day over the same seven days, oldest first, in minutes or ml (pumps belong to no baby). */
+  pump: PumpChartSeries;
   today: number;
   metric: Metric;
   onMetric: (metric: Metric) => void;
@@ -51,7 +51,7 @@ export function WeekChart({
       {metric === 'sleep' ? (
         <SleepBars week={chronological} today={today} locale={locale} />
       ) : metric === 'pump' ? (
-        <PumpBars days={pump} today={today} locale={locale} t={t} />
+        <PumpBars series={pump} today={today} locale={locale} t={t} />
       ) : (
         <FeedingBars week={chronological} today={today} locale={locale} t={t} />
       )}
@@ -187,55 +187,62 @@ function FeedingBars({
 }
 
 function PumpBars({
-  days,
+  series,
   today,
   locale,
   t,
 }: {
-  days: readonly { day: number; ml: number }[];
+  series: PumpChartSeries;
   today: number;
   locale: ReturnType<typeof useLocale>;
   t: ReturnType<typeof useT>;
 }) {
-  const axis = weekAxis(days.map((entry) => entry.ml));
+  const days = series.days;
+  const axis = weekAxis(days.map((entry) => entry.value));
   if (!axis) return <p className={styles.muted}>{t('summary.week.empty')}</p>;
   const width = axisWidthPx(axis);
-  // The bars' text alternative, from the same totals they draw.
+  const amount = (value: number) =>
+    series.unit === 'min' ? t('time.minutes', { m: value }) : t('unit.ml', { ml: value });
+  // The bars' text alternative, from the same totals they draw, in the unit they are drawn in.
   const summary = days
-    .map((entry) => `${weekdayShort(locale, entry.day)} ${t('unit.ml', { ml: entry.ml })}`)
+    .map((entry) => `${weekdayShort(locale, entry.day)} ${amount(entry.value)}`)
     .join(', ');
   return (
-    <div role="img" aria-label={summary}>
-      <div className={styles.chartRow}>
-        <div className={styles.axisLeft} data-testid="week-axis-left" style={{ width }}>
-          <span>{axis[2]}</span>
-          <span>{axis[1]}</span>
-          <span>{axis[0]}</span>
+    <>
+      {/* The axis carries bare numbers: this caption names their unit. */}
+      <p className={styles.chartUnit}>{t(`summary.week.pump.${series.unit}`)}</p>
+      <div role="img" aria-label={summary}>
+        <div className={styles.chartRow}>
+          <div className={styles.axisLeft} data-testid="week-axis-left" style={{ width }}>
+            <span>{axis[2]}</span>
+            <span>{axis[1]}</span>
+            <span>{axis[0]}</span>
+          </div>
+          <div className={styles.dualBars}>
+            {days.map((entry) => (
+              <div key={entry.day} className={styles.dualBar} data-testid="week-pump-bar">
+                <div
+                  className={styles.pumpBar}
+                  style={{ height: `${Math.min(100, (entry.value / axis[2]) * 100)}%` }}
+                />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className={styles.dualBars}>
-          {days.map((entry) => (
-            <div key={entry.day} className={styles.dualBar} data-testid="week-pump-bar">
-              <div
-                className={styles.pumpBar}
-                style={{ height: `${Math.min(100, (entry.ml / axis[2]) * 100)}%` }}
-              />
-            </div>
-          ))}
+        <div className={styles.dualLabels}>
+          <div className={styles.dualLabelsSpacer} style={{ width }} />
+          <div className={styles.dualLabelsBars}>
+            {days.map((entry) => (
+              <span
+                key={entry.day}
+                className={entry.day === today ? styles.barLabelToday : styles.barLabel}
+              >
+                {weekdayShort(locale, entry.day)}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
-      <div className={styles.dualLabels}>
-        <div className={styles.dualLabelsSpacer} style={{ width }} />
-        <div className={styles.dualLabelsBars}>
-          {days.map((entry) => (
-            <span
-              key={entry.day}
-              className={entry.day === today ? styles.barLabelToday : styles.barLabel}
-            >
-              {weekdayShort(locale, entry.day)}
-            </span>
-          ))}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

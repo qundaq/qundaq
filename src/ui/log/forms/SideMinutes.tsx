@@ -46,6 +46,19 @@ export function chipMinutes(value: number | null, chip: number, max: number): nu
   return next > 0 ? next : null;
 }
 
+/**
+ * A chip tap in the measured state (a timer's minutes, not chosen yet): it always sets the chip's minutes,
+ * so tapping the chip that matches the timer to "confirm" it never empties the side.
+ */
+export function chipTap(
+  value: number | null,
+  chip: number,
+  max: number,
+  measured: boolean,
+): number | null {
+  return chipMinutes(measured ? null : value, chip, max);
+}
+
 /** Typed minutes: whole positive numbers, capped at `max`; anything else empties the side. */
 export function typedMinutes(raw: string, max: number): number | null {
   const n = Number.parseInt(raw, 10);
@@ -71,19 +84,26 @@ export function nextEnabledChip(
 
 /**
  * Minutes per side (the left and right rows): each a −/+ stepper around the typed value and quick chips
- * (MINUTE_CHIPS). An empty row is a side that was not used, shown as an outlined, muted box. Shared by the
- * feed and the pumping sheets. `max` bounds each side; `maxTotal`, when given, bounds both together.
+ * (MINUTE_CHIPS). An empty row is a side that was not used, shown as an outlined, muted box; a measured
+ * value (the pump stop sheet's, from the timer) is muted too until changed. Shared by the feed and the
+ * pumping sheets. `max` bounds each side; `maxTotal`, when given, bounds both together.
  */
 export function SideMinutes({
   values,
   onChange,
   max,
   maxTotal,
+  measured = false,
+  describedBy,
 }: {
   values: SideValues;
   onChange: (next: SideValues) => void;
   max: number;
   maxTotal?: number;
+  /** The values were measured (a running timer's), not typed: shown muted until changed. */
+  measured?: boolean;
+  /** The id of a caption that explains the values, for the number fields' accessible description. */
+  describedBy?: string;
 }) {
   const t = useT();
   const id = useId();
@@ -97,7 +117,8 @@ export function SideMinutes({
         const fieldName = t('sideMinutes.value', { side: name });
         const labelId = `${id}-${side}`;
         const set = (next: number | null) => onChange({ ...values, [key]: next });
-        const chosen = value === null ? -1 : MINUTE_CHIPS.indexOf(value);
+        // A measured value is not a choice: no chip shows as chosen until the parent picks one.
+        const chosen = value === null || measured ? -1 : MINUTE_CHIPS.indexOf(value);
         // A chip the other side leaves no room for is off, unless it is the one chosen.
         const enabled = MINUTE_CHIPS.map((minutes) => minutes <= limit || value === minutes);
         const focusable = chosen === -1 ? Math.max(0, enabled.indexOf(true)) : chosen;
@@ -113,7 +134,12 @@ export function SideMinutes({
                 disabled={value === null}
                 onClick={() => set(stepMinutes(value, -1, limit))}
               />
-              <label className={cx(styles.value, value === null ? styles.empty : styles.filled)}>
+              <label
+                className={cx(
+                  styles.value,
+                  value === null ? styles.empty : measured ? styles.measured : styles.filled,
+                )}
+              >
                 <input
                   type="number"
                   inputMode="numeric"
@@ -121,6 +147,7 @@ export function SideMinutes({
                   max={limit}
                   placeholder="0"
                   aria-label={fieldName}
+                  aria-describedby={describedBy}
                   className={styles.input}
                   value={value ?? ''}
                   onChange={(event) => set(typedMinutes(event.target.value, limit))}
@@ -141,10 +168,10 @@ export function SideMinutes({
                 <Chip
                   key={minutes}
                   mode="radio"
-                  selected={value === minutes}
+                  selected={i === chosen}
                   disabled={!enabled[i]}
                   tabIndex={i === focusable ? 0 : -1}
-                  onClick={() => set(chipMinutes(value, minutes, limit))}
+                  onClick={() => set(chipTap(value, minutes, limit, measured))}
                   onKeyDown={(event) => {
                     const target = nextEnabledChip(event.key, i, enabled);
                     if (target === null) return;

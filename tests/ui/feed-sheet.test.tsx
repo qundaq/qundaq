@@ -164,13 +164,13 @@ describe('the feed sheet', () => {
     expect(html).toContain(tt('side.next'));
     expect(html).toContain(tt('feed.start'));
     expect(html).toContain(tt('feed.startAt', { when: tt('time.foldedNow') }));
-    expect(html).toContain(tt('feed.endAt', { when: tt('time.foldedNow') }));
+    expect(html).toContain(tt('entry.endAt', { when: tt('time.foldedNow') }));
     expect(html.match(/aria-expanded="false"/g)).toHaveLength(2);
     // Both time rows stay folded until asked for: no time chips at all.
     expect(radiogroupNames(html)).not.toContain(tt('time.start'));
     expect(radiogroupNames(html)).not.toContain(tt('time.ended'));
     expect(html).not.toContain(tt('time.pick'));
-    expect(html.indexOf(tt('feed.start'))).toBeLessThan(html.indexOf(tt('feed.later')));
+    expect(html.indexOf(tt('feed.start'))).toBeLessThan(html.indexOf(tt('entry.later')));
     expect(html).toContain(
       `aria-label="${tt('sideMinutes.value', { side: tt('side.L.button') })}"`,
     );
