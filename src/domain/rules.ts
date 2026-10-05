@@ -1,5 +1,5 @@
 import { HOUR, MINUTE } from './time';
-import type { BreastSegment, EventDraft, EventType, Id, TrackerEvent } from './types';
+import type { BreastSegment, EventDraft, EventType, Id, PumpSide, TrackerEvent } from './types';
 
 export type RuleViolation =
   | 'baby-required'
@@ -39,8 +39,11 @@ export class ValidationError extends Error {
 export const FUTURE_TOLERANCE_MS = 5 * MINUTE;
 export const MAX_BOTTLE_ML = 1000;
 /** Longest finished entry, measured as endAt − startAt (pauses included). Running entries are never checked. */
-export const MAX_DURATION_MS = { sleep: 24 * HOUR, breastfeed: 4 * HOUR } as const;
+export const MAX_DURATION_MS = { sleep: 24 * HOUR, breastfeed: 4 * HOUR, pump: 4 * HOUR } as const;
 export const MAX_PUMP_ML = 500;
+/** Whole minutes per side of a pump, 1 to this. */
+export const MAX_PUMP_MIN = 180;
+const PUMP_SIDES: readonly unknown[] = ['L', 'R', 'B'] satisfies PumpSide[];
 /** Inclusive ranges in whole grams and millimetres. */
 export const GROWTH_RANGES = {
   weightG: [300, 30_000],
@@ -53,8 +56,10 @@ export const BABY_NAME_MAX = 40;
 
 const GROWTH_METRICS = ['weightG', 'heightMm', 'headMm'] as const;
 
-export function isTimedType(type: EventType): type is 'sleep' | 'breastfeed' {
-  return type === 'sleep' || type === 'breastfeed';
+export type TimedType = 'sleep' | 'breastfeed' | 'pump';
+
+export function isTimedType(type: EventType): type is TimedType {
+  return type === 'sleep' || type === 'breastfeed' || type === 'pump';
 }
 
 export function isOpen(event: { type: EventType; endAt?: number }): boolean {
@@ -128,9 +133,18 @@ export function validateEvent(
       if (!draft.wet && !draft.dirty) violations.add('diaper-empty');
       break;
     case 'pump': {
-      const amounts = [draft.mlLeft, draft.mlRight].filter((ml): ml is number => ml !== undefined);
-      if (amounts.length === 0) violations.add('pump-empty');
-      else if (!amounts.every((ml) => isIntIn(ml, 1, MAX_PUMP_ML))) violations.add('pump-invalid');
+      const minutes = [draft.minLeft, draft.minRight].filter((m) => m !== undefined);
+      const amounts = [draft.mlLeft, draft.mlRight].filter((ml) => ml !== undefined);
+      // The side belongs to the running timer only; a finished pump says what was pumped instead.
+      const running = draft.endAt === undefined;
+      if (running ? !PUMP_SIDES.includes(draft.side) : draft.side !== undefined)
+        violations.add('pump-invalid');
+      if (!running && minutes.length === 0 && amounts.length === 0) violations.add('pump-empty');
+      if (
+        !minutes.every((m) => isIntIn(m, 1, MAX_PUMP_MIN)) ||
+        !amounts.every((ml) => isIntIn(ml, 1, MAX_PUMP_ML))
+      )
+        violations.add('pump-invalid');
       break;
     }
     case 'growth': {

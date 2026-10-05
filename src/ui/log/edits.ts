@@ -1,8 +1,24 @@
+import { pumpStartAt } from '../../domain/pump';
 import { ValidationError, editedMinutesValid } from '../../domain/rules';
 import { MINUTE, fromLocalInputValue, toLocalInputValue } from '../../domain/time';
-import type { BreastSegment, EventDraft, Id, Side, TrackerEvent } from '../../domain/types';
+import type {
+  BreastSegment,
+  EventDraft,
+  Id,
+  PumpSide,
+  Side,
+  TrackerEvent,
+} from '../../domain/types';
 import type { Locale } from '../../i18n';
-import { buildDrafts, noteField, type InputKind, type InputValue, type SheetInput } from './drafts';
+import {
+  buildDrafts,
+  noteField,
+  pumpAmounts,
+  type InputKind,
+  type InputValue,
+  type PumpInput,
+  type SheetInput,
+} from './drafts';
 
 // ---------------------------------------------------------------------------------------------------
 // The edit sheet. Every time is held as the stored epoch ms and replaced only by a real new value, so
@@ -39,7 +55,19 @@ export interface BreastfeedEdit {
   note: string;
 }
 
-export type InstantType = Exclude<InputKind, 'sleep' | 'breastfeed'>;
+export interface PumpEdit {
+  type: 'pump';
+  babyId: null;
+  startAt: number; // what a running pump's time field edits
+  endAt: number | null; // what a finished pump's time field edits; null: running
+  side: PumpSide | null; // a running pump's side
+  value: PumpInput;
+  /** As stored: while the minutes stay as they are, a finished pump keeps its length (seconds included). */
+  stored: { lengthMs: number; minLeft: number | null; minRight: number | null };
+  note: string;
+}
+
+export type InstantType = Exclude<InputKind, 'sleep' | 'breastfeed' | 'pump'>;
 export type InstantEdit = {
   [K in InstantType]: {
     type: K;
@@ -50,7 +78,7 @@ export type InstantEdit = {
   };
 }[InstantType];
 
-export type EditInput = SleepEdit | BreastfeedEdit | InstantEdit;
+export type EditInput = SleepEdit | BreastfeedEdit | PumpEdit | InstantEdit;
 
 /** Minutes shown for a side: rounded, never 0, so a 20-second side reads "1". */
 export function segmentMinutes(ms: number): number {
@@ -134,17 +162,29 @@ export function eventToInput(event: TrackerEvent, decimal: DecimalSeparator = '.
         },
         note,
       };
-    case 'pump':
+    case 'pump': {
+      const minLeft = event.minLeft ?? null;
+      const minRight = event.minRight ?? null;
       return {
         type: 'pump',
-        babyId: event.babyId,
+        babyId: null,
         startAt: event.startAt,
+        endAt: event.endAt ?? null,
+        side: event.side ?? null,
         value: {
+          minLeft,
+          minRight,
           mlLeft: event.mlLeft === undefined ? '' : String(event.mlLeft),
           mlRight: event.mlRight === undefined ? '' : String(event.mlRight),
         },
+        stored: {
+          lengthMs: event.endAt === undefined ? 0 : event.endAt - event.startAt,
+          minLeft,
+          minRight,
+        },
         note,
       };
+    }
     case 'growth':
       return {
         type: 'growth',
@@ -222,6 +262,22 @@ function breastfeedTiming(input: BreastfeedEdit): {
   return { startAt, endAt: cursor, segments };
 }
 
+/**
+ * A pump's timing. Running: its start and side. Finished: it ends at the edited end; with the stored
+ * minutes it keeps its stored length, and edited minutes put the start their sum before the end
+ * (pumpStartAt, the sequential assumption of a pump logged afterwards).
+ */
+function pumpTiming(input: PumpEdit): { startAt: number; endAt?: number; side?: PumpSide } {
+  if (input.endAt === null)
+    return { startAt: input.startAt, ...(input.side === null ? {} : { side: input.side }) };
+  const { minLeft, minRight } = input.value;
+  const unchanged = minLeft === input.stored.minLeft && minRight === input.stored.minRight;
+  const startAt = unchanged
+    ? input.endAt - input.stored.lengthMs
+    : pumpStartAt(input.endAt, minLeft ?? 0, minRight ?? 0);
+  return { startAt, endAt: input.endAt };
+}
+
 /** The draft to save from the edit sheet. Throws ValidationError(['segments-invalid']) for bad minutes. */
 export function inputToDraft(input: EditInput): EventDraft {
   switch (input.type) {
@@ -238,6 +294,14 @@ export function inputToDraft(input: EditInput): EventDraft {
         type: 'breastfeed',
         babyId: input.babyId,
         ...breastfeedTiming(input),
+        ...noteField(input.note),
+      };
+    case 'pump':
+      return {
+        type: 'pump',
+        babyId: null,
+        ...pumpTiming(input),
+        ...pumpAmounts(input.value),
         ...noteField(input.note),
       };
     default:

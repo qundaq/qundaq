@@ -136,7 +136,7 @@ describe('describeEvent', () => {
       describeEvent(
         tr,
         'tr',
-        ev({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60, mlRight: 40 }),
+        ev({ type: 'pump', babyId: null, startAt: NOW, endAt: NOW, mlLeft: 60, mlRight: 40 }),
         NOW,
       ),
     ).toBe(
@@ -255,6 +255,22 @@ describe('timeRange', () => {
     });
     expect(timeRange(tr, 'tr', twoDays, dayStart(25))).toBe(
       `${clockTime('tr', twoDaysStart)} (${shortDate('tr', twoDaysStart)}) – ${clockTime('tr', end)}`,
+    );
+  });
+
+  it('a pump: a moment (ml only) shows its time, a timed one its range, a running one runs', () => {
+    const start = at(25, 9, 5);
+    const end = at(25, 9, 27);
+    const pump = (draft: Partial<EventDraft>) =>
+      ev({ type: 'pump', babyId: null, startAt: start, ...draft } as EventDraft);
+    expect(timeRange(tr, 'tr', pump({ endAt: start, mlLeft: 60 }), dayStart(25))).toBe(
+      clockTime('tr', start),
+    );
+    expect(timeRange(tr, 'tr', pump({ endAt: end, minLeft: 22 }), dayStart(25))).toBe(
+      `${clockTime('tr', start)} – ${clockTime('tr', end)}`,
+    );
+    expect(timeRange(tr, 'tr', pump({ side: 'L' }), dayStart(25))).toBe(
+      tr('log.range.running', { start: clockTime('tr', start) }),
     );
   });
 

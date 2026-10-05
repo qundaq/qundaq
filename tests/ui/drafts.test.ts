@@ -86,27 +86,64 @@ describe('buildDrafts', () => {
 });
 
 describe('buildDrafts — the "Other" types (quick.other)', () => {
-  it('pumping is one entry for the parent, whichever babies are selected', () => {
+  const NO_PUMP = { minLeft: null, minRight: null, mlLeft: '', mlRight: '' };
+
+  it('pumping is one entry for the parent, whichever babies are selected; ml only is a moment', () => {
     expect(
-      buildDrafts({ kind: 'pump', value: { mlLeft: '60', mlRight: '' } }, ['a', 'b'], AT),
-    ).toStrictEqual([{ type: 'pump', babyId: null, startAt: AT, mlLeft: 60 }]);
+      buildDrafts({ kind: 'pump', value: { ...NO_PUMP, mlLeft: '60' } }, ['a', 'b'], AT),
+    ).toStrictEqual([{ type: 'pump', babyId: null, startAt: AT, endAt: AT, mlLeft: 60 }]);
   });
 
   it('a baby-less pump request builds the same single parent entry', () => {
     expect(
-      buildDrafts({ kind: 'pump', value: { mlLeft: '', mlRight: '80' } }, [], AT, 'evening'),
-    ).toStrictEqual([{ type: 'pump', babyId: null, startAt: AT, mlRight: 80, note: 'evening' }]);
+      buildDrafts({ kind: 'pump', value: { ...NO_PUMP, mlRight: '80' } }, [], AT, 'evening'),
+    ).toStrictEqual([
+      { type: 'pump', babyId: null, startAt: AT, endAt: AT, mlRight: 80, note: 'evening' },
+    ]);
+  });
+
+  it('a pump with minutes ENDS at the chosen time and began the sum of the minutes earlier', () => {
+    expect(
+      buildDrafts(
+        { kind: 'pump', value: { minLeft: 12, minRight: 10, mlLeft: '', mlRight: '40' } },
+        [],
+        AT,
+      ),
+    ).toStrictEqual([
+      {
+        type: 'pump',
+        babyId: null,
+        startAt: AT - 22 * MINUTE,
+        endAt: AT,
+        minLeft: 12,
+        minRight: 10,
+        mlRight: 40,
+      },
+    ]);
+    expect(
+      buildDrafts({ kind: 'pump', value: { ...NO_PUMP, minRight: 15 } }, [], AT)[0],
+    ).toStrictEqual({
+      type: 'pump',
+      babyId: null,
+      startAt: AT - 15 * MINUTE,
+      endAt: AT,
+      minRight: 15,
+    });
   });
 
   it('a negative pump amount becomes NaN, so validation reports it', () => {
     expect(
-      buildDrafts({ kind: 'pump', value: { mlLeft: '-5', mlRight: '' } }, [], AT)[0],
+      buildDrafts({ kind: 'pump', value: { ...NO_PUMP, mlLeft: '-5' } }, [], AT)[0],
     ).toMatchObject({ mlLeft: Number.NaN });
   });
 
   it('a pump amount that is not a whole number becomes NaN, so validation reports it', () => {
     expect(
-      buildDrafts({ kind: 'pump', value: { mlLeft: '60.5', mlRight: ' 40 ' } }, [], AT)[0],
+      buildDrafts(
+        { kind: 'pump', value: { ...NO_PUMP, mlLeft: '60.5', mlRight: ' 40 ' } },
+        [],
+        AT,
+      )[0],
     ).toMatchObject({
       mlLeft: Number.NaN,
       mlRight: 40,
@@ -171,6 +208,9 @@ describe('buildDrafts — the "Other" types (quick.other)', () => {
       kind: 'medication',
       value: { name: '', dose: '' },
     });
-    expect(initialInput('pump')).toEqual({ kind: 'pump', value: { mlLeft: '', mlRight: '' } });
+    expect(initialInput('pump')).toEqual({
+      kind: 'pump',
+      value: { minLeft: null, minRight: null, mlLeft: '', mlRight: '' },
+    });
   });
 });

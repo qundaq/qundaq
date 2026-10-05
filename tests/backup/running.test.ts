@@ -82,6 +82,32 @@ describe('stopTimerAt: a paused feed', () => {
   });
 });
 
+const pump = (id: string, startAt: number, side: 'L' | 'R' | 'B' = 'L') =>
+  ({
+    id,
+    type: 'pump',
+    babyId: null,
+    startAt,
+    side,
+    createdAt: startAt,
+    updatedAt: startAt,
+  }) as TrackerEvent;
+
+describe('stopTimerAt: a pump', () => {
+  it('records the minutes on its side and drops the side', () => {
+    const stopped = stopTimerAt(pump('p', T, 'B'), T + 25 * MINUTE, NOW);
+    expect(stopped).toEqual({
+      ...pump('p', T),
+      side: undefined,
+      endAt: T + 25 * MINUTE,
+      minLeft: 25,
+      minRight: 25,
+      updatedAt: NOW,
+    });
+    expect(stopped).not.toHaveProperty('side');
+  });
+});
+
 describe('repairRunning', () => {
   it('two running sleeps for one baby: the later one runs on, the other ends when it started', () => {
     const { changed, stopped } = repairRunning(
@@ -120,6 +146,27 @@ describe('repairRunning', () => {
     const b = feed('b', T + 10 * MINUTE, [{ side: 'L', start: T + 10 * MINUTE }]);
     const { changed } = repairRunning([a, b], BABIES, context);
     expect(changed).toEqual([stopTimerAt(a, T + 20 * MINUTE, NOW)]);
+  });
+
+  it("two running pumps: the later one runs on, the other ends at its start; babies' timers are not touched", () => {
+    const early = pump('early', T, 'R');
+    const { changed, stopped } = repairRunning(
+      [early, pump('late', T + 30 * MINUTE), sleep('ada-sleep', T + HOUR)],
+      BABIES,
+      context,
+    );
+    expect(changed).toEqual([stopTimerAt(early, T + 30 * MINUTE, NOW)]);
+    expect(changed[0]).toMatchObject({ minRight: 30 });
+    expect(stopped).toEqual([
+      {
+        id: 'early',
+        babyId: null,
+        type: 'pump',
+        startAt: T,
+        stopAt: T + 30 * MINUTE,
+        reason: 'collision',
+      },
+    ]);
   });
 
   it('a running sleep and a running feed for one baby: the later one runs on, the other ends at its start', () => {
@@ -310,6 +357,13 @@ describe('findStale', () => {
     expect(findStale([running], new Set(['f']), [], T, T + 3 * HOUR)).toHaveLength(1); // breastfeed: 2 h
     expect(findStale([sleep('s', T)], new Set(['s']), [], T, T + 11 * HOUR)).toEqual([]);
     expect(findStale([sleep('s', T)], new Set(['s']), [], T, T + 13 * HOUR)).toHaveLength(1); // sleep: 12 h
+  });
+
+  it('flags a running pump from a backup older than its limit (2 h)', () => {
+    expect(findStale([pump('p', T)], new Set(['p']), [], T, T + HOUR)).toEqual([]);
+    expect(findStale([pump('p', T)], new Set(['p']), [], T, T + 3 * HOUR)).toEqual([
+      { id: 'p', babyId: null, type: 'pump', startAt: T },
+    ]);
   });
 
   it("ignores the device's own timers", () => {

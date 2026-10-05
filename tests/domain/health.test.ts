@@ -55,6 +55,12 @@ describe('forgottenTimer', () => {
     ).toBe(false);
   });
 
+  it('a pump running for more than 2 hours', () => {
+    const pump = (startAt: number) => ev({ type: 'pump', babyId: null, startAt, side: 'B' });
+    expect(forgottenTimer(pump(NOW - 2 * HOUR - MINUTE), NOW)).toBe(true);
+    expect(forgottenTimer(pump(NOW - 2 * HOUR), NOW)).toBe(false);
+  });
+
   it('never a finished, deleted or instant entry', () => {
     const old = NOW - 20 * HOUR;
     expect(forgottenTimer(ev({ type: 'sleep', babyId: 'a', startAt: old, endAt: NOW }), NOW)).toBe(

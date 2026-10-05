@@ -14,6 +14,7 @@ import {
   setSegmentMinutes,
   setSegmentSide,
   type BreastfeedEdit,
+  type PumpEdit,
   type SleepEdit,
 } from '../../src/ui/log/edits';
 
@@ -61,6 +62,14 @@ const FINISHED_FEED = saved({
     { side: 'L', start: T0 + 15 * MINUTE, end: T0 + 22 * MINUTE + 5 * SECOND },
   ],
 });
+const TIMED_PUMP = saved({
+  type: 'pump',
+  babyId: null,
+  startAt: T0,
+  endAt: T0 + 12 * MINUTE + 29 * SECOND,
+  minLeft: 12,
+  mlLeft: 50,
+});
 const RUNNING_SLEEP = saved({ type: 'sleep', babyId: 'a', startAt: T0 + 17 * SECOND });
 const GROWTH = saved({
   type: 'growth',
@@ -100,10 +109,29 @@ const EVERY_TYPE: [string, TrackerEvent][] = [
       note: 'Az',
     }),
   ],
-  ['a pump with one side', saved({ type: 'pump', babyId: null, startAt: T0, mlLeft: 60 })],
+  [
+    'a pump with one side',
+    saved({ type: 'pump', babyId: null, startAt: T0, endAt: T0, mlLeft: 60 }),
+  ],
   [
     'a pump with both sides',
-    saved({ type: 'pump', babyId: null, startAt: T0, mlLeft: 60, mlRight: 45 }),
+    saved({ type: 'pump', babyId: null, startAt: T0, endAt: T0, mlLeft: 60, mlRight: 45 }),
+  ],
+  ['a finished pump timer with seconds and ml added', TIMED_PUMP],
+  [
+    'a pump timer on both sides at once',
+    saved({
+      type: 'pump',
+      babyId: null,
+      startAt: T0,
+      endAt: T0 + 20 * MINUTE,
+      minLeft: 20,
+      minRight: 20,
+    }),
+  ],
+  [
+    'a running pump',
+    saved({ type: 'pump', babyId: null, startAt: T0 + 17 * SECOND, side: 'B', note: 'evening' }),
   ],
   ['growth with every measurement', GROWTH],
   [
@@ -272,6 +300,50 @@ describe('breastfeed edits', () => {
         { side: 'L', start: T0, end: SWITCH_AT },
         { side: 'L', start: SWITCH_AT, end: T0 + 20 * MINUTE },
       ],
+    });
+  });
+});
+
+describe('pump edits', () => {
+  const LENGTH = 12 * MINUTE + 29 * SECOND;
+  const pumpInput = (event: TrackerEvent) => eventToInput(event) as PumpEdit;
+
+  it('moving the end of a finished pump keeps its length, seconds included', () => {
+    const input = pumpInput(TIMED_PUMP);
+    expect(inputToDraft({ ...input, endAt: T0 + LENGTH + HOUR })).toStrictEqual({
+      ...draftOf(TIMED_PUMP),
+      startAt: T0 + HOUR,
+      endAt: T0 + LENGTH + HOUR,
+    });
+  });
+
+  it('an ml change keeps the timing as stored', () => {
+    const input = pumpInput(TIMED_PUMP);
+    expect(inputToDraft({ ...input, value: { ...input.value, mlRight: '30' } })).toStrictEqual({
+      ...draftOf(TIMED_PUMP),
+      mlRight: 30,
+    });
+  });
+
+  it('changed minutes put the start their sum before the end (one side after the other)', () => {
+    const input = pumpInput(TIMED_PUMP);
+    expect(inputToDraft({ ...input, value: { ...input.value, minRight: 8 } })).toStrictEqual({
+      ...draftOf(TIMED_PUMP),
+      startAt: T0 + LENGTH - 20 * MINUTE,
+      minRight: 8,
+    });
+    expect(
+      inputToDraft({ ...input, value: { ...input.value, minLeft: null, mlLeft: '' } }),
+    ).toStrictEqual({ type: 'pump', babyId: null, startAt: T0 + LENGTH, endAt: T0 + LENGTH });
+  });
+
+  it('a running pump: the start moves and the side stays', () => {
+    const running = saved({ type: 'pump', babyId: null, startAt: T0, side: 'R' });
+    const input = pumpInput(running);
+    expect(input).toMatchObject({ startAt: T0, endAt: null, side: 'R' });
+    expect(inputToDraft({ ...input, startAt: T0 - MINUTE })).toStrictEqual({
+      ...draftOf(running),
+      startAt: T0 - MINUTE,
     });
   });
 });

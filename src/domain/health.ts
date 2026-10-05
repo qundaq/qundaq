@@ -1,4 +1,4 @@
-import { TEMPERATURE_RANGE_C, isOpen } from './rules';
+import { TEMPERATURE_RANGE_C, isOpen, isTimedType } from './rules';
 import { HOUR } from './time';
 import type { TrackerEvent } from './types';
 
@@ -15,11 +15,15 @@ export function temperatureAlert(celsius: number): TemperatureAlert | null {
   return null;
 }
 
-/** How long a timer may run before Home asks "Forgot to stop?". */
-export const FORGOTTEN_AFTER_MS = { sleep: 12 * HOUR, breastfeed: 2 * HOUR } as const;
+/** How long a timer may run before Home asks "Forgot to stop?" (and a restored one counts as stale). */
+export const FORGOTTEN_AFTER_MS = {
+  sleep: 12 * HOUR,
+  breastfeed: 2 * HOUR,
+  pump: 2 * HOUR,
+} as const;
 
 export function forgottenTimer(event: TrackerEvent, now: number): boolean {
   if (event.deletedAt !== undefined || !isOpen(event)) return false;
-  if (event.type !== 'sleep' && event.type !== 'breastfeed') return false;
+  if (!isTimedType(event.type)) return false;
   return now - event.startAt > FORGOTTEN_AFTER_MS[event.type];
 }

@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { HOUR, MINUTE } from '../../src/domain/time';
-import type { BreastSegment, EventDraft, TrackerEvent } from '../../src/domain/types';
+import type { BreastSegment, EventDraft, PumpSide, TrackerEvent } from '../../src/domain/types';
 import {
   FUTURE_TOLERANCE_MS,
   MAX_DURATION_MS,
+  MAX_PUMP_MIN,
   ValidationError,
   editedMinutesValid,
+  isOpen,
+  isTimedType,
   validateBabyName,
   validateEvent,
   type RuleViolation,
@@ -37,7 +40,7 @@ describe('validateEvent — common rules', () => {
       ),
     ).toContain('baby-required');
     expect(
-      validateEvent({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60 }, [], NOW),
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW, endAt: NOW, mlLeft: 60 }, [], NOW),
     ).toEqual([]);
   });
 
@@ -117,7 +120,14 @@ describe('validateEvent — running timers', () => {
       [],
     );
     expect(
-      validateEvent({ type: 'pump', babyId: null, startAt: NOW, mlLeft: 60 }, [openFeedA], NOW),
+      validateEvent(
+        { type: 'pump', babyId: null, startAt: NOW, endAt: NOW, mlLeft: 60 },
+        [openFeedA],
+        NOW,
+      ),
+    ).toEqual([]);
+    expect(
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW, side: 'L' }, [openFeedA], NOW),
     ).toEqual([]);
   });
 
@@ -289,7 +299,15 @@ describe('validateEvent — duration limit', () => {
 });
 
 describe('validateEvent — pumping', () => {
-  it.each<[Partial<{ mlLeft: number; mlRight: number }>, RuleViolation[]]>([
+  type PumpFields = Partial<{
+    minLeft: number;
+    minRight: number;
+    mlLeft: number;
+    mlRight: number;
+    side: PumpSide;
+  }>;
+
+  it.each<[PumpFields, RuleViolation[]]>([
     [{}, ['pump-empty']],
     [{ mlLeft: 60 }, []],
     [{ mlRight: 40 }, []],
@@ -298,10 +316,73 @@ describe('validateEvent — pumping', () => {
     [{ mlLeft: 501 }, ['pump-invalid']],
     [{ mlLeft: 60.5 }, ['pump-invalid']],
     [{ mlLeft: 60, mlRight: Number.NaN }, ['pump-invalid']],
-  ])('%o → %o', (amounts, expected) => {
+    [{ minLeft: 10 }, []],
+    [{ minRight: MAX_PUMP_MIN }, []],
+    [{ minLeft: 12, minRight: 10, mlLeft: 50, mlRight: 40 }, []],
+    [{ minLeft: 0 }, ['pump-invalid']],
+    [{ minLeft: MAX_PUMP_MIN + 1 }, ['pump-invalid']],
+    [{ minRight: 7.5 }, ['pump-invalid']],
+    [{ minLeft: 10, side: 'L' }, ['pump-invalid']],
+  ])('a finished pump %o → %o', (fields, expected) => {
     expect(
-      validateEvent({ type: 'pump', babyId: null, startAt: NOW, ...amounts }, [], NOW),
+      validateEvent(
+        { type: 'pump', babyId: null, startAt: NOW - 30 * MINUTE, endAt: NOW, ...fields },
+        [],
+        NOW,
+      ),
     ).toEqual(expected);
+  });
+
+  it.each<[PumpFields, RuleViolation[]]>([
+    [{ side: 'L' }, []],
+    [{ side: 'R' }, []],
+    [{ side: 'B' }, []],
+    [{}, ['pump-invalid']],
+    [{ side: 'X' as PumpSide }, ['pump-invalid']],
+    [{ side: 'B', mlLeft: 40 }, []],
+    [{ side: 'L', minLeft: MAX_PUMP_MIN + 1 }, ['pump-invalid']],
+  ])('a running pump %o → %o', (fields, expected) => {
+    expect(
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW - 30 * MINUTE, ...fields }, [], NOW),
+    ).toEqual(expected);
+  });
+
+  it('is a timer: running without an end, and only one runs at a time', () => {
+    expect(isTimedType('pump')).toBe(true);
+    expect(isOpen({ type: 'pump' })).toBe(true);
+    expect(isOpen({ type: 'pump', endAt: NOW })).toBe(false);
+    const running = saved({ type: 'pump', babyId: null, startAt: NOW - 10 * MINUTE, side: 'L' });
+    const draft: EventDraft = { type: 'pump', babyId: null, startAt: NOW, side: 'R' };
+    expect(validateEvent(draft, [running], NOW)).toEqual(['already-running']);
+    expect(validateEvent(draft, [running], NOW, running.id)).toEqual([]);
+    const finished: EventDraft = {
+      type: 'pump',
+      babyId: null,
+      startAt: NOW,
+      endAt: NOW,
+      mlLeft: 9,
+    };
+    expect(validateEvent(finished, [running], NOW)).toEqual([]);
+    // A baby's running timer and the parent's running pump never clash.
+    const openSleep = saved({ type: 'sleep', babyId: 'a', startAt: NOW - HOUR }, 'sleep');
+    expect(validateEvent(draft, [openSleep], NOW)).toEqual([]);
+    expect(validateEvent({ type: 'sleep', babyId: 'a', startAt: NOW }, [running], NOW)).toEqual([]);
+  });
+
+  it('a finished pump lasts at most 4 hours; a running one is never checked', () => {
+    expect(MAX_DURATION_MS.pump).toBe(4 * HOUR);
+    const pump = (startAt: number): EventDraft => ({
+      type: 'pump',
+      babyId: null,
+      startAt,
+      endAt: NOW,
+      minLeft: 20,
+    });
+    expect(validateEvent(pump(NOW - 4 * HOUR), [], NOW)).toEqual([]);
+    expect(validateEvent(pump(NOW - 4 * HOUR - MINUTE), [], NOW)).toEqual(['too-long']);
+    expect(
+      validateEvent({ type: 'pump', babyId: null, startAt: NOW - 9 * HOUR, side: 'B' }, [], NOW),
+    ).toEqual([]);
   });
 });
 

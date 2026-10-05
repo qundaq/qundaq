@@ -51,6 +51,12 @@ const TEXT: CsvText = {
     t('csv.col.detail'),
     t('csv.col.note'),
   ],
+  pumpHeaders: [
+    t('csv.col.minLeft'),
+    t('csv.col.minRight'),
+    t('csv.col.mlLeft'),
+    t('csv.col.mlRight'),
+  ],
   typeLabel: (type) => t(`sheet.${type}.title` as MessageKey),
   describe: (e) => (e.type === 'diaper' ? t('diaper.wet.button') : ''),
 };
@@ -218,7 +224,13 @@ describe('buildCsvFiles', () => {
           event('2', { type: 'diaper', babyId: 'b', startAt: at(26, 9), wet: true, dirty: false }),
           event('3', { type: 'diaper', babyId: 'd', startAt: at(26, 9), wet: true, dirty: false }),
           event('4', { type: 'diaper', babyId: 'e', startAt: at(26, 9), wet: true, dirty: false }),
-          event('5', { type: 'pump', babyId: null, startAt: at(26, 7), mlLeft: 60 }),
+          event('5', {
+            type: 'pump',
+            babyId: null,
+            startAt: at(26, 7),
+            endAt: at(26, 7),
+            mlLeft: 60,
+          }),
           event(
             '6',
             { type: 'diaper', babyId: 'c', startAt: at(26, 9), wet: true, dirty: false },
@@ -235,6 +247,41 @@ describe('buildCsvFiles', () => {
     expect(files[0]!.text).toBe(
       `\uFEFF${TEXT.headers.join(';')}\r\n2026-09-26;09:00;;;;${t('sheet.diaper.title')};${t('diaper.wet.button')};\r\n`,
     );
+  });
+
+  it('the pumping file has the minutes and ml of each side after the duration; a moment has no end', () => {
+    const pumpType = t('sheet.pump.title');
+    const files = buildCsvFiles(
+      input({
+        events: [
+          event('moment', {
+            type: 'pump',
+            babyId: null,
+            startAt: at(26, 7),
+            endAt: at(26, 7),
+            mlLeft: 60,
+          }),
+          event('timed', {
+            type: 'pump',
+            babyId: null,
+            startAt: at(26, 8),
+            endAt: at(26, 8, 22),
+            minLeft: 12,
+            minRight: 10,
+            mlRight: 40,
+          }),
+          event('running', { type: 'pump', babyId: null, startAt: at(26, 9), side: 'L' }),
+        ],
+      }),
+    );
+    const [date, start, endDate, endTime, minutes, ...rest] = TEXT.headers;
+    const header = [date, start, endDate, endTime, minutes, ...TEXT.pumpHeaders, ...rest];
+    expect(files.map((file) => file.text)).toEqual([
+      `\uFEFF${header.join(';')}\r\n` +
+        `2026-09-26;07:00;;;;;;60;;${pumpType};;\r\n` +
+        `2026-09-26;08:00;2026-09-26;08:22;22;12;10;;40;${pumpType};;\r\n` +
+        `2026-09-26;09:00;;;;;;;;${pumpType};;\r\n`,
+    ]);
   });
 
   it('a name with nothing usable left gets the fallback label', () => {

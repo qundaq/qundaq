@@ -142,6 +142,23 @@ function EditForm({
             />
           )}
         </>
+      ) : input.type === 'pump' ? (
+        // A finished pump is edited by its end (its start follows from the minutes), a running one by its start.
+        input.endAt === null ? (
+          <EditTimeField
+            label={t('sheet.time')}
+            value={input.startAt}
+            stored={event.startAt}
+            onChange={(startAt) => setInput({ ...input, startAt })}
+          />
+        ) : (
+          <EditTimeField
+            label={t('sheet.time')}
+            value={input.endAt}
+            stored={event.endAt}
+            onChange={(endAt) => setInput({ ...input, endAt })}
+          />
+        )
       ) : (
         <EditTimeField
           label={t('sheet.time')}
@@ -192,7 +209,13 @@ function EditForm({
             aria-describedby={dirty ? saveFirstId : undefined}
             onClick={() => void run(() => stopEvent(db, event.id))}
           >
-            {t(event.type === 'sleep' ? 'timer.wakeUp' : 'timer.stopFeed')}
+            {t(
+              event.type === 'sleep'
+                ? 'timer.wakeUp'
+                : event.type === 'pump'
+                  ? 'timer.stop'
+                  : 'timer.stopFeed',
+            )}
           </Button>
           {dirty && (
             <p id={saveFirstId} className={[styles.muted, styles.small].filter(Boolean).join(' ')}>

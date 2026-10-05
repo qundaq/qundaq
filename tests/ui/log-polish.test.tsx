@@ -430,6 +430,7 @@ describe('the pumping report', () => {
     type: 'pump',
     babyId: null,
     startAt: new Date(2026, 8, d, 9, 0).getTime(),
+    endAt: new Date(2026, 8, d, 9, 0).getTime(),
     ...(mlLeft !== undefined ? { mlLeft } : {}),
     ...(mlRight !== undefined ? { mlRight } : {}),
     createdAt: 0,

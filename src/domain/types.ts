@@ -12,6 +12,8 @@ export interface Baby {
 }
 
 export type Side = 'L' | 'R';
+/** The side(s) a running pump is on: 'B' is both breasts at once. */
+export type PumpSide = Side | 'B';
 export type StoolColor =
   'yellow' | 'mustard' | 'green' | 'brown' | 'pale-yellow' | 'clay' | 'white' | 'red' | 'black';
 export type Consistency = 'watery' | 'soft' | 'formed' | 'hard';
@@ -34,7 +36,14 @@ export type EventPayload =
       stoolColor?: StoolColor;
       consistency?: Consistency;
     }
-  | { type: 'pump'; mlLeft?: number; mlRight?: number }
+  | {
+      type: 'pump';
+      minLeft?: number; // whole minutes per side
+      minRight?: number;
+      mlLeft?: number;
+      mlRight?: number;
+      side?: PumpSide; // only while the pump timer runs
+    }
   | { type: 'growth'; weightG?: number; heightMm?: number; headMm?: number }
   | { type: 'temperature'; celsius: number }
   | { type: 'medication'; name: string; dose?: string }
@@ -45,7 +54,7 @@ export type EventType = EventPayload['type'];
 interface EventTiming {
   babyId: Id | null; // null only for 'pump' (the parent's record)
   startAt: number;
-  endAt?: number; // undefined on a running sleep/breastfeed
+  endAt?: number; // undefined on a running sleep/breastfeed/pump
   note?: string;
 }
 

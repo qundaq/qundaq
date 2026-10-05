@@ -1,4 +1,5 @@
 import { parseDecimal, scaleToInt } from '../../domain/decimal';
+import { pumpStartAt } from '../../domain/pump';
 import { MINUTE } from '../../domain/time';
 import type {
   BottleContents,
@@ -41,8 +42,13 @@ export interface DiaperInput {
   stoolColor: StoolColor | null;
   consistency: Consistency | null;
 }
-/** Whole millilitres exactly as typed; parsed on save, so "60.5" is reported instead of truncated. */
+/**
+ * Whole minutes per side (null: side not used), and whole millilitres exactly as typed; the ml are parsed
+ * on save, so "60.5" is reported instead of truncated.
+ */
 export interface PumpInput {
+  minLeft: number | null;
+  minRight: number | null;
   mlLeft: string;
   mlRight: string;
 }
@@ -80,7 +86,7 @@ export const DEFAULT_INPUTS: { [K in InputKind]: InputValue<K> } = {
   bottle: { ml: null, contents: 'breastmilk' },
   sleep: { durationMin: null },
   diaper: { wet: true, dirty: false, stoolColor: null, consistency: null },
-  pump: { mlLeft: '', mlRight: '' },
+  pump: { minLeft: null, minRight: null, mlLeft: '', mlRight: '' },
   growth: { weightKg: '', heightCm: '', headCm: '' },
   temperature: { celsius: '' },
   medication: { name: '', dose: '' },
@@ -116,6 +122,21 @@ function amountField<K extends string>(key: K, raw: string): Partial<Record<K, n
   return { [key]: /^\d+$/.test(trimmed) ? Number(trimmed) : Number.NaN } as Partial<
     Record<K, number>
   >;
+}
+
+/** The minutes and ml a pump input holds, without the empty ones. */
+export function pumpAmounts(value: PumpInput): {
+  minLeft?: number;
+  minRight?: number;
+  mlLeft?: number;
+  mlRight?: number;
+} {
+  return {
+    ...(value.minLeft === null ? {} : { minLeft: value.minLeft }),
+    ...(value.minRight === null ? {} : { minRight: value.minRight }),
+    ...amountField('mlLeft', value.mlLeft),
+    ...amountField('mlRight', value.mlRight),
+  };
 }
 
 /** °C rounded to one decimal before validation, so 37,95 becomes 38,0 and gets the fever hint. */
@@ -165,14 +186,16 @@ function draftFor(input: SheetInput, babyId: Id | null, at: number): EventDraft 
         ...(dirty && consistency ? { consistency } : {}),
       };
     }
-    case 'pump':
+    case 'pump': {
+      const amounts = pumpAmounts(input.value);
       return {
         type: 'pump',
         babyId: null,
-        startAt: at,
-        ...amountField('mlLeft', input.value.mlLeft),
-        ...amountField('mlRight', input.value.mlRight),
+        startAt: pumpStartAt(at, amounts.minLeft, amounts.minRight),
+        endAt: at,
+        ...amounts,
       };
+    }
     case 'growth':
       return {
         type: 'growth',
@@ -207,8 +230,8 @@ function draftFor(input: SheetInput, babyId: Id | null, at: number): EventDraft 
 /**
  * Turns one sheet submission into drafts: one per selected baby, except pumping, which is a single entry
  * for the parent (`babyId: null`). Validation happens in the repository. `at` is the time from the sheet:
- * a timer STARTS at `at`; an entry with a duration ENDS at `at` ("fed 15 min, just finished"); instant
- * entries happen at `at`.
+ * a timer STARTS at `at`; an entry with a duration ENDS at `at` ("fed 15 min, just finished", a pump
+ * logged afterwards); instant entries happen at `at`.
  */
 export function buildDrafts(
   input: SheetInput,

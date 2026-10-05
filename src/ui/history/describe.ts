@@ -141,6 +141,8 @@ export function timeRange(
 ): string {
   const start = timeOnDay(t, locale, event.startAt, shownDay);
   if (!isTimedType(event.type)) return start;
+  // A pump logged with ml only is a moment and reads like one.
+  if (event.type === 'pump' && event.endAt === event.startAt) return start;
   if (event.endAt === undefined) return t('log.range.running', { start });
   return `${start} – ${timeOnDay(t, locale, event.endAt, shownDay)}`;
 }

@@ -109,6 +109,35 @@ describe('listEventsOverlapping', () => {
     expect(await listEventsOverlapping(db, at(25, 0), at(26, 0), NOW)).toEqual([]);
   });
 
+  it('a pump logged as a moment counts when it happens in the window, its very start included', async () => {
+    const db = freshDb();
+    const atMidnight = row({
+      type: 'pump',
+      babyId: null,
+      startAt: at(25, 0),
+      endAt: at(25, 0),
+      mlLeft: 60,
+    });
+    const timed = row({
+      type: 'pump',
+      babyId: null,
+      startAt: at(24, 23, 50),
+      endAt: at(25, 0, 10),
+      minLeft: 20,
+    });
+    const running = row({ type: 'pump', babyId: null, startAt: at(25, 11), side: 'B' });
+    const atEnd = row({
+      type: 'pump',
+      babyId: null,
+      startAt: at(26, 0),
+      endAt: at(26, 0),
+      mlRight: 40,
+    });
+    await db.events.bulkAdd([atMidnight, timed, running, atEnd]);
+    const found = await listEventsOverlapping(db, at(25, 0), at(26, 0), at(25, 12));
+    expect(found.map((event) => event.id)).toEqual([timed.id, atMidnight.id, running.id]);
+  });
+
   it('a running entry lasts until now, not beyond', async () => {
     const db = freshDb();
     const running = row({ type: 'sleep', babyId: 'a', startAt: at(25, 11) });

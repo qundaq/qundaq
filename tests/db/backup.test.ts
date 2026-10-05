@@ -7,7 +7,7 @@ import { parseBackup, type ParsedBackup } from '../../src/backup/validate';
 import { addBaby, deleteBaby } from '../../src/db/babies';
 import { applyImport, readSnapshot } from '../../src/db/backup';
 import { openDb, type TrackerDb } from '../../src/db/db';
-import { listRunningEvents, logEvents } from '../../src/db/events';
+import { listRunningEvents, logEvents, startPump, stopPump } from '../../src/db/events';
 import { loadSettings, saveSettings } from '../../src/db/settings';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
 import type { Baby, TrackerEvent } from '../../src/domain/types';
@@ -101,7 +101,15 @@ describe('export, then read back', () => {
       ],
       T,
     );
-    await logEvents(db, [{ type: 'pump', babyId: null, startAt: T - 2 * MINUTE, mlLeft: 60 }], T);
+    await logEvents(
+      db,
+      [{ type: 'pump', babyId: null, startAt: T - 2 * MINUTE, endAt: T - 2 * MINUTE, mlLeft: 60 }],
+      T,
+    );
+    // A finished pump timer with ml added, and a running one.
+    const [timed] = await startPump(db, 'B', T - 40 * MINUTE);
+    await stopPump(db, timed!.after.id, T - 20 * MINUTE, { mlRight: 80 });
+    await startPump(db, 'L', T - 10 * MINUTE);
     await deleteBaby(db, cal.id, T + 1);
     await saveSettings(
       db,

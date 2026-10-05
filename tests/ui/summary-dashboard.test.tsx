@@ -283,6 +283,7 @@ describe('PumpCard', () => {
     type: 'pump',
     babyId: null,
     startAt,
+    endAt: startAt,
     mlLeft,
     mlRight,
     createdAt: 0,

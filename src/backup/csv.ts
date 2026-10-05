@@ -30,6 +30,8 @@ export function toCsv(rows: readonly (readonly string[])[], separator: CsvSepara
 export interface CsvText {
   /** The csv.col.* headers (date, start, end date, end time, duration, type, detail, note) in the app's language. */
   headers: readonly string[];
+  /** The pumping file's extra headers, after the duration: minutes left, right, ml left, right. */
+  pumpHeaders: readonly string[];
   typeLabel: (type: EventType) => string;
   /** The log (history) detail line. */
   describe: (event: TrackerEvent) => string;
@@ -52,13 +54,43 @@ function durationMinutes(event: TrackerEvent, end: number): number {
   return Math.round((end - event.startAt) / 60_000);
 }
 
-/** The header and one row per live entry, oldest first. Only the text cells (type, detail, note) are guarded. */
-export function eventsToCsvRows(events: readonly TrackerEvent[], text: CsvText): string[][] {
+/** A whole number as typed into a cell; anything else (a missing side, a malformed row) is empty. */
+function numberCell(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+}
+
+/** Minutes and ml per side, for the pumping file. */
+function pumpCells(event: TrackerEvent): string[] {
+  if (event.type !== 'pump') return ['', '', '', ''];
+  return [event.minLeft, event.minRight, event.mlLeft, event.mlRight].map(numberCell);
+}
+
+/** The common columns before the pumping file's extra ones: date, start, end date, end time, duration. */
+const PUMP_COLUMNS_AT = 5;
+
+/**
+ * The header and one row per live entry, oldest first. Only the text cells (type, detail, note) are
+ * guarded. The pumping file (`pump`) has the minutes and ml of each side after the duration.
+ */
+export function eventsToCsvRows(
+  events: readonly TrackerEvent[],
+  text: CsvText,
+  pump = false,
+): string[][] {
+  const headers = pump
+    ? [
+        ...text.headers.slice(0, PUMP_COLUMNS_AT),
+        ...text.pumpHeaders,
+        ...text.headers.slice(PUMP_COLUMNS_AT),
+      ]
+    : [...text.headers];
   const rows = events
     .filter((event) => event.deletedAt === undefined)
     .sort((a, b) => a.startAt - b.startAt)
     .map((event) => {
-      const end = isTimedType(event.type) ? event.endAt : undefined;
+      // A pump logged with ml only is a moment: no end, like an instant entry.
+      const moment = event.type === 'pump' && event.endAt === event.startAt;
+      const end = isTimedType(event.type) && !moment ? event.endAt : undefined;
       let detail = '';
       try {
         detail = text.describe(event);
@@ -71,13 +103,14 @@ export function eventsToCsvRows(events: readonly TrackerEvent[], text: CsvText):
         end === undefined ? '' : localDate(end),
         end === undefined ? '' : localTime(end),
         end === undefined ? '' : String(durationMinutes(event, end)),
+        ...(pump ? pumpCells(event) : []),
         guardFormula(text.typeLabel(event.type)),
         guardFormula(detail),
         // A malformed row's note that is not text is left empty rather than failing the whole file.
         guardFormula(typeof event.note === 'string' ? event.note : ''),
       ];
     });
-  return [[...text.headers], ...rows];
+  return [headers, ...rows];
 }
 
 const FILE_NAME_MAX = 40;
@@ -126,7 +159,7 @@ export interface CsvInput {
  */
 export function buildCsvFiles(input: CsvInput): CsvFile[] {
   const live = input.events.filter((event) => event.deletedAt === undefined);
-  const groups: { label: string; events: TrackerEvent[] }[] = [];
+  const groups: { label: string; events: TrackerEvent[]; pump?: boolean }[] = [];
   for (const baby of input.babies) {
     if (baby.deletedAt !== undefined || baby.archived) continue;
     const events = live.filter((event) => event.babyId === baby.id);
@@ -136,11 +169,12 @@ export function buildCsvFiles(input: CsvInput): CsvFile[] {
       groups.push({ label: /[\p{L}\p{N}]/u.test(label) ? label : input.fallbackLabel, events });
   }
   const pumps = live.filter((event) => event.babyId === null && event.type === 'pump');
-  if (pumps.length > 0) groups.push({ label: sanitizeFileName(input.pumpLabel), events: pumps });
+  if (pumps.length > 0)
+    groups.push({ label: sanitizeFileName(input.pumpLabel), events: pumps, pump: true });
   const labels = uniqueNames(groups.map((group) => group.label));
   const date = localDate(input.now);
   return groups.map((group, i) => ({
     name: `qundaq-${labels[i]}-${date}.csv`,
-    text: toCsv(eventsToCsvRows(group.events, input.text), input.separator),
+    text: toCsv(eventsToCsvRows(group.events, input.text, group.pump), input.separator),
   }));
 }

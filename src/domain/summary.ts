@@ -100,16 +100,30 @@ export interface PumpReport {
   leftMl: number;
   rightMl: number;
   perDay: { day: number; ml: number }[]; // one entry per calendar day of [from, to), oldest first
-  averagePerDay: number;
+  averagePerDay: number; // ml
+  totalMin: number;
+  leftMin: number;
+  rightMin: number;
+  perDayMin: { day: number; min: number }[]; // the same days as perDay
+  averageMinPerDay: number;
 }
 
-/** Live baby-less pumps that started in [from, to): sessions, ml per side, ml per day and the daily average. */
+/**
+ * Live baby-less pumps that started in [from, to): sessions, ml and minutes per side and per day, and the
+ * daily averages. A running pump counts as a session with nothing recorded yet.
+ */
 export function pumpReport(events: readonly TrackerEvent[], from: number, to: number): PumpReport {
   const perDay: { day: number; ml: number }[] = [];
-  for (let day = from; day < to; day = addDays(day, 1)) perDay.push({ day, ml: 0 });
+  const perDayMin: { day: number; min: number }[] = [];
+  for (let day = from; day < to; day = addDays(day, 1)) {
+    perDay.push({ day, ml: 0 });
+    perDayMin.push({ day, min: 0 });
+  }
   let sessions = 0;
   let leftMl = 0;
   let rightMl = 0;
+  let leftMin = 0;
+  let rightMin = 0;
   for (const event of events) {
     if (
       event.type !== 'pump' ||
@@ -120,20 +134,34 @@ export function pumpReport(events: readonly TrackerEvent[], from: number, to: nu
       continue;
     const left = finite(event.mlLeft);
     const right = finite(event.mlRight);
+    const minutesLeft = finite(event.minLeft);
+    const minutesRight = finite(event.minRight);
     sessions += 1;
     leftMl += left;
     rightMl += right;
-    const entry = perDay[dayOffset(from, event.startAt)];
+    leftMin += minutesLeft;
+    rightMin += minutesRight;
+    const offset = dayOffset(from, event.startAt);
+    const entry = perDay[offset];
     if (entry) entry.ml += left + right;
+    const minutesEntry = perDayMin[offset];
+    if (minutesEntry) minutesEntry.min += minutesLeft + minutesRight;
   }
   const totalMl = leftMl + rightMl;
+  const totalMin = leftMin + rightMin;
+  const average = (total: number) => (perDay.length === 0 ? 0 : Math.round(total / perDay.length));
   return {
     sessions,
     totalMl,
     leftMl,
     rightMl,
     perDay,
-    averagePerDay: perDay.length === 0 ? 0 : Math.round(totalMl / perDay.length),
+    averagePerDay: average(totalMl),
+    totalMin,
+    leftMin,
+    rightMin,
+    perDayMin,
+    averageMinPerDay: average(totalMin),
   };
 }
 

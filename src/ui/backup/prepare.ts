@@ -43,6 +43,12 @@ const CSV_HEADERS: readonly MessageKey[] = [
   'csv.col.detail',
   'csv.col.note',
 ];
+const CSV_PUMP_HEADERS: readonly MessageKey[] = [
+  'csv.col.minLeft',
+  'csv.col.minRight',
+  'csv.col.mlLeft',
+  'csv.col.mlRight',
+];
 
 /** One CSV per baby (and one for pumping), for the pediatrician. Never counts as a backup. */
 export async function prepareCsv(
@@ -60,6 +66,7 @@ export async function prepareCsv(
     fallbackLabel: t('csv.fallbackName'),
     text: {
       headers: CSV_HEADERS.map((key) => t(key)),
+      pumpHeaders: CSV_PUMP_HEADERS.map((key) => t(key)),
       typeLabel: (type) => typeLabel(t, type),
       describe: (event) => describeEvent(t, locale, event, now),
     },

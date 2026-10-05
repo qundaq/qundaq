@@ -4,6 +4,7 @@ import {
   BABY_NAME_MAX,
   GROWTH_RANGES,
   MAX_BOTTLE_ML,
+  MAX_PUMP_MIN,
   MAX_PUMP_ML,
   TEMPERATURE_RANGE_C,
   TEXT_LIMITS,
@@ -18,6 +19,7 @@ import type {
   EventPayload,
   EventType,
   Id,
+  PumpSide,
   TrackerEvent,
 } from '../domain/types';
 import { LOCALES, type Locale } from '../i18n';
@@ -113,6 +115,7 @@ const COLOR = /^#[0-9a-fA-F]{6}$/;
 const BOTTLE_CONTENTS: readonly BottleContents[] = ['breastmilk', 'formula', 'mixed'];
 const CONSISTENCIES: readonly Consistency[] = ['watery', 'soft', 'formed', 'hard'];
 const STOOL_COLOR_IDS: readonly string[] = STOOL_COLORS.map((color) => color.id);
+const PUMP_SIDES: readonly PumpSide[] = ['L', 'R', 'B'];
 
 /**
  * A malformed `birthDate` (an out-of-range or otherwise unparseable date; nothing in the app stops one
@@ -214,13 +217,22 @@ const PAYLOADS: {
       ...(consistency === undefined ? {} : { consistency }),
     };
   },
-  pump: (row) => {
+  pump: (row, endAt) => {
+    const minLeft = optionalInt(row, 'minLeft', 1, MAX_PUMP_MIN);
+    const minRight = optionalInt(row, 'minRight', 1, MAX_PUMP_MIN);
     const mlLeft = optionalInt(row, 'mlLeft', 1, MAX_PUMP_ML);
     const mlRight = optionalInt(row, 'mlRight', 1, MAX_PUMP_ML);
-    if (mlLeft === undefined && mlRight === undefined) fail('bad-payload');
+    const side = own(row, 'side');
+    const empty = [minLeft, minRight, mlLeft, mlRight].every((value) => value === undefined);
+    // A running pump names its side; a finished one has none, and says what was pumped.
+    if (endAt === undefined ? !PUMP_SIDES.includes(side as PumpSide) : side !== undefined || empty)
+      fail('bad-payload');
     return {
+      ...(minLeft === undefined ? {} : { minLeft }),
+      ...(minRight === undefined ? {} : { minRight }),
       ...(mlLeft === undefined ? {} : { mlLeft }),
       ...(mlRight === undefined ? {} : { mlRight }),
+      ...(side === undefined ? {} : { side: side as PumpSide }),
     };
   },
   growth: (row) => {

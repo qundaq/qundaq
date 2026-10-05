@@ -28,6 +28,19 @@ function sleep(id: string, extra: Partial<TrackerEvent> = {}): TrackerEvent {
   } as TrackerEvent;
 }
 
+function pump(id: string, extra: Partial<TrackerEvent> = {}): TrackerEvent {
+  return {
+    id,
+    type: 'pump',
+    babyId: null,
+    startAt: NOW - 10 * MINUTE,
+    side: 'L',
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...extra,
+  } as TrackerEvent;
+}
+
 async function openIds(db: TrackerDb): Promise<string[]> {
   return (await db.events.where('open').equals(1).primaryKeys()).sort();
 }
@@ -52,6 +65,14 @@ describe('withOpenFlag', () => {
     } as TrackerEvent;
     expect(shouldBeOpen(diaper)).toBe(false);
     expect(withOpenFlag(diaper)).not.toHaveProperty('open');
+  });
+
+  it('flags a running pump (no end yet) like any timer', () => {
+    expect(withOpenFlag(pump('p'))).toMatchObject({ open: 1 });
+    const finished = pump('p', { endAt: NOW, side: undefined, minLeft: 10 });
+    expect(shouldBeOpen(finished)).toBe(false);
+    expect(withOpenFlag({ ...finished, open: 1 as const })).not.toHaveProperty('open');
+    expect(withOpenFlag(pump('p', { deletedAt: NOW }))).not.toHaveProperty('open');
   });
 
   it('returns a copy and leaves its argument alone', () => {
@@ -84,6 +105,15 @@ describe('open-flag middleware', () => {
       .modify((row) => {
         row.endAt = NOW;
       });
+    expect(await openIds(db)).toEqual([]);
+  });
+
+  it('indexes a running pump and drops it once it ends or is deleted', async () => {
+    const db = freshDb();
+    await db.events.bulkPut([pump('ends'), pump('deleted'), pump('done', { endAt: NOW })]);
+    expect(await openIds(db)).toEqual(['deleted', 'ends']);
+    await db.events.update('ends', { endAt: NOW });
+    await db.events.update('deleted', { deletedAt: NOW });
     expect(await openIds(db)).toEqual([]);
   });
 

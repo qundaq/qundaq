@@ -1,8 +1,9 @@
 import { FORGOTTEN_AFTER_MS } from '../domain/health';
-import { isOpen } from '../domain/rules';
+import { finishedPump } from '../domain/pump';
+import { isOpen, type TimedType } from '../domain/rules';
 import type { Baby, Id, TrackerEvent } from '../domain/types';
 
-export type TimerType = 'sleep' | 'breastfeed';
+export type TimerType = TimedType;
 
 /** collision: another running timer for the baby. stale: the user chose to stop it. deleted-baby: its baby is deleted. */
 export type StopReason = 'collision' | 'stale' | 'deleted-baby';
@@ -49,10 +50,11 @@ function lastSideTime(event: TrackerEvent): number {
 /**
  * The running timer ended at `at`, but never before it started, before its current side started (so a
  * side never ends before it begins) or before a paused feed's last side ended. The last breastfeeding
- * side is closed at the same time when it is still open.
+ * side is closed at the same time when it is still open; a pump gets its elapsed minutes (finishedPump).
  */
 export function stopTimerAt(event: TrackerEvent, at: number, now: number): TrackerEvent {
   const endAt = Math.max(at, event.startAt, lastSideTime(event));
+  if (event.type === 'pump') return { ...finishedPump(event, endAt), updatedAt: now };
   const segments = segmentsOf(event);
   if (segments === null) return { ...event, endAt, updatedAt: now };
   const last = segments.length - 1;
@@ -105,13 +107,14 @@ export interface RepairContext {
 }
 
 /**
- * Makes the merged rows obey "at most one running timer per baby", and stops
+ * Makes the merged rows obey "at most one running timer per baby" (and one running pump), and stops
  * what must not run on:
  * 1. stale timers the user chose to stop end at the backup's time, or when their baby was deleted if
  *    that came first;
  * 2. timers of a deleted baby end when the baby was deleted (as deleteBaby does), unless that time is
  *    unreadable;
- * 3. of two or more running timers for one baby (a sleep and a breastfeed count together), the one that started last keeps running (a
+ * 3. of two or more running timers for one baby (a sleep and a breastfeed count together), or of two
+ *    running pumps, the one that started last keeps running (a
  *    tie goes to the larger id, so both phones agree) and every other one ends at the newest one's start.
  * No timer ever ends before its own start or its current side's start (see stopTimerAt), nor after now.
  * Returns the rows it changed and what it stopped, for the preview.

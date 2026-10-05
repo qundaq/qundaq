@@ -7,6 +7,7 @@ import {
   validateEvent,
   type RuleViolation,
 } from '../domain/rules';
+import { finishedPump } from '../domain/pump';
 import { DAY } from '../domain/time';
 import { foldCase } from '../domain/text';
 import type {
@@ -15,6 +16,7 @@ import type {
   GrowthEvent,
   Id,
   MedicationEvent,
+  PumpSide,
   TrackerEvent,
 } from '../domain/types';
 import type { TrackerDb } from './db';
@@ -42,8 +44,10 @@ export async function listRecentEvents(db: TrackerDb, since: number): Promise<Tr
 export const OVERLAP_LOOKBACK_MS = 2 * DAY;
 
 function overlaps(event: TrackerEvent, from: number, to: number, now: number): boolean {
-  if (!isTimedType(event.type)) return event.startAt >= from && event.startAt < to;
-  return event.startAt < to && (event.endAt ?? now) > from;
+  const startsInside = event.startAt >= from && event.startAt < to;
+  if (!isTimedType(event.type)) return startsInside;
+  // A timer of no length (a pump logged with ml only) is a moment, like an instant entry.
+  return startsInside || (event.startAt < to && (event.endAt ?? now) > from);
 }
 
 /**
@@ -140,9 +144,13 @@ function closeLast(segments: readonly BreastSegment[], at: number): BreastSegmen
   );
 }
 
-/** The running event ended at `now` (never before it started), with its last breastfeeding segment closed. */
+/**
+ * The running event ended at `now` (never before it started), with its last breastfeeding segment closed,
+ * or a pump's elapsed minutes recorded on its side.
+ */
 export function stoppedAt(event: TrackerEvent, now: number): TrackerEvent {
   const endAt = Math.max(now, event.startAt);
+  if (event.type === 'pump') return { ...finishedPump(event, endAt), updatedAt: now };
   return {
     ...event,
     endAt,
@@ -272,6 +280,66 @@ export async function stopTimer(
 /** Stops a running timer. Returns false (and changes nothing) if it has already been stopped. */
 export async function stopEvent(db: TrackerDb, id: Id, now = Date.now()): Promise<boolean> {
   return (await stopTimer(db, id, now)) !== null;
+}
+
+/**
+ * Starts the parent's pump timer at `now` on `side` ('B': both breasts at once). One pump runs at a time,
+ * as one timer per baby: a pump still running ends at `now` (its minutes recorded) in the same write.
+ * Returns what changed for undo: the stopped pump first, then the new one.
+ */
+export async function startPump(
+  db: TrackerDb,
+  side: PumpSide,
+  now = Date.now(),
+): Promise<EventChange[]> {
+  return db.transaction('rw', db.events, async () => {
+    const stops = (await listRunningEvents(db))
+      .filter((event) => event.type === 'pump' && event.deletedAt === undefined)
+      .map((before) => ({ before, after: stoppedAt(before, now) }));
+    if (stops.length > 0) await db.events.bulkPut(stops.map((stop) => stop.after));
+    const created = await recordEvents(
+      db,
+      [{ type: 'pump', babyId: null, startAt: now, side }],
+      now,
+    );
+    return [...stops, ...created];
+  });
+}
+
+const PUMP_PATCH_KEYS = ['minLeft', 'minRight', 'mlLeft', 'mlRight'] as const;
+
+/** Corrections made in the stop sheet before finishing: a number sets the field, null removes it. */
+export type PumpPatch = Partial<Record<(typeof PUMP_PATCH_KEYS)[number], number | null>>;
+
+/**
+ * Finishes a running pump at `now`: the elapsed minutes (rounded, 1 to MAX_PUMP_MIN) go on the side it ran
+ * on, both for 'B', the side is dropped, then `patch` is applied. The result must pass the pumping rules
+ * (a ValidationError otherwise, and nothing changes); like stopTimer, a stop is never refused for having
+ * run too long. Returns the change for undo, or null if the pump has already finished.
+ */
+export async function stopPump(
+  db: TrackerDb,
+  id: Id,
+  now = Date.now(),
+  patch: PumpPatch = {},
+): Promise<EventChange | null> {
+  return db.transaction('rw', db.events, async () => {
+    const event = await getLive(db, id);
+    if (event.type !== 'pump') throw new Error(`Event ${id} is not a pump`);
+    if (!isOpen(event)) return null;
+    const finished = { ...stoppedAt(event, now) } as typeof event;
+    for (const key of PUMP_PATCH_KEYS) {
+      const value = patch[key];
+      if (value === null) delete finished[key];
+      else if (value !== undefined) finished[key] = value;
+    }
+    const violations = validateEvent(finished, [], now, id).filter(
+      (violation) => violation !== 'too-long',
+    );
+    if (violations.length > 0) throw new ValidationError(violations);
+    await db.events.put(finished);
+    return { before: event, after: finished };
+  });
 }
 
 /**
