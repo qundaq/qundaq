@@ -141,6 +141,16 @@ export function pumpAmounts(value: PumpInput): {
   };
 }
 
+/** Whether a pump input holds anything to save: minutes on a side, or ml typed on a side. */
+export function hasPumpAmounts(value: PumpInput): boolean {
+  return (
+    (value.minLeft ?? 0) > 0 ||
+    (value.minRight ?? 0) > 0 ||
+    value.mlLeft.trim() !== '' ||
+    value.mlRight.trim() !== ''
+  );
+}
+
 /** °C rounded to one decimal before validation, so 37,95 becomes 38,0 and gets the fever hint. */
 function temperatureValue(raw: string): number {
   const value = parseDecimal(raw);

@@ -2,7 +2,7 @@ import { MAX_PUMP_MIN } from './rules';
 import { MINUTE } from './time';
 import type { TrackerEvent } from './types';
 
-type Pump = Extract<TrackerEvent, { type: 'pump' }>;
+export type PumpEvent = Extract<TrackerEvent, { type: 'pump' }>;
 
 /** A pump timer's elapsed time in whole minutes: rounded, never below 1 nor above MAX_PUMP_MIN. */
 export function pumpMinutes(ms: number): number {
@@ -22,7 +22,7 @@ export function pumpStartAt(endAt: number, minLeft = 0, minRight = 0): number {
  * on ('B': on both), replacing what that side had, and the timer's side is dropped. A side this version
  * does not know (a malformed row) gets nothing: it is never guessed at.
  */
-export function finishedPump<T extends Pump>(event: T, endAt: number): T {
+export function finishedPump<T extends PumpEvent>(event: T, endAt: number): T {
   const end = Math.max(endAt, event.startAt);
   const minutes = pumpMinutes(end - event.startAt);
   const { side, ...rest } = event;
@@ -32,4 +32,14 @@ export function finishedPump<T extends Pump>(event: T, endAt: number): T {
     ...(side === 'L' || side === 'B' ? { minLeft: minutes } : {}),
     ...(side === 'R' || side === 'B' ? { minRight: minutes } : {}),
   } as T;
+}
+
+/** The parent's pump timer while it runs (one at a time), or null. */
+export function runningPump(events: readonly TrackerEvent[]): PumpEvent | null {
+  return (
+    events.find(
+      (event): event is PumpEvent =>
+        event.type === 'pump' && event.deletedAt === undefined && event.endAt === undefined,
+    ) ?? null
+  );
 }

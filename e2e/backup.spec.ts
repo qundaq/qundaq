@@ -14,6 +14,7 @@ import {
   addBabyInSettings,
   logDiaper,
   openPump,
+  pumpMlField,
   openTab,
   cardAction,
   pickTime,
@@ -154,7 +155,8 @@ test.describe('CSV', () => {
     await bottle.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(bottle).toBeHidden();
     const pump = await openPump(page);
-    await pump.getByLabel(t('pump.left')).fill('60');
+    await pump.getByRole('button', { name: t('pump.addMl'), exact: true }).click();
+    await pumpMlField(pump, 'L').fill('60');
     await pump.getByRole('button', { name: t('note.add'), exact: true }).click();
     await pump.getByLabel(t('note.optional')).fill('=evening; "left"');
     await pump.getByRole('button', { name: t('common.save'), exact: true }).click();

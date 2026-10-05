@@ -201,6 +201,45 @@ export async function openPump(page: Page) {
   return page.getByRole('dialog', { name: t('sheet.pump.title'), exact: true });
 }
 
+/** One quick chip ("10 min") of a side's minutes (sideMinutes.value), in the feed or pumping sheet. */
+export function sideMinutesChip(sheet: Locator, side: 'L' | 'R', minutes: number) {
+  return sheet
+    .getByRole('radiogroup', {
+      name: t('sideMinutes.value', { side: t(`side.${side}.button`) }),
+      exact: true,
+    })
+    .getByRole('radio', { name: t('time.minutes', { m: minutes }), exact: true });
+}
+
+/** One side's ml field in the pumping sheet (pump.ml), shown once "Add ml" (pump.addMl) has been tapped. */
+export function pumpMlField(sheet: Locator, side: 'L' | 'R') {
+  return sheet.getByRole('textbox', { name: t('pump.ml', { side: t(`side.${side}.button`) }) });
+}
+
+/**
+ * Logs a finished pump from an open pumping sheet ("log afterwards", feed.later): minutes per side, ml
+ * per side (revealing the ml fields first) and, when given, the end time ("2026-09-25T09:50"); then saves.
+ */
+export async function logPumpAfterwards(
+  sheet: Locator,
+  entry: { left?: number; right?: number; mlLeft?: number; mlRight?: number; end?: string },
+) {
+  if (entry.left !== undefined) await sideMinutesField(sheet, 'L').fill(String(entry.left));
+  if (entry.right !== undefined) await sideMinutesField(sheet, 'R').fill(String(entry.right));
+  const addMl = sheet.getByRole('button', { name: t('pump.addMl'), exact: true });
+  if ((entry.mlLeft !== undefined || entry.mlRight !== undefined) && (await addMl.count()) > 0)
+    await addMl.click();
+  if (entry.mlLeft !== undefined) await pumpMlField(sheet, 'L').fill(String(entry.mlLeft));
+  if (entry.mlRight !== undefined) await pumpMlField(sheet, 'R').fill(String(entry.mlRight));
+  if (entry.end) await pickTime(await openFeedEnd(sheet), entry.end);
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+}
+
+/** Home's strip of the running pump (strip.pump.region), in place of the pumping button. */
+export function pumpStrip(page: Page) {
+  return page.getByRole('region', { name: t('strip.pump.region'), exact: true });
+}
+
 export type SummaryTileKey = 'sleep' | 'feeds' | 'bottle' | 'diapers';
 
 /** The lines of one of the summary tab's four hero tiles (summary.tile.*): its label, its value and, when there is one, its diff. */

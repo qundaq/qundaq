@@ -1,18 +1,19 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { recordEvents, recentMedicationNames, type EventChange } from '../../db/events';
+import { recentMedicationNames, type EventChange } from '../../db/events';
 import { db } from '../../db/instance';
 import { lastBottle, nextSide } from '../../domain/defaults';
 import { NOW_CHOICE, resolveTimeChoice, type TimeChoice } from '../../domain/entryTime';
 import { MAX_DURATION_MS } from '../../domain/rules';
 import { MINUTE } from '../../domain/time';
-import type { Baby, BottleContents, EventDraft, Id, Side, TrackerEvent } from '../../domain/types';
-import { messageFor, useReportError, useReportLoadError } from '../shared/ErrorBanner';
+import { runningPump as findRunningPump } from '../../domain/pump';
+import type { Baby, BottleContents, Id, Side, TrackerEvent } from '../../domain/types';
+import { useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
 import { Sheet, SheetFooter, useSheetSession } from '../shared/Sheet';
 import { Button } from '../shared/Button';
 import { useLiveQuery } from '../shared/useLiveQuery';
-import { useMounted } from '../shared/useMounted';
 import { FoldedTimeChips, TimeChips } from './TimeChips';
+import { useEntrySave } from './useEntrySave';
 import { useUndoToast } from './useUndoToast';
 import {
   buildDrafts,
@@ -28,7 +29,8 @@ import {
 import { BottleForm, DiaperForm } from './forms/care';
 import { NoteField, type FormProps } from './forms/fields';
 import { OtherList } from './forms/OtherList';
-import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from './forms/other';
+import { GrowthForm, MedicationForm, TemperatureForm } from './forms/other';
+import { PumpForm, PumpStopForm } from './forms/pump';
 import { SideMinutes, type SideValues } from './forms/SideMinutes';
 import {
   OneTimerNote,
@@ -76,6 +78,8 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
     session && !otherPending && session.value.kind !== 'pump' && requestBabyId !== null
       ? runningTimer(events, session.value.kind, requestBabyId)
       : null;
+  // The pumping sheet opened while the parent's pump runs (from Home's strip) finishes that pump instead.
+  const runningPump = session?.value.kind === 'pump' ? findRunningPump(events) : null;
   // A sheet opened from a card is always that baby's: the title names them (sheet.diaper.title · their
   // name), for every care type, the "Other" list (other.title · their name) and each Other form. Pumping
   // is the parent's record, never a baby's, so its title carries no name.
@@ -105,7 +109,17 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
       {session &&
         inputKind &&
         !otherPending &&
-        (running ? (
+        (runningPump ? (
+          <PumpStopForm
+            key={`${session.id}-${runningPump.id}`}
+            pump={runningPump}
+            babies={babies}
+            onClose={onClose}
+            onStopped={(change) => undoToast([change])}
+          />
+        ) : inputKind === 'pump' ? (
+          <PumpForm key={session.id} babies={babies} onClose={onClose} undoToast={undoToast} />
+        ) : running ? (
           <StopTimerForm
             key={session.id}
             timer={running}
@@ -149,7 +163,7 @@ function OtherListStep({ onPick }: { onPick: (type: OtherType) => void }) {
 
 interface FormArgs {
   kind: LogRequest['kind'];
-  /** Null only for the standalone pumping sheet. */
+  /** The card's baby (the pumping sheet, which names none, has its own forms). */
   babyId: Id | null;
   inputKind: InputKind;
   babies: readonly Baby[];
@@ -157,46 +171,6 @@ interface FormArgs {
   nameOf: (id: Id) => string;
   onClose: () => void;
   undoToast: (changes: readonly EventChange[]) => void;
-}
-
-/**
- * Saving a sheet's drafts: one save at a time (a second submit before the next render is refused), the
- * error line on a refusal, and the undo toast once saved. `build` runs at the moment of saving, so "now"
- * and "15 min ago" count from it.
- */
-function useEntrySave(
-  babies: readonly Baby[],
-  onClose: () => void,
-  undoToast: (changes: readonly EventChange[]) => void,
-) {
-  const t = useT();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false); // only for `disabled`; the ref below is the real guard
-  const submitting = useRef(false); // set synchronously, so a second submit before the next render is refused
-  const mounted = useMounted();
-  const report = useReportError();
-  const save = async (build: (now: number) => EventDraft[], endRunning: boolean) => {
-    if (submitting.current) return;
-    submitting.current = true;
-    setPending(true);
-    const now = Date.now();
-    try {
-      const changes = await recordEvents(db, build(now), now, { endRunning });
-      onClose();
-      undoToast(changes);
-      // The guard stays set: the form is done and only waits for its dialog to close.
-    } catch (failure) {
-      // Dismissed while saving: the form and its error line are gone, so the app's banner says it.
-      if (!mounted()) {
-        report(failure);
-        return;
-      }
-      setError(messageFor(t, failure, babies));
-      submitting.current = false;
-      setPending(false);
-    }
-  };
-  return { error, setError, pending, save };
 }
 
 /** The first input of a sheet: a bottle starts from the baby's last one. */
@@ -236,8 +210,8 @@ function LogForm({
   // scatter the rule, so the cascading extra render is accepted.
   useEffect(() => setError(null), [input, time, note, mode, setError]);
 
-  // The Other sheet and the pumping sheet take a note; a card's bottle, sleep and diaper sheets do not.
-  const noted = kind === 'other' || kind === 'pump';
+  // The Other sheet takes a note; a card's bottle, sleep and diaper sheets do not.
+  const noted = kind === 'other';
   const sleep = input.kind === 'sleep' ? input : null;
   const starting = sleep !== null && mode === 'start';
 
@@ -277,9 +251,6 @@ function LogForm({
       )}
       {input.kind === 'diaper' && (
         <DiaperForm value={input.value} onChange={(value) => setInput({ kind: 'diaper', value })} />
-      )}
-      {input.kind === 'pump' && (
-        <PumpForm value={input.value} onChange={(value) => setInput({ kind: 'pump', value })} />
       )}
       {input.kind === 'growth' && (
         <GrowthForm value={input.value} onChange={(value) => setInput({ kind: 'growth', value })} />

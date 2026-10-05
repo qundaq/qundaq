@@ -1,11 +1,18 @@
 import { useRef, useState } from 'react';
 import { backupReminder, snoozeUntil } from '../../backup/reminder';
 import { listBabies } from '../../db/babies';
-import { hasLiveEvents, listRecentEvents, stopTimer, switchBreastSide } from '../../db/events';
+import {
+  hasLiveEvents,
+  listRecentEvents,
+  stopPump,
+  stopTimer,
+  switchBreastSide,
+} from '../../db/events';
 import { db } from '../../db/instance';
 import type { Settings } from '../../db/settings';
 import { dayWindow } from '../../domain/days';
 import { forgottenTimer } from '../../domain/health';
+import { runningPump } from '../../domain/pump';
 import { babyStatus } from '../../domain/status';
 import { dailyTotals } from '../../domain/summary';
 import { DAY } from '../../domain/time';
@@ -21,6 +28,7 @@ import { EditSheet } from '../history/EditSheet';
 import { BabyCard } from './BabyCard';
 import { LiveStrip } from './LiveStrip';
 import { PumpButton } from './PumpButton';
+import { PumpStrip } from './PumpStrip';
 import { useT } from '../app/I18nProvider';
 import type { LogRequest } from '../log/drafts';
 import { LogSheet } from '../log/LogSheet';
@@ -91,27 +99,45 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
   const stop = (eventId: Id) =>
     act(eventId, () => stopTimer(db, eventId).then((change) => change && undoToast([change])));
 
-  /** Under a timer that has run suspiciously long: opens it in the edit sheet to end it at the right time. */
-  const forgotHint = (babyName: string, eventId: Id) => {
+  /**
+   * Under a timer that has run suspiciously long: opens it to end it at the right time (a baby's timer in
+   * the edit sheet, the pump in its stop sheet, where the minutes can be corrected too).
+   */
+  const forgotHint = (who: string, eventId: Id, open?: () => void) => {
     const event = byId.get(eventId);
     if (!event || !forgottenTimer(event, now)) return null;
     return (
       <Button
         variant="tertiary"
-        aria-label={`${babyName}: ${t('timer.forgot')}`}
-        onClick={() => setEditing(event)}
+        aria-label={`${who}: ${t('timer.forgot')}`}
+        onClick={open ?? (() => setEditing(event))}
       >
         {t('timer.forgot')}
       </Button>
     );
   };
+  const pump = runningPump(events);
+  const openPump = () => setRequest({ kind: 'pump' });
 
   const reminder = backupReminder(settings, hasEvents, now);
 
   return (
     <section>
       <VisuallyHidden as="h1">{t('tab.home')}</VisuallyHidden>
-      <PumpButton onOpen={setRequest} />
+      {pump ? (
+        <PumpStrip
+          pump={pump}
+          onOpen={openPump}
+          onStop={() =>
+            act(pump.id, () =>
+              stopPump(db, pump.id).then((change) => change && undoToast([change])),
+            )
+          }
+          hint={forgotHint(t('home.pump'), pump.id, openPump)}
+        />
+      ) : (
+        <PumpButton onOpen={setRequest} />
+      )}
       {babies.length === 0 ? (
         <Card className={styles.empty}>
           <p>{t('home.empty')}</p>

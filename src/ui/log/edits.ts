@@ -263,9 +263,19 @@ function breastfeedTiming(input: BreastfeedEdit): {
 }
 
 /**
+ * Whether a finished pump's sides were pumped at the same time: both have minutes and the session is
+ * shorter than their sum (a timer on both sides gives each side the whole time).
+ */
+export function pumpedTogether(stored: PumpEdit['stored']): boolean {
+  const { lengthMs, minLeft, minRight } = stored;
+  return minLeft !== null && minRight !== null && lengthMs < (minLeft + minRight) * MINUTE;
+}
+
+/**
  * A pump's timing. Running: its start and side. Finished: it ends at the edited end; with the stored
- * minutes it keeps its stored length, and edited minutes put the start their sum before the end
- * (pumpStartAt, the sequential assumption of a pump logged afterwards).
+ * minutes it keeps its stored length. Edited minutes set the start back from the end: by the longer side
+ * for sides pumped at the same time (pumpedTogether), so changing one side never doubles the session,
+ * otherwise by their sum (pumpStartAt, the sides one after the other, as a pump logged afterwards).
  */
 function pumpTiming(input: PumpEdit): { startAt: number; endAt?: number; side?: PumpSide } {
   if (input.endAt === null)
@@ -274,7 +284,9 @@ function pumpTiming(input: PumpEdit): { startAt: number; endAt?: number; side?: 
   const unchanged = minLeft === input.stored.minLeft && minRight === input.stored.minRight;
   const startAt = unchanged
     ? input.endAt - input.stored.lengthMs
-    : pumpStartAt(input.endAt, minLeft ?? 0, minRight ?? 0);
+    : pumpedTogether(input.stored)
+      ? input.endAt - Math.max(minLeft ?? 0, minRight ?? 0) * MINUTE
+      : pumpStartAt(input.endAt, minLeft ?? 0, minRight ?? 0);
   return { startAt, endAt: input.endAt };
 }
 

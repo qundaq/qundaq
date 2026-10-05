@@ -6,24 +6,17 @@
   align-items: flex-end;
   gap: var(--space-2);
 }
-.timeField > label {
+/* The field (Field's wrapper) takes the room the "Now" button leaves, and shrinks on a 320 px screen. */
+.timeField > div {
   flex: 1;
-  margin-bottom: 0;
+  min-width: 0;
+}
+.timeField input {
+  width: 100%;
+  min-width: 0;
 }
 .timeField > button {
   margin-bottom: var(--space-3);
-}
-.fieldRow {
-  display: flex;
-  gap: var(--space-2);
-}
-.fieldRow > label {
-  flex: 1;
-  min-width: 0;
-  margin-bottom: 0;
-}
-.fieldRow > label input {
-  width: 100%;
 }
 .stepper {
   display: grid;
@@ -238,4 +231,80 @@
   color: var(--muted);
   font: var(--font-caption);
   text-align: center;
+}
+/* The pumping sheet's three start buttons (left, right, both): the icon over the name, which may wrap. */
+.pumpSides {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.pumpSides > .side {
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1);
+  font: var(--font-heading);
+}
+.pumpSideName {
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* Small optional additions ("Add ml", "Add note"), side by side and centred like the folded time row. */
+.extras {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--space-2);
+  margin-bottom: var(--space-1);
+}
+/* Two compact ml fields side by side; each shrinks with the screen, so the row never overflows. */
+.mlRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.mlField {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.mlLabel {
+  font: var(--font-heading);
+}
+.mlBox {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  align-content: center;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  cursor: text;
+}
+.mlBox:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.mlInput {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: right;
+  font: var(--font-title);
+  color: var(--text);
+}
+.mlInput::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+.mlInput:focus {
+  outline: none;
+}
+.mlUnit {
+  font: var(--font-caption);
+  color: var(--muted);
 }

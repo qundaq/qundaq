@@ -13,7 +13,7 @@ function who(t: TranslateFn, rows: readonly TrackerEvent[], nameOf: (id: Id) => 
 
 /**
  * The toast after a write. A save names what it created (a timer it also stopped was announced in the
- * sheet beforehand); a stop from a card says how long the timer ran.
+ * sheet beforehand, and a pump start names its side); a stop says how long the timer ran.
  */
 export function undoMessage(
   t: TranslateFn,
@@ -25,6 +25,7 @@ export function undoMessage(
     const stopped = changes.map((change) => change.after);
     const first = stopped[0]!;
     const duration = formatDuration(t, (first.endAt ?? first.startAt) - first.startAt);
+    if (first.type === 'pump') return t('toast.pumpEnded', { duration });
     const name = who(t, stopped, nameOf);
     return first.type === 'sleep'
       ? t('toast.wokeUp', { who: name, duration })
@@ -34,7 +35,9 @@ export function undoMessage(
   const name = who(t, created, nameOf);
   switch (first.type) {
     case 'pump':
-      return t('toast.pump');
+      return first.endAt === undefined && first.side !== undefined
+        ? t('toast.pumpStarted', { side: t(`side.${first.side}.button`) })
+        : t('toast.pump');
     case 'bottle':
       return t('toast.bottle', { who: name, ml: first.ml });
     case 'diaper':

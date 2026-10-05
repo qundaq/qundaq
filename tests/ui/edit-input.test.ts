@@ -8,6 +8,7 @@ import {
   editedTime,
   eventToInput,
   inputToDraft,
+  pumpedTogether,
   removeSegment,
   segmentMinutes,
   segmentsChanged,
@@ -335,6 +336,77 @@ describe('pump edits', () => {
     expect(
       inputToDraft({ ...input, value: { ...input.value, minLeft: null, mlLeft: '' } }),
     ).toStrictEqual({ type: 'pump', babyId: null, startAt: T0 + LENGTH, endAt: T0 + LENGTH });
+  });
+
+  it('edits minutes only, ml only, or both, on a pump that had only minutes', () => {
+    const minutesOnly = saved({
+      type: 'pump',
+      babyId: null,
+      startAt: T0,
+      endAt: T0 + 10 * MINUTE,
+      minLeft: 10,
+    });
+    const input = pumpInput(minutesOnly);
+    expect(input.value).toEqual({ minLeft: 10, minRight: null, mlLeft: '', mlRight: '' });
+    expect(inputToDraft({ ...input, value: { ...input.value, minLeft: 15 } })).toStrictEqual({
+      ...draftOf(minutesOnly),
+      startAt: T0 - 5 * MINUTE,
+      minLeft: 15,
+    });
+    expect(inputToDraft({ ...input, value: { ...input.value, mlRight: '70' } })).toStrictEqual({
+      ...draftOf(minutesOnly),
+      mlRight: 70,
+    });
+    expect(
+      inputToDraft({ ...input, value: { minLeft: 8, minRight: 4, mlLeft: '30', mlRight: '' } }),
+    ).toStrictEqual({
+      ...draftOf(minutesOnly),
+      startAt: T0 - 2 * MINUTE,
+      minLeft: 8,
+      minRight: 4,
+      mlLeft: 30,
+    });
+  });
+
+  it('an ml-only pump stays a moment while it has no minutes, and gets its length from them', () => {
+    const mlOnly = saved({ type: 'pump', babyId: null, startAt: T0, endAt: T0, mlLeft: 60 });
+    const input = pumpInput(mlOnly);
+    expect(inputToDraft({ ...input, value: { ...input.value, mlLeft: '80' } })).toStrictEqual({
+      ...draftOf(mlOnly),
+      mlLeft: 80,
+    });
+    expect(inputToDraft({ ...input, value: { ...input.value, minRight: 12 } })).toStrictEqual({
+      ...draftOf(mlOnly),
+      startAt: T0 - 12 * MINUTE,
+      minRight: 12,
+    });
+  });
+
+  it('sides pumped at the same time: a changed side sets the length by the longer side, never their sum', () => {
+    const LENGTH = 20 * MINUTE + 13 * SECOND;
+    const pumped = (endAt: number, minLeft: number, minRight?: number) =>
+      saved({ type: 'pump', babyId: null, startAt: T0, endAt, minLeft, minRight });
+    const both = pumped(T0 + LENGTH, 20, 20);
+    const input = pumpInput(both);
+    expect(pumpedTogether(input.stored)).toBe(true);
+    const end = T0 + LENGTH;
+    expect(inputToDraft({ ...input, value: { ...input.value, minLeft: 21 } })).toMatchObject({
+      startAt: end - 21 * MINUTE,
+      endAt: end,
+      minLeft: 21,
+      minRight: 20,
+    });
+    expect(inputToDraft({ ...input, value: { ...input.value, minRight: null } })).toMatchObject({
+      startAt: end - 20 * MINUTE,
+    });
+    // Two hours on both sides stays two hours: not refused as longer than four.
+    const long = pumpInput(pumped(T0 + 2 * HOUR, 120, 120));
+    expect(inputToDraft({ ...long, value: { ...long.value, minLeft: 125 } })).toMatchObject({
+      startAt: T0 + 2 * HOUR - 125 * MINUTE,
+    });
+    // One side after the other (the session as long as both together) keeps the sum.
+    expect(pumpedTogether(pumpInput(pumped(T0 + 40 * MINUTE, 20, 20)).stored)).toBe(false);
+    expect(pumpedTogether(pumpInput(pumped(T0 + LENGTH, 20)).stored)).toBe(false);
   });
 
   it('a running pump: the start moves and the side stays', () => {

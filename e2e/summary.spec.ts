@@ -10,6 +10,7 @@ import {
   logDiaper,
   logRows,
   openOther,
+  logPumpAfterwards,
   openPump,
   openRow,
   openTab,
@@ -437,8 +438,7 @@ test('every record type shows up in the log and the summary, without CSP violati
   await expect(sheet).toBeHidden();
 
   sheet = await openPump(page);
-  await sheet.getByLabel(t('pump.left')).fill('60');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await logPumpAfterwards(sheet, { mlLeft: 60 });
   await expect(sheet).toBeHidden();
 
   sheet = await openOther(page, 'healthNote');
@@ -553,16 +553,13 @@ test('the pumping card and the Pumping chart follow the seven days, whichever ba
   await expect(page.getByTestId('summary-pump')).toHaveCount(0);
 
   await openTab(page, t('tab.home'));
-  const logPump = async (at: string, left: string, right?: string) => {
+  const logPump = async (end: string, mlLeft: number, mlRight?: number) => {
     const sheet = await openPump(page);
-    await pickTime(sheet, at);
-    await sheet.getByLabel(t('pump.left')).fill(left);
-    if (right) await sheet.getByLabel(t('pump.right')).fill(right);
-    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await logPumpAfterwards(sheet, { mlLeft, mlRight, end });
     await expect(sheet).toBeHidden();
   };
-  await logPump('2026-09-22T09:00', '80', '60');
-  await logPump('2026-09-25T08:00', '70');
+  await logPump('2026-09-22T09:00', 80, 60);
+  await logPump('2026-09-25T08:00', 70);
 
   await openTab(page, t('tab.summary'));
   const card = page.getByTestId('summary-pump');

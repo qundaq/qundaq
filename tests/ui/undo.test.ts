@@ -77,6 +77,30 @@ describe('undoMessage', () => {
     ).toBe(t('toast.saved', { who: 'Ada', type: typeLabel(t, 'medication') }));
   });
 
+  it('a pump start names its side, also when it ended an earlier pump; a stop says how long it ran', () => {
+    expect(undoMessage(t, created(row({ type: 'pump', babyId: null, side: 'B' })), nameOf)).toBe(
+      t('toast.pumpStarted', { side: t('side.B.button') }),
+    );
+    const earlier = row({ type: 'pump', babyId: null, startAt: T - 20 * MINUTE, side: 'L' });
+    const ended = { ...earlier, endAt: T, minLeft: 20 } as TrackerEvent;
+    expect(
+      undoMessage(
+        t,
+        [
+          { before: earlier, after: ended },
+          ...created(row({ type: 'pump', babyId: null, side: 'R' })),
+        ],
+        nameOf,
+      ),
+    ).toBe(t('toast.pumpStarted', { side: t('side.R.button') }));
+    expect(undoMessage(t, [{ before: earlier, after: ended }], nameOf)).toBe(
+      t('toast.pumpEnded', { duration: formatDuration(t, 20 * MINUTE) }),
+    );
+    expect(translate('en', 'toast.pumpEnded', { duration: '20 min' })).toBe(
+      'Pumping ended · 20 min',
+    );
+  });
+
   it('a feed that ended a sleep is announced as the feed', () => {
     const sleeping = row({ type: 'sleep', babyId: 'a', startAt: T - 40 * MINUTE });
     const changes: EventChange[] = [

@@ -5,6 +5,7 @@ import {
   buildDrafts,
   feedSegments,
   hasFeedMinutes,
+  hasPumpAmounts,
   initialInput,
 } from '../../src/ui/log/drafts';
 
@@ -162,6 +163,14 @@ describe('buildDrafts — the "Other" types (quick.other)', () => {
       endAt: AT,
       minRight: 15,
     });
+  });
+
+  it('a pump has something to save once a side has minutes or ml typed', () => {
+    expect(hasPumpAmounts(NO_PUMP)).toBe(false);
+    expect(hasPumpAmounts({ ...NO_PUMP, mlLeft: '  ' })).toBe(false);
+    expect(hasPumpAmounts({ ...NO_PUMP, minRight: 10 })).toBe(true);
+    expect(hasPumpAmounts({ ...NO_PUMP, mlRight: '40' })).toBe(true);
+    expect(hasPumpAmounts({ ...NO_PUMP, minLeft: 5, mlLeft: '60' })).toBe(true);
   });
 
   it('a negative pump amount becomes NaN, so validation reports it', () => {

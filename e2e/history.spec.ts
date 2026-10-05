@@ -12,6 +12,7 @@ import {
   filterGroup,
   logDiaper,
   logRows,
+  logPumpAfterwards,
   openPump,
   openRangeSheet,
   openRow,
@@ -20,6 +21,8 @@ import {
   rangePicker,
   cardAction,
   pickTime,
+  pumpMlField,
+  sideMinutesField,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -558,6 +561,60 @@ test.describe('editing and deleting', () => {
     await expect(logRows(page).first()).toContainText('08:00 – 09:00');
   });
 
+  test('a pump is edited by its end, its minutes per side and its ml; both sides at once never doubles the session', async ({
+    page,
+  }) => {
+    await openTab(page, t('tab.home'));
+    await logPumpAfterwards(await openPump(page), {
+      left: 12,
+      right: 10,
+      mlLeft: 50,
+      end: '2026-09-25T09:30',
+    });
+    await openTab(page, t('tab.log'));
+    const left = t('side.L.button');
+    const right = t('side.R.button');
+    const min = (m: number) => t('time.minutes', { m });
+    await expect(logRows(page).first()).toContainText('09:08 – 09:30');
+    await openRow(page, t('sheet.pump.title'));
+    const sheet = page.getByRole('dialog', {
+      name: `${t('edit.title')} · ${t('sheet.pump.title')}`,
+    });
+    // The time field is the end; the ml fields show because the pump has ml.
+    await expect(sheet.getByLabel(t('edit.end'), { exact: true })).toBeVisible();
+    await expect(sheet.getByLabel(t('sheet.time'), { exact: true })).toHaveCount(0);
+    await expect(pumpMlField(sheet, 'L')).toHaveValue('50');
+    await sideMinutesField(sheet, 'R').fill('15');
+    await pumpMlField(sheet, 'R').fill('40');
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await expect(sheet).toBeHidden();
+    // One side after the other: the start moves back by the minutes added.
+    await expect(logRows(page).first()).toContainText('09:03 – 09:30');
+    await expect(logRows(page).first()).toContainText(
+      `${left} ${min(12)} · ${right} ${min(15)} · ${t('unit.ml', { ml: 90 })}`,
+    );
+
+    // A pump on both sides at once: one side corrected keeps the session as long as the longer side.
+    await openTab(page, t('tab.home'));
+    await (
+      await openPump(page)
+    )
+      .getByRole('button', { name: t('side.B.button'), exact: true })
+      .click();
+    await page.clock.fastForward('20:00');
+    await page.getByRole('button', { name: t('timer.stopPump'), exact: true }).click();
+    await openTab(page, t('tab.log'));
+    const both = logRows(page).filter({ hasText: `${left} ${min(20)} · ${right} ${min(20)}` });
+    await expect(both).toContainText('10:00 – 10:20');
+    await both.getByRole('button').click();
+    await sideMinutesField(sheet, 'L').fill('21');
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await expect(sheet).toBeHidden();
+    await expect(
+      logRows(page).filter({ hasText: `${left} ${min(21)} · ${right} ${min(20)}` }),
+    ).toContainText('09:59 – 10:20');
+  });
+
   test('a running feed: correct the current side and end it at a chosen time', async ({ page }) => {
     await addBabyInSettings(page, 'Ada');
     await openTab(page, t('tab.home'));
@@ -675,16 +732,13 @@ test('the pumping filter reports the range: sessions, total, sides and the daily
   await addBabyInSettings(page, 'Ada');
   await addBabyInSettings(page, 'Cal');
   await openTab(page, t('tab.home'));
-  const logPump = async (at: string, left: string, right?: string) => {
+  const logPump = async (end: string, mlLeft: number, mlRight?: number) => {
     const sheet = await openPump(page);
-    await pickTime(sheet, at);
-    await sheet.getByLabel(t('pump.left')).fill(left);
-    if (right) await sheet.getByLabel(t('pump.right')).fill(right);
-    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await logPumpAfterwards(sheet, { mlLeft, mlRight, end });
     await expect(sheet).toBeHidden();
   };
-  await logPump('2026-09-24T09:00', '80', '60');
-  await logPump('2026-09-25T08:00', '70');
+  await logPump('2026-09-24T09:00', 80, 60);
+  await logPump('2026-09-25T08:00', 70);
 
   await openTab(page, t('tab.log'));
   const sheet = await openRangeSheet(page);

@@ -1,14 +1,23 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { escapeRegExp, t } from './support/i18n';
 import {
   addBabyInSettings,
+  babyCard,
   filterGroup,
+  logPumpAfterwards,
   logRows,
+  openFeedEnd,
   openOther,
   openPump,
+  openRow,
   openTab,
   cardAction,
   pickTime,
+  pumpMlField,
+  pumpStrip,
+  readEvents,
+  sideMinutesChip,
+  sideMinutesField,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -115,15 +124,27 @@ test('a temperature of 38 °C or more shows the fever hint and marks the row', a
   await expect(row.getByRole('button')).toHaveAccessibleName(new RegExp(t('log.warning')));
 });
 
-test('pumping needs no baby: tap the button, save 80 ml on the left, undo it', async ({ page }) => {
+const minutes = (m: number) => t('time.minutes', { m });
+const left = t('side.L.button');
+const right = t('side.R.button');
+
+test('pumping needs no baby: minutes by default, Save waits for a value, undo removes it', async ({
+  page,
+}) => {
   await openTab(page, t('tab.home'));
   const pumpButton = page.getByRole('button', { name: t('home.pump'), exact: true });
   expect((await pumpButton.boundingBox())!.height).toBeGreaterThanOrEqual(48);
   const sheet = await openPump(page);
   await expect(sheet).toBeVisible();
   await expect(page.getByText(t('home.empty'))).toBeVisible();
-  await sheet.getByLabel(t('pump.left')).fill('80');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  // Nothing to save yet: the button says why, and no ml field shows until asked for.
+  const save = sheet.getByRole('button', { name: t('common.save'), exact: true });
+  await expect(save).toBeDisabled();
+  await expect(save).toHaveAccessibleDescription(t('pump.required'));
+  await expect(pumpMlField(sheet, 'L')).toHaveCount(0);
+  await sideMinutesChip(sheet, 'L', 10).click();
+  await expect(sideMinutesField(sheet, 'L')).toHaveValue('10');
+  await save.click();
   await expect(sheet).toBeHidden();
   await expect(page.getByText(t('toast.pump'))).toBeVisible();
   await page.getByRole('button', { name: t('common.undo'), exact: true }).click();
@@ -131,6 +152,256 @@ test('pumping needs no baby: tap the button, save 80 ml on the left, undo it', a
 
   await openTab(page, t('tab.log'));
   await expect(logRows(page)).toHaveCount(0);
+});
+
+test('a pump logged afterwards in minutes reads "Left 10 min" in the log, ending at the chosen time', async ({
+  page,
+}) => {
+  await openTab(page, t('tab.home'));
+  await logPumpAfterwards(await openPump(page), { left: 10, end: '2026-09-25T09:30' });
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
+  await expect(row).toContainText('09:20 – 09:30');
+  await expect(row.locator('span').filter({ hasText: `${left} ${minutes(10)}` })).toHaveText(
+    `${left} ${minutes(10)}`,
+  );
+});
+
+test('ml are added on demand: minutes first, then the ml total', async ({ page }) => {
+  await openTab(page, t('tab.home'));
+  const sheet = await openPump(page);
+  await sheet.getByRole('button', { name: t('pump.addMl'), exact: true }).click();
+  await expect(pumpMlField(sheet, 'L')).toBeFocused();
+  await expect(sheet.getByRole('button', { name: t('pump.addMl'), exact: true })).toHaveCount(0);
+  await logPumpAfterwards(sheet, { left: 12, right: 10, mlLeft: 50, mlRight: 40 });
+  await expect(sheet).toBeHidden();
+  await openTab(page, t('tab.log'));
+  await expect(logRows(page).first()).toContainText('09:38 – 10:00');
+  await expect(logRows(page).first()).toContainText(
+    `${left} ${minutes(12)} · ${right} ${minutes(10)} · ${t('unit.ml', { ml: 90 })}`,
+  );
+});
+
+test('the pump timer: Left starts it, the strip replaces the button and runs beside the babies, Stop records the minutes', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  // Ada's feed runs too: the pump never touches it.
+  await cardAction(page, 'breastfeed').click();
+  await page
+    .getByRole('dialog', { name: t('sheet.breastfeed.title') })
+    .getByRole('button', { name: right, exact: true })
+    .click();
+  const sheet = await openPump(page);
+  await sheet.getByRole('button', { name: left, exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByText(t('toast.pumpStarted', { side: left }))).toBeVisible();
+  const strip = pumpStrip(page);
+  await expect(strip).toContainText(t('strip.pumping', { side: left }));
+  await expect(page.getByRole('button', { name: t('home.pump'), exact: true })).toHaveCount(0);
+  // Above the cards.
+  const stripBox = (await strip.boundingBox())!;
+  expect(stripBox.y + stripBox.height).toBeLessThanOrEqual(
+    (await babyCard(page, 'Ada').boundingBox())!.y,
+  );
+  const stop = strip.getByRole('button', { name: t('timer.stopPump'), exact: true });
+  for (const button of [stop, strip.getByRole('button', { name: /./ }).first()])
+    expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+  await expect(babyCard(page, 'Ada')).toContainText(t('strip.feeding', { side: right }));
+
+  await page.clock.fastForward('12:00');
+  await expect(strip.getByTestId('live-text')).toContainText('12:0');
+  await stop.click();
+  await expect(strip).toHaveCount(0);
+  await expect(page.getByText(t('toast.pumpEnded', { duration: minutes(12) }))).toBeVisible();
+  await expect(page.getByRole('button', { name: t('home.pump'), exact: true })).toBeVisible();
+  await expect(babyCard(page, 'Ada')).toContainText(t('strip.feeding', { side: right }));
+
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
+  await expect(row).toContainText('10:00 – 10:12');
+  await expect(row).toContainText(`${left} ${minutes(12)}`);
+  await expect(row).not.toContainText(right);
+});
+
+test('both at once records the minutes on both sides; a running pump reads like a running timer in the log', async ({
+  page,
+}) => {
+  await openTab(page, t('tab.home'));
+  await (
+    await openPump(page)
+  )
+    .getByRole('button', { name: t('side.B.button'), exact: true })
+    .click();
+  await expect(pumpStrip(page)).toContainText(t('strip.pumping', { side: t('side.B.button') }));
+  await openTab(page, t('tab.log'));
+  const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
+  await expect(row).toContainText(t('log.range.running', { start: '10:00' }));
+  await expect(row).toContainText(`${t('side.B.button')} · ${t('log.ongoing')}`);
+
+  await page.clock.fastForward('20:00');
+  await openTab(page, t('tab.home'));
+  await pumpStrip(page)
+    .getByRole('button', { name: t('timer.stopPump'), exact: true })
+    .click();
+  await openTab(page, t('tab.log'));
+  await expect(row).toContainText(`${left} ${minutes(20)} · ${right} ${minutes(20)}`);
+});
+
+test('the strip survives tab changes and a reload; its sheet corrects the minutes and adds ml before stopping', async ({
+  page,
+}) => {
+  await openTab(page, t('tab.home'));
+  await (await openPump(page)).getByRole('button', { name: right, exact: true }).click();
+  await page.clock.fastForward('08:00');
+  await openTab(page, t('tab.log'));
+  await openTab(page, t('tab.home'));
+  await expect(pumpStrip(page)).toContainText(t('strip.pumping', { side: right }));
+  await page.reload();
+  const strip = pumpStrip(page);
+  await expect(strip).toContainText(t('strip.pumping', { side: right }));
+  await expect(strip.getByTestId('live-text')).toContainText('8:0');
+
+  await strip
+    .getByRole('button', {
+      name: new RegExp(`^${escapeRegExp(t('strip.pumping', { side: right }))}`),
+    })
+    .click();
+  const sheet = page.getByRole('dialog', { name: t('sheet.pump.title'), exact: true });
+  // The minutes come from the timer until corrected.
+  await expect(sideMinutesField(sheet, 'R')).toHaveValue('8');
+  await expect(sideMinutesField(sheet, 'L')).toHaveValue('');
+  await expect(sheet).toContainText(t('pump.measured'));
+  await sideMinutesField(sheet, 'R').fill('15');
+  await sheet.getByRole('button', { name: t('pump.addMl'), exact: true }).click();
+  await pumpMlField(sheet, 'R').fill('80');
+  await sheet.getByRole('button', { name: t('timer.stop'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await expect(strip).toHaveCount(0);
+  await expect(page.getByText(t('toast.pumpEnded', { duration: minutes(8) }))).toBeVisible();
+
+  await openTab(page, t('tab.log'));
+  await expect(logRows(page).first()).toContainText(
+    `${right} ${minutes(15)} · ${t('unit.ml', { ml: 80 })}`,
+  );
+});
+
+test('a second start ends the first pump: one pump runs at a time', async ({ page }) => {
+  await openTab(page, t('tab.home'));
+  // A pump started 20 minutes ago in another tab, which this page has not seen yet (written past the app).
+  await page.evaluate(
+    (start) =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('qundaq');
+        request.onerror = () => reject(request.error ?? new Error('indexedDB request failed'));
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction('events', 'readwrite');
+          tx.objectStore('events').put({
+            id: 'earlier-pump',
+            type: 'pump',
+            babyId: null,
+            startAt: start,
+            side: 'L',
+            open: 1,
+            createdAt: start,
+            updatedAt: start,
+          });
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error ?? new Error('indexedDB write failed'));
+        };
+      }),
+    new Date('2026-09-25T09:40:00+03:00').getTime(),
+  );
+  await (await openPump(page)).getByRole('button', { name: right, exact: true }).click();
+  await expect(pumpStrip(page)).toContainText(t('strip.pumping', { side: right }));
+  const rows = (await readEvents(page)).filter((row) => row.type === 'pump');
+  const tenOClock = new Date('2026-09-25T10:00:00+03:00').getTime();
+  // The earlier pump ended where the new one began, its 20 minutes on the left.
+  const earlier = rows.find((row) => row.id === 'earlier-pump')!;
+  const started = rows.find((row) => row.id !== 'earlier-pump')!;
+  expect(earlier).toMatchObject({ minLeft: 20, endAt: started.startAt });
+  expect(earlier).not.toHaveProperty('side');
+  expect(started.startAt as number).toBeGreaterThanOrEqual(tenOClock);
+  expect(started).toMatchObject({ side: 'R' });
+  expect(started).not.toHaveProperty('endAt');
+  expect(rows).toHaveLength(2);
+});
+
+test('a pump left running for over two hours asks whether it was forgotten; the hint opens its sheet', async ({
+  page,
+}) => {
+  await openTab(page, t('tab.home'));
+  await (await openPump(page)).getByRole('button', { name: left, exact: true }).click();
+  const hint = page.getByRole('button', {
+    name: `${t('home.pump')}: ${t('timer.forgot')}`,
+    exact: true,
+  });
+  await page.clock.fastForward('01:59:00');
+  await expect(hint).toHaveCount(0);
+  await page.clock.fastForward('02:00');
+  await expect(hint).toBeVisible();
+  await hint.click();
+  const sheet = page.getByRole('dialog', { name: t('sheet.pump.title'), exact: true });
+  await expect(sheet.getByRole('button', { name: t('timer.stop'), exact: true })).toBeVisible();
+  await expect(sideMinutesField(sheet, 'L')).toHaveValue('121');
+});
+
+test('the pumping sheet and the strip fit a 320 px screen: nothing overflows, every control is 48 px', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await openTab(page, t('tab.home'));
+  const sheet = await openPump(page);
+  await sheet.getByRole('button', { name: t('pump.addMl'), exact: true }).click();
+  await pumpMlField(sheet, 'L').fill('120');
+  await pumpMlField(sheet, 'R').fill('110');
+  await sheet.getByRole('button', { name: t('note.add'), exact: true }).click();
+  await openFeedEnd(sheet);
+  const fits = async (root: Locator) => {
+    const overflow = await root.evaluate((box) => {
+      const edge = box.getBoundingClientRect().right;
+      return [...box.querySelectorAll('button, input, textarea')]
+        .filter((el) => el.getBoundingClientRect().right > edge + 0.5)
+        .map((el) => el.outerHTML.slice(0, 80));
+    });
+    expect(overflow).toEqual([]);
+    expect(await root.evaluate((box) => box.scrollWidth <= box.clientWidth)).toBe(true);
+    const small = await root.evaluate((box) =>
+      [...box.querySelectorAll('button')]
+        .filter((el) => el.getBoundingClientRect().height < 47.5)
+        .map((el) => el.textContent),
+    );
+    expect(small).toEqual([]);
+  };
+  await fits(sheet);
+  for (const side of ['L', 'R'] as const)
+    expect(await pumpMlField(sheet, side).evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+      true,
+    );
+  await sheet.getByRole('button', { name: t('side.B.button'), exact: true }).click();
+  await expect(sheet).toBeHidden();
+  await page.clock.fastForward('01:05:00');
+  await fits(pumpStrip(page));
+  await pumpStrip(page)
+    .getByRole('button', { name: t('timer.stopPump'), exact: true })
+    .click();
+  // The edit sheet of the finished pump: end time, minutes and ml fields fit too.
+  await openTab(page, t('tab.log'));
+  await openRow(page, t('sheet.pump.title'));
+  const edit = page.getByRole('dialog', {
+    name: `${t('edit.title')} · ${t('sheet.pump.title')}`,
+  });
+  await edit.getByRole('button', { name: t('pump.addMl'), exact: true }).click();
+  await expect(pumpMlField(edit, 'R')).toBeVisible();
+  await fits(edit);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });
 
 test("a baby's Other list has no pumping", async ({ page }) => {
@@ -149,8 +420,7 @@ test('pumping has no baby and shows under "all babies" only', async ({ page }) =
   const sheet = await openPump(page);
   await expect(sheet.getByRole('button', { name: t('note.add') })).toBeVisible();
   await expect(sheet.getByRole('group', { name: t('sheet.babies'), exact: true })).toHaveCount(0);
-  await sheet.getByLabel(t('pump.left')).fill('60');
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await logPumpAfterwards(sheet, { mlLeft: 60 });
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));

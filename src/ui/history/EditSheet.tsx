@@ -1,16 +1,24 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { deleteEvent, stopEvent, updateEvent } from '../../db/events';
 import { db } from '../../db/instance';
-import { isOpen } from '../../domain/rules';
+import { MAX_PUMP_MIN, isOpen } from '../../domain/rules';
 import type { Baby, TrackerEvent } from '../../domain/types';
 import { messageFor } from '../shared/ErrorBanner';
 import { useLocale, useT } from '../app/I18nProvider';
 import { Button } from '../shared/Button';
 import { SingleBabyPicker } from '../log/BabyPicker';
-import { decimalSeparatorFor, eventToInput, inputToDraft, type EditInput } from '../log/edits';
+import {
+  decimalSeparatorFor,
+  eventToInput,
+  inputToDraft,
+  pumpedTogether,
+  type EditInput,
+} from '../log/edits';
 import { BottleForm, DiaperForm } from '../log/forms/care';
 import { NoteField } from '../log/forms/fields';
-import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from '../log/forms/other';
+import { GrowthForm, MedicationForm, TemperatureForm } from '../log/forms/other';
+import { PUMP_TOTAL_MIN, PumpMlEdit } from '../log/forms/pump';
+import { SideMinutes } from '../log/forms/SideMinutes';
 import { EditTimeField, OptionalTimeField } from '../log/TimeField';
 import { Sheet, useSheetSession } from '../shared/Sheet';
 import { DELETE_CONFIRM_MAX_MS, deleteTap } from '../shared/confirm';
@@ -143,21 +151,41 @@ function EditForm({
           )}
         </>
       ) : input.type === 'pump' ? (
-        // A finished pump is edited by its end (its start follows from the minutes), a running one by its start.
+        // A finished pump is edited by its end (its start follows from the minutes), a running one by its
+        // start; its minutes and ml are recorded when it stops.
         input.endAt === null ? (
           <EditTimeField
-            label={t('sheet.time')}
+            label={t('edit.start')}
             value={input.startAt}
             stored={event.startAt}
             onChange={(startAt) => setInput({ ...input, startAt })}
           />
         ) : (
-          <EditTimeField
-            label={t('sheet.time')}
-            value={input.endAt}
-            stored={event.endAt}
-            onChange={(endAt) => setInput({ ...input, endAt })}
-          />
+          <>
+            <EditTimeField
+              label={t('edit.end')}
+              value={input.endAt}
+              stored={event.endAt}
+              onChange={(endAt) => setInput({ ...input, endAt })}
+            />
+            <SideMinutes
+              values={{ left: input.value.minLeft, right: input.value.minRight }}
+              onChange={(next) =>
+                setInput({
+                  ...input,
+                  value: { ...input.value, minLeft: next.left, minRight: next.right },
+                })
+              }
+              max={MAX_PUMP_MIN}
+              // Sides pumped at the same time each may take the whole session; one after the other, both
+              // together stay within it.
+              maxTotal={pumpedTogether(input.stored) ? undefined : PUMP_TOTAL_MIN}
+            />
+            <PumpMlEdit
+              value={input.value}
+              onChange={(ml) => setInput({ ...input, value: { ...input.value, ...ml } })}
+            />
+          </>
         )
       ) : (
         <EditTimeField
@@ -177,9 +205,6 @@ function EditForm({
       )}
       {input.type === 'diaper' && (
         <DiaperForm value={input.value} onChange={(value) => setInput({ ...input, value })} />
-      )}
-      {input.type === 'pump' && (
-        <PumpForm value={input.value} onChange={(value) => setInput({ ...input, value })} />
       )}
       {input.type === 'growth' && (
         <GrowthForm value={input.value} onChange={(value) => setInput({ ...input, value })} />

@@ -245,6 +245,21 @@ export function describeEvent(
       return parts.join(' · ');
     }
     case 'pump': {
+      if (event.endAt === undefined)
+        return event.side === undefined
+          ? t('log.ongoing')
+          : `${t(`side.${event.side}.button`)} · ${t('log.ongoing')}`;
+      const minutes: string[] = [];
+      if (event.minLeft !== undefined)
+        minutes.push(`${t('side.L.button')} ${t('time.minutes', { m: event.minLeft })}`);
+      if (event.minRight !== undefined)
+        minutes.push(`${t('side.R.button')} ${t('time.minutes', { m: event.minRight })}`);
+      const amounts = [event.mlLeft, event.mlRight].filter((value) => value !== undefined);
+      // Minutes first, then the ml as one total; a pump with ml only keeps them per side.
+      if (minutes.length > 0)
+        return amounts.length === 0
+          ? minutes.join(' · ')
+          : [...minutes, ml(amounts.reduce((sum, value) => sum + value, 0))].join(' · ');
       const parts: string[] = [];
       if (event.mlLeft !== undefined) parts.push(`${t('side.L.button')} ${ml(event.mlLeft)}`);
       if (event.mlRight !== undefined) parts.push(`${t('side.R.button')} ${ml(event.mlRight)}`);

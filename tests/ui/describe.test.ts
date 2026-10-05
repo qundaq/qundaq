@@ -131,6 +131,53 @@ describe('describeEvent', () => {
     ).toBe('Dirty');
   });
 
+  it('pumping: minutes first, then the ml as one total; ml alone stay per side; a running one runs', () => {
+    const pump = (draft: Partial<EventDraft>) =>
+      describeEvent(
+        tr,
+        'tr',
+        ev({
+          type: 'pump',
+          babyId: null,
+          startAt: NOW,
+          endAt: NOW + 22 * MINUTE,
+          ...draft,
+        } as EventDraft),
+        NOW,
+      );
+    const L = tr('side.L.button');
+    const R = tr('side.R.button');
+    const min = (m: number) => tr('time.minutes', { m });
+    expect(pump({ minLeft: 12 })).toBe(`${L} ${min(12)}`);
+    expect(pump({ minLeft: 12, minRight: 10 })).toBe(`${L} ${min(12)} · ${R} ${min(10)}`);
+    expect(pump({ minRight: 10, mlLeft: 50, mlRight: 40 })).toBe(
+      `${R} ${min(10)} · ${ml('tr', tr, 90)}`,
+    );
+    expect(pump({ minLeft: 12, minRight: 10, mlLeft: 90 })).toBe(
+      `${L} ${min(12)} · ${R} ${min(10)} · ${ml('tr', tr, 90)}`,
+    );
+    expect(pump({ endAt: NOW, mlRight: 40 })).toBe(`${R} ${ml('tr', tr, 40)}`);
+    expect(pump({ endAt: undefined, side: 'L' })).toBe(`${L} · ${tr('log.ongoing')}`);
+    expect(pump({ endAt: undefined, side: 'B' })).toBe(
+      `${tr('side.B.button')} · ${tr('log.ongoing')}`,
+    );
+    expect(
+      describeEvent(
+        en,
+        'en',
+        ev({
+          type: 'pump',
+          babyId: null,
+          startAt: NOW,
+          endAt: NOW,
+          minLeft: 5,
+          mlLeft: 1200,
+        }),
+        NOW,
+      ),
+    ).toBe(`Left ${en('time.minutes', { m: 5 })} · ${ml('en', en, 1200)}`);
+  });
+
   it('pumping, growth and temperature, with the locale decimal separator', () => {
     expect(
       describeEvent(

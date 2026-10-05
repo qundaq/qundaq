@@ -125,3 +125,31 @@
 .pump {
   margin-bottom: var(--space-3);
 }
+/* The running pump in place of the pumping button: the strip, and under it the forgot hint if any. */
+.pumpRunning {
+  display: grid;
+  margin-bottom: var(--space-3);
+}
+/* The strip's text is a button of its own: a tap opens the sheet that finishes the pump with corrections. */
+.stripOpen {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: min-content;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stripOpen:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.stripOpen .stripText {
+  flex: 1 1 auto;
+}

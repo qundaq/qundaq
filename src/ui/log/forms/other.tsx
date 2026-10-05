@@ -6,36 +6,9 @@ import { TEXT_LIMITS } from '../../../domain/rules';
 import { useT } from '../../app/I18nProvider';
 import { Button } from '../../shared/Button';
 import { Field } from '../../shared/Field';
-import type { GrowthInput, MedicationInput, PumpInput, TemperatureInput } from '../drafts';
+import type { GrowthInput, MedicationInput, TemperatureInput } from '../drafts';
 import styles from '../LogSheet.module.css';
 import { DecimalField, type FormProps } from './fields';
-
-/** Text fields with the numeric keypad: the typed text is kept, and "60.5" is reported on save, not truncated. */
-export function PumpForm({ value, onChange }: FormProps<PumpInput>) {
-  const t = useT();
-  return (
-    <div className={styles.fieldRow}>
-      <Field label={t('pump.left')}>
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          value={value.mlLeft}
-          onChange={(e) => onChange({ ...value, mlLeft: e.target.value })}
-        />
-      </Field>
-      <Field label={t('pump.right')}>
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          value={value.mlRight}
-          onChange={(e) => onChange({ ...value, mlRight: e.target.value })}
-        />
-      </Field>
-    </div>
-  );
-}
 
 export function GrowthForm({ value, onChange }: FormProps<GrowthInput>) {
   const t = useT();

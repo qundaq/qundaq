@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDb, type TrackerDb } from '../../src/db/db';
 import {
+  deleteEvent,
   listRunningEvents,
   logEvents,
   recordEvents,
@@ -10,7 +11,8 @@ import {
   stopPump,
   stopTimer,
 } from '../../src/db/events';
-import { MAX_PUMP_MIN, ValidationError } from '../../src/domain/rules';
+import { MAX_PUMP_MIN, TEXT_LIMITS, ValidationError } from '../../src/domain/rules';
+import type { TrackerEvent } from '../../src/domain/types';
 import { HOUR, MINUTE } from '../../src/domain/time';
 
 const NOW = new Date(2026, 9, 5, 9, 0).getTime();
@@ -74,6 +76,18 @@ describe('startPump', () => {
     );
     expect(changes.map((c) => c.before?.id ?? null)).toEqual([asleep!.id, null]);
     expect(await runningIds(db)).toEqual([pump!.after.id, changes[1]!.after.id].sort());
+  });
+
+  it('a start that is refused (a side it does not know) leaves the running pump running', async () => {
+    const db = freshDb();
+    const [first] = await startPump(db, 'L', NOW - 20 * MINUTE);
+    await expect(startPump(db, 'X' as never, NOW)).rejects.toEqual(
+      new ValidationError(['pump-invalid']),
+    );
+    expect(await runningIds(db)).toEqual([first!.after.id]);
+    const stored = await db.events.get(first!.after.id);
+    expect(stored).toMatchObject({ side: 'L', updatedAt: NOW - 20 * MINUTE });
+    expect(stored!.endAt).toBeUndefined();
   });
 
   it('undo removes the new pump and lets the one it ended run again', async () => {
@@ -166,5 +180,57 @@ describe('stopPump', () => {
     const change = await stopTimer(db, started!.after.id, NOW, NOW - 5 * MINUTE);
     expect(change!.after).toMatchObject({ endAt: NOW - 5 * MINUTE, minLeft: 10 });
     expect(change!.after).not.toHaveProperty('side');
+  });
+
+  it('ends at a chosen earlier time, counting the minutes up to it; never before the start nor in the future', async () => {
+    const db = freshDb();
+    const [started] = await startPump(db, 'R', NOW - 40 * MINUTE);
+    const id = started!.after.id;
+    await expect(stopPump(db, id, NOW, {}, NOW - 41 * MINUTE)).rejects.toEqual(
+      new ValidationError(['end-before-start']),
+    );
+    await expect(stopPump(db, id, NOW, {}, NOW + HOUR)).rejects.toEqual(
+      new ValidationError(['in-future']),
+    );
+    expect(await runningIds(db)).toEqual([id]);
+    const change = await stopPump(db, id, NOW, {}, NOW - 15 * MINUTE);
+    expect(change!.after).toMatchObject({ endAt: NOW - 15 * MINUTE, minRight: 25, updatedAt: NOW });
+  });
+
+  it('checks only the pumping rules: a long note or a start ahead of this clock never block the stop', async () => {
+    const db = freshDb();
+    const base = { type: 'pump', babyId: null, side: 'L', createdAt: NOW, updatedAt: NOW } as const;
+    // Rows written by another device: one with a note longer than the limit, one whose clock ran ahead.
+    const noted = {
+      ...base,
+      id: 'noted',
+      startAt: NOW - 10 * MINUTE,
+      note: 'x'.repeat(TEXT_LIMITS.note + 1),
+    };
+    const ahead = { ...base, id: 'ahead', startAt: NOW + HOUR };
+    await db.events.bulkPut([noted, ahead] as TrackerEvent[]);
+    expect((await stopPump(db, 'noted', NOW))!.after).toMatchObject({ endAt: NOW, minLeft: 10 });
+    expect((await stopPump(db, 'ahead', NOW))!.after).toMatchObject({
+      endAt: NOW + HOUR,
+      minLeft: 1,
+    });
+    expect(await runningIds(db)).toEqual([]);
+  });
+
+  it('a deleted pump cannot be stopped', async () => {
+    const db = freshDb();
+    const [started] = await startPump(db, 'L', NOW - 15 * MINUTE);
+    await deleteEvent(db, started!.after.id, NOW);
+    await expect(stopPump(db, started!.after.id, NOW)).rejects.toThrow(/not found/);
+  });
+
+  it('undo of a stop is refused while another pump runs', async () => {
+    const db = freshDb();
+    const [first] = await startPump(db, 'L', NOW - 15 * MINUTE);
+    const change = await stopPump(db, first!.after.id, NOW);
+    const [second] = await startPump(db, 'R', NOW + MINUTE);
+    expect(await restoreEvents(db, [change!], NOW + 2 * MINUTE)).toBe(false);
+    expect(await runningIds(db)).toEqual([second!.after.id]);
+    expect(await db.events.get(first!.after.id)).toMatchObject({ endAt: NOW, minLeft: 15 });
   });
 });

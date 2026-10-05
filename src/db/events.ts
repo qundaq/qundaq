@@ -328,30 +328,39 @@ const PUMP_PATCH_KEYS = ['minLeft', 'minRight', 'mlLeft', 'mlRight'] as const;
 /** Corrections made in the stop sheet before finishing: a number sets the field, null removes it. */
 export type PumpPatch = Partial<Record<(typeof PUMP_PATCH_KEYS)[number], number | null>>;
 
+/** The rules a pump stop answers to: only what the stop sheet's corrections can break. */
+const PUMP_STOP_CHECKS: readonly RuleViolation[] = ['pump-empty', 'pump-invalid'];
+
 /**
- * Finishes a running pump at `now`: the elapsed minutes (rounded, 1 to MAX_PUMP_MIN) go on the side it ran
- * on, both for 'B', the side is dropped, then `patch` is applied. The result must pass the pumping rules
- * (a ValidationError otherwise, and nothing changes); like stopTimer, a stop is never refused for having
- * run too long. Returns the change for undo, or null if the pump has already finished.
+ * Finishes a running pump at `now`, or at `at` when the stop sheet chose an earlier end (never before the
+ * pump began, never in the future): the elapsed minutes (rounded, 1 to MAX_PUMP_MIN) go on the side it ran
+ * on, both for 'B', the side is dropped, then `patch` is applied. Only the pumping rules are checked (a
+ * ValidationError otherwise, and nothing changes), so Home's "Stop" works whatever else the row holds (a
+ * long note, a clock that has drifted); like stopTimer, a stop is never refused for having run too long.
+ * Returns the change for undo, or null if the pump has already finished.
  */
 export async function stopPump(
   db: TrackerDb,
   id: Id,
   now = Date.now(),
   patch: PumpPatch = {},
+  at?: number,
 ): Promise<EventChange | null> {
   return db.transaction('rw', db.events, async () => {
     const event = await getLive(db, id);
     if (event.type !== 'pump') throw new Error(`Event ${id} is not a pump`);
     if (!isOpen(event)) return null;
-    const finished = { ...stoppedAt(event, now) } as typeof event;
+    if (at !== undefined && at < event.startAt) throw new ValidationError(['end-before-start']);
+    if (at !== undefined && at > now + FUTURE_TOLERANCE_MS)
+      throw new ValidationError(['in-future']);
+    const finished = { ...stoppedAt(event, at ?? now), updatedAt: now } as typeof event;
     for (const key of PUMP_PATCH_KEYS) {
       const value = patch[key];
       if (value === null) delete finished[key];
       else if (value !== undefined) finished[key] = value;
     }
-    const violations = validateEvent(finished, [], now, id).filter(
-      (violation) => violation !== 'too-long',
+    const violations = validateEvent(finished, [], now, id).filter((violation) =>
+      PUMP_STOP_CHECKS.includes(violation),
     );
     if (violations.length > 0) throw new ValidationError(violations);
     await db.events.put(finished);
