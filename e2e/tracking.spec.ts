@@ -5,8 +5,11 @@ import {
   babyCard,
   cardAction,
   deleteBabyInSettings,
-  enterDuration,
+  logFeedAfterwards,
   logRows,
+  openFeedEnd,
+  openFeedStart,
+  sideMinutesField,
   openTab,
   pickTime,
   readEvents,
@@ -513,9 +516,6 @@ test.describe('timers and feeds', () => {
     await expect(side('side.L.button')).toHaveAccessibleDescription(
       t('side.lastUsed', { ago: t('time.ago', { duration: t('time.minutes', { m: 5 }) }) }),
     );
-    // The finished-feed form starts on the same side.
-    await enterDuration(sheet, 10);
-    await expect(sheet.getByRole('radio', { name: t('side.R.button'), exact: true })).toBeChecked();
   });
 
   test('a finished feed or sleep needs a duration', async ({ page }) => {
@@ -555,11 +555,8 @@ test.describe('timers and feeds', () => {
 
     await cardAction(page, 'breastfeed').click();
     sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-    await expect(sheet.getByText(t('conflict.sleepEnds', { names: 'Ada' }))).toBeVisible();
-    // A finished feed leaves the sleep alone, so the note is only for "Start now".
-    await sheet.getByRole('radio', { name: t('sheet.mode.doneFeed'), exact: true }).click();
-    await expect(sheet.getByText(t('conflict.sleepEnds', { names: 'Ada' }))).toHaveCount(0);
-    await sheet.getByRole('radio', { name: t('sheet.mode.start'), exact: true }).click();
+    // Said once, above the side buttons that start the feed.
+    await expect(sheet.getByText(t('conflict.sleepEnds', { names: 'Ada' }))).toHaveCount(1);
     await sheet.getByRole('button', { name: t('side.L.button'), exact: true }).click();
     await expect(sheet).toBeHidden();
     await expect(card).toContainText(t('strip.feeding', { side: t('side.L.button') }));
@@ -595,15 +592,185 @@ test.describe('timers and feeds', () => {
     await openTab(page, t('tab.home'));
     await cardAction(page, 'breastfeed').click();
     const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-    await enterDuration(sheet, 15);
-    await sheet.getByRole('radio', { name: t('side.R.button'), exact: true }).click();
-    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await logFeedAfterwards(sheet, { right: 15 });
     const card = babyCard(page, 'Ada');
     await expect(card).toContainText(t('time.minutes', { m: 15 }));
     await expect(card).toContainText(t('tile.agoDetail', { detail: t('side.R') }));
     await expect(card.getByRole('button', { name: new RegExp(t('timer.stopFeed')) })).toHaveCount(
       0,
     );
+  });
+
+  test('one tap on the right side starts the feed there, and it finishes', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await cardAction(page, 'breastfeed').click();
+    const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+    await sheet.getByRole('button', { name: t('side.R.button'), exact: true }).click();
+    await expect(sheet).toBeHidden();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText(t('strip.feeding', { side: t('side.R.button') }));
+    await page.clock.fastForward('07:00');
+    await card.getByRole('button', { name: new RegExp(t('timer.stopFeed')) }).click();
+    await expect(card).toContainText(t('time.minutes', { m: 7 }));
+    await expect(card).toContainText(t('tile.agoDetail', { detail: t('side.R') }));
+  });
+
+  test('the first "switch side" tap right after the start switches at once; the button then rests', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await cardAction(page, 'breastfeed').click();
+    await page
+      .getByRole('dialog', { name: t('sheet.breastfeed.title') })
+      .getByRole('button', { name: t('side.L.button'), exact: true })
+      .click();
+    const card = babyCard(page, 'Ada');
+    await expect(card).toContainText(t('strip.feeding', { side: t('side.L.button') }));
+
+    // No time passes: this tap used to fall inside the double-tap window and do nothing.
+    const switchSide = card.getByRole('button', { name: t('timer.switchSide') });
+    await switchSide.click();
+    await expect(card).toContainText(t('strip.feeding', { side: t('side.R.button') }));
+    // A second tap now would be the other half of a double tap: the button shows it is resting.
+    await expect(switchSide).toBeDisabled();
+    await page.clock.fastForward(2100);
+    await expect(switchSide).toBeEnabled();
+    await switchSide.click();
+    await expect(card).toContainText(t('strip.feeding', { side: t('side.L.button') }));
+  });
+
+  test('after a switch on Home, the stop sheet opened within the window shows its switch resting too', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await cardAction(page, 'breastfeed').click();
+    await page
+      .getByRole('dialog', { name: t('sheet.breastfeed.title') })
+      .getByRole('button', { name: t('side.L.button'), exact: true })
+      .click();
+    await page.clock.fastForward('05:00');
+    const card = babyCard(page, 'Ada');
+    await card.getByRole('button', { name: t('timer.switchSide') }).click();
+    await expect(card).toContainText(t('strip.feeding', { side: t('side.R.button') }));
+
+    await cardAction(page, 'breastfeed').click();
+    const sheet = page.getByRole('dialog', { name: `${t('sheet.breastfeed.title')} · Ada` });
+    const switchSide = sheet.getByRole('button', { name: t('timer.switchSide'), exact: true });
+    // Within the window a tap would be ignored, so the sheet's button says so instead of doing nothing.
+    await expect(switchSide).toBeDisabled();
+    await page.clock.fastForward(2100);
+    await expect(switchSide).toBeEnabled();
+    await switchSide.click();
+    await expect(sheet).toContainText(t('strip.feeding', { side: t('side.L.button') }));
+    await expect(sheet).toContainText(
+      `${t('side.L.button')} ${t('time.minutes', { m: 5 })} · ${t('side.R.button')}`,
+    );
+  });
+
+  test('a feed logged afterwards with left 10 and right 5 minutes shows both sides in the log', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: new Date('2026-09-25T08:00:00') });
+    await page.reload();
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await cardAction(page, 'breastfeed').click();
+    const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+    const save = sheet.getByRole('button', { name: t('common.save'), exact: true });
+    await expect(save).toBeDisabled();
+    await expect(sheet.getByText(t('sheet.durationRequired'))).toBeVisible();
+    const left = t('side.L.button');
+    const right = t('side.R.button');
+    // Left by a quick chip, right by one "+" step (an empty side starts at 5).
+    await sheet
+      .getByRole('group', { name: left, exact: true })
+      .getByRole('radio', { name: t('time.minutes', { m: 10 }), exact: true })
+      .click();
+    await sheet.getByRole('button', { name: t('sideMinutes.more', { side: right, m: 5 }) }).click();
+    await expect(sideMinutesField(sheet, 'R')).toHaveValue('5');
+    await expect(sheet.getByText(t('sheet.durationRequired'))).toHaveCount(0);
+    await save.click();
+    await expect(sheet).toBeHidden();
+
+    await openTab(page, t('tab.log'));
+    await expect(logRows(page).first()).toContainText('07:45 – 08:00');
+    await expect(logRows(page).first()).toContainText(
+      `${left} ${t('time.minutes', { m: 10 })} · ${right} ${t('time.minutes', { m: 5 })}`,
+    );
+    const [feed] = (await readEvents(page)) as { segments: { side: string }[] }[];
+    expect(feed!.segments.map((segment) => segment.side)).toEqual(['L', 'R']);
+  });
+
+  test('the feed sheet fits a 320 px screen: nothing overflows, every control is 48 px', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await cardAction(page, 'breastfeed').click();
+    const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+    // Save sits a short scroll away at most: the whole sheet scrolls less than 200 px.
+    await expect(sheet.getByRole('button', { name: t('common.save'), exact: true })).toBeVisible();
+    expect(
+      await sheet.evaluate((dialog) => dialog.scrollHeight - dialog.clientHeight),
+    ).toBeLessThan(200);
+    await sheet
+      .getByRole('button', { name: t('sideMinutes.more', { side: t('side.L.button'), m: 5 }) })
+      .click();
+    await openFeedStart(sheet);
+    await openFeedEnd(sheet);
+    const overflow = await sheet.evaluate((dialog) => {
+      const right = dialog.getBoundingClientRect().right;
+      return [...dialog.querySelectorAll('button, input')]
+        .filter((el) => el.getBoundingClientRect().right > right + 0.5)
+        .map((el) => el.outerHTML.slice(0, 80));
+    });
+    expect(overflow).toEqual([]);
+    expect(await sheet.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth)).toBe(true);
+    const small = await sheet.evaluate((dialog) =>
+      [...dialog.querySelectorAll('button')]
+        .filter((el) => el.getBoundingClientRect().height < 47.5)
+        .map((el) => el.textContent),
+    );
+    expect(small).toEqual([]);
+  });
+
+  test('minutes show three digits in full, and both sides together stop at the 4 hour limit', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await addBabyInSettings(page, 'Ada');
+    await openTab(page, t('tab.home'));
+    await cardAction(page, 'breastfeed').click();
+    const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+    const left = sideMinutesField(sheet, 'L');
+    await left.fill('120');
+    await expect(left).toHaveValue('120');
+    expect(await left.evaluate((input) => input.scrollWidth <= input.clientWidth)).toBe(true);
+    await left.fill('200');
+    const right = sideMinutesField(sheet, 'R');
+    await right.fill('100');
+    // 240 minutes in all: the right side gets what the left leaves.
+    await expect(right).toHaveValue('40');
+    await expect(
+      sheet.getByRole('button', {
+        name: t('sideMinutes.more', { side: t('side.R.button'), m: 5 }),
+      }),
+    ).toBeDisabled();
+    // The longest feed the rule allows (4 hours) saves; the rule stays the safety net behind it.
+    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await expect(sheet).toBeHidden();
+    const [feed] = (await readEvents(page)) as { startAt: number; endAt: number }[];
+    expect(feed!.endAt - feed!.startAt).toBe(240 * 60_000);
   });
 
   test('a bottle without an amount is refused', async ({ page }) => {
@@ -613,16 +780,6 @@ test.describe('timers and feeds', () => {
     const sheet = page.getByRole('dialog', { name: t('sheet.bottle.title') });
     await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
     await expect(sheet.getByRole('alert')).toHaveText(t('rule.amount-invalid'));
-  });
-
-  test('a feed longer than 4 hours is refused', async ({ page }) => {
-    await addBabyInSettings(page, 'Ada');
-    await openTab(page, t('tab.home'));
-    await cardAction(page, 'breastfeed').click();
-    const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-    await enterDuration(sheet, 300);
-    await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-    await expect(sheet.getByRole('alert')).toHaveText(t('rule.too-long'));
   });
 });
 

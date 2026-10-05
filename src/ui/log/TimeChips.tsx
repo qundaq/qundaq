@@ -1,7 +1,10 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { AGO_MINUTES, NOW_CHOICE, type TimeChoice } from '../../domain/entryTime';
 import { MINUTE, fromLocalInputValue, toLocalInputValue } from '../../domain/time';
-import { useT } from '../app/I18nProvider';
+import { useLocale, useT, type TranslateFn } from '../app/I18nProvider';
+import { clockTime } from '../history/describe';
+import { Button } from '../shared/Button';
+import type { Locale } from '../../i18n';
 import { Chip } from '../shared/Chip';
 import { Field } from '../shared/Field';
 import { onRadioKeyDown } from '../shared/radio';
@@ -100,5 +103,54 @@ export function TimeChips({
         </Field>
       )}
     </div>
+  );
+}
+
+/** A time choice in a few words, for a folded row's button: "now", "5 min ago" or the picked clock time. */
+export function timeChoiceText(t: TranslateFn, locale: Locale, choice: TimeChoice): string {
+  if (choice.kind === 'now') return t('time.foldedNow');
+  if (choice.kind === 'ago') return t('time.agoChip', { m: choice.minutes });
+  return clockTime(locale, choice.at);
+}
+
+/**
+ * A time row folded behind one small button that says the time ("Start: now · change"), for a sheet where
+ * "now" is nearly always right: a tap shows the chips under it, another hides them again.
+ */
+export function FoldedTimeChips({
+  button,
+  label,
+  value,
+  onChange,
+}: {
+  /** The button's text, given the time in a few words (timeChoiceText). */
+  button: (when: string) => string;
+  /** The chips' group label. */
+  label: string;
+  value: TimeChoice;
+  onChange: (choice: TimeChoice) => void;
+}) {
+  const t = useT();
+  const locale = useLocale();
+  const id = useId();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className={styles.folded}>
+        <Button
+          variant="tertiary"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen((shown) => !shown)}
+        >
+          {button(timeChoiceText(t, locale, value))}
+        </Button>
+      </div>
+      {open && (
+        <div id={id}>
+          <TimeChips label={label} value={value} onChange={onChange} />
+        </div>
+      )}
+    </>
   );
 }

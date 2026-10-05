@@ -460,8 +460,9 @@ describe('normalisation touches only what the app never writes', () => {
 
   it('leaves every entry the sheets and the edit sheet can produce exactly as it is', () => {
     const inputs: [SheetInput, string][] = [
-      [{ kind: 'breastfeed', value: { side: 'R', durationMin: 15 } }, ''],
-      [{ kind: 'breastfeed', value: { side: 'L', durationMin: null } }, ''],
+      [{ kind: 'breastfeed', value: { minLeft: null, minRight: 15 } }, ''],
+      [{ kind: 'breastfeed', value: { minLeft: 10, minRight: 5 } }, ''],
+      [{ kind: 'breastfeed', value: { timer: 'L' } }, ''],
       [{ kind: 'bottle', value: { ml: 90, contents: 'mixed' } }, ''],
       [{ kind: 'sleep', value: { durationMin: 45 } }, ''],
       [

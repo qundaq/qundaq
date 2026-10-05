@@ -136,6 +136,23 @@ export async function recentMedicationNames(
 /** A second "switch side" tap within this window is treated as the same tap. */
 export const SWITCH_DEBOUNCE_MS = 2000;
 
+/**
+ * When the running side was opened by a switch, or null when it is still the feed's first side. Only a
+ * switch starts the debounce window: the first tap after a feed starts always switches.
+ */
+export function lastSwitchAt(segments: readonly BreastSegment[]): number | null {
+  return segments.length > 1 ? segments.at(-1)!.start : null;
+}
+
+/**
+ * Until when a "switch side" tap is ignored (the window after the previous switch), or null when none
+ * would be. The buttons that switch read it too, so they rest exactly while a tap would do nothing.
+ */
+export function switchRestsUntil(segments: readonly BreastSegment[]): number | null {
+  const switchedAt = lastSwitchAt(segments);
+  return switchedAt === null ? null : switchedAt + SWITCH_DEBOUNCE_MS;
+}
+
 function closeLast(segments: readonly BreastSegment[], at: number): BreastSegment[] {
   return segments.map((segment, i) =>
     i === segments.length - 1 && segment.end === undefined
@@ -383,7 +400,8 @@ export async function restoreEvents(
 
 /**
  * Closes the current side and opens the other. Returns false (and changes nothing) if the feed has
- * already finished, or if the current side began less than SWITCH_DEBOUNCE_MS ago (a double tap).
+ * already finished, or if the previous switch was less than SWITCH_DEBOUNCE_MS ago (the second tap of a
+ * double tap). The first switch of a feed is never ignored, however soon after the start it comes.
  */
 export async function switchBreastSide(db: TrackerDb, id: Id, now = Date.now()): Promise<boolean> {
   return db.transaction('rw', db.events, async () => {
@@ -391,7 +409,8 @@ export async function switchBreastSide(db: TrackerDb, id: Id, now = Date.now()):
     if (event.type !== 'breastfeed') throw new Error(`Event ${id} is not a breastfeed`);
     if (!isOpen(event)) return false;
     const current = event.segments.at(-1)!;
-    if (now - current.start < SWITCH_DEBOUNCE_MS) return false;
+    const restsUntil = switchRestsUntil(event.segments);
+    if (restsUntil !== null && now < restsUntil) return false;
     const segments: BreastSegment[] = [
       ...closeLast(event.segments, now),
       { side: current.side === 'L' ? 'R' : 'L', start: now },

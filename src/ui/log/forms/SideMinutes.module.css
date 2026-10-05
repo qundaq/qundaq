@@ -1,0 +1,92 @@
+.sides {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+/* Label and stepper on one line, the quick chips under them across the full width. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.label {
+  font: var(--font-heading);
+}
+.stepper {
+  display: grid;
+  grid-template-columns: var(--tap) 5.5rem var(--tap);
+  align-items: center;
+  gap: var(--space-1);
+}
+.value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  align-content: center;
+  flex-wrap: wrap;
+  border-radius: var(--radius-sm);
+  cursor: text;
+}
+/* Not used yet: an outlined, see-through box whose "0 dk" is a placeholder, not a value. */
+.empty {
+  border: 1px dashed var(--border);
+}
+/* A chosen value: a filled box, the number in full strength. */
+.filled {
+  border: 1px solid transparent;
+  background: var(--surface-2);
+}
+.input {
+  /* Three digits ("240") in the title font. */
+  width: 3.3ch;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: right;
+  font: var(--font-title);
+  color: var(--text);
+  /* No native spinner: the −/+ buttons are the tap targets, typing is the exception path. */
+  appearance: textfield;
+}
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+/* A placeholder, never a value: muted and in regular weight, where a chosen value is bold. */
+.input::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+.input:focus {
+  outline: none;
+}
+.value:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.unit {
+  font: var(--font-caption);
+  color: var(--muted);
+}
+.filled .unit {
+  color: var(--text);
+}
+.chips {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+/* Four equal chips fit a 320 px screen: less side padding than a free-flowing chip. */
+.chips > button {
+  justify-content: center;
+  padding: 0 var(--space-1);
+}
+.chips > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

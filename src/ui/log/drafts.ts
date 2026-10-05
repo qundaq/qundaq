@@ -3,6 +3,7 @@ import { pumpStartAt } from '../../domain/pump';
 import { MINUTE } from '../../domain/time';
 import type {
   BottleContents,
+  BreastSegment,
   Consistency,
   EventDraft,
   Id,
@@ -25,10 +26,11 @@ export const OTHER_TYPES: readonly OtherType[] = [
   'healthNote',
 ];
 
-export interface BreastfeedInput {
-  side: Side;
-  durationMin: number | null;
-}
+/**
+ * A feed: a timer started on a side (the sheet's side buttons), or one logged afterwards with whole
+ * minutes per side (null: side not used).
+ */
+export type BreastfeedInput = { timer: Side } | { minLeft: number | null; minRight: number | null };
 export interface BottleInput {
   ml: number | null;
   contents: BottleContents;
@@ -82,7 +84,7 @@ export type InputKind = SheetInput['kind'];
 export type InputValue<K extends InputKind> = Extract<SheetInput, { kind: K }>['value'];
 
 export const DEFAULT_INPUTS: { [K in InputKind]: InputValue<K> } = {
-  breastfeed: { side: 'L', durationMin: null },
+  breastfeed: { minLeft: null, minRight: null },
   bottle: { ml: null, contents: 'breastmilk' },
   sleep: { durationMin: null },
   diaper: { wet: true, dirty: false, stoolColor: null, consistency: null },
@@ -145,20 +147,48 @@ function temperatureValue(raw: string): number {
   return value === null ? Number.NaN : scaleToInt(value, 10) / 10;
 }
 
+/** Whether a feed logged afterwards has minutes on at least one side (the sheet's save needs them). */
+export function hasFeedMinutes(value: BreastfeedInput): boolean {
+  return !('timer' in value) && (value.minLeft ?? 0) + (value.minRight ?? 0) > 0;
+}
+
+/**
+ * A feed logged afterwards: left first, then right, back to back, the last side ending at `end`. Each side
+ * lasts its minutes; an unused side has no segment.
+ */
+export function feedSegments(
+  end: number,
+  minLeft: number | null,
+  minRight: number | null,
+): { startAt: number; endAt: number; segments: BreastSegment[] } {
+  const used = (
+    [
+      ['L', minLeft],
+      ['R', minRight],
+    ] as const
+  ).filter((pair): pair is readonly [Side, number] => pair[1] !== null && pair[1] > 0);
+  const startAt = end - used.reduce((sum, [, minutes]) => sum + minutes * MINUTE, 0);
+  let start = startAt;
+  const segments = used.map(([side, minutes]): BreastSegment => {
+    const segment = { side, start, end: start + minutes * MINUTE };
+    start = segment.end;
+    return segment;
+  });
+  return { startAt, endAt: end, segments };
+}
+
 function draftFor(input: SheetInput, babyId: Id | null, at: number): EventDraft {
   switch (input.kind) {
     case 'breastfeed': {
-      const { side, durationMin } = input.value;
-      if (durationMin === null)
-        return { type: 'breastfeed', babyId, startAt: at, segments: [{ side, start: at }] };
-      const startAt = at - durationMin * MINUTE;
-      return {
-        type: 'breastfeed',
-        babyId,
-        startAt,
-        endAt: at,
-        segments: [{ side, start: startAt, end: at }],
-      };
+      const value = input.value;
+      if ('timer' in value)
+        return {
+          type: 'breastfeed',
+          babyId,
+          startAt: at,
+          segments: [{ side: value.timer, start: at }],
+        };
+      return { type: 'breastfeed', babyId, ...feedSegments(at, value.minLeft, value.minRight) };
     }
     case 'bottle':
       return {

@@ -193,7 +193,7 @@ export function formatMeasurement(locale: Locale, metric: GrowthMetric, value: n
     : `${formatNumber(locale, value / 10, 1)} cm`;
 }
 
-function sideTotals(
+export function sideTotals(
   t: TranslateFn,
   segments: readonly { side: Side; start: number; end?: number }[],
 ): string {

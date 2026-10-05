@@ -112,10 +112,9 @@ export async function pickTime(sheet: Locator, at: string) {
   await sheet.getByLabel(t('time.picked')).fill(at);
 }
 
-/** Switches a feed or sleep sheet to its "finished" mode (sheet.mode.done*) and enters a duration in minutes. */
+/** Switches a sleep sheet to its "finished" mode (sheet.mode.doneSleep) and enters a duration in minutes. */
 export async function enterDuration(sheet: Locator, minutes: number) {
-  const finished = [t('sheet.mode.doneFeed'), t('sheet.mode.doneSleep')].map(escapeRegExp);
-  await sheet.getByRole('radio', { name: new RegExp(`^(${finished.join('|')})$`) }).click();
+  await sheet.getByRole('radio', { name: t('sheet.mode.doneSleep'), exact: true }).click();
   const hours = new Intl.NumberFormat('tr', { maximumFractionDigits: 1 }).format(minutes / 60);
   const name =
     minutes < 60 ? t('duration.minutes', { m: minutes }) : t('duration.hours', { h: hours });
@@ -125,6 +124,55 @@ export async function enterDuration(sheet: Locator, minutes: number) {
     await sheet.getByRole('radio', { name: t('sheet.durationOther'), exact: true }).click();
     await sheet.getByLabel(t('sheet.durationMinutes')).fill(String(minutes));
   }
+}
+
+/**
+ * One set of time chips in a sheet with two (the feed sheet's start and end), found by its label, with
+ * its picked date-and-time field: pass it to pickTime or look its chips up in it.
+ */
+export function timeGroup(sheet: Locator, label: string) {
+  return sheet.getByRole('radiogroup', { name: label, exact: true }).locator('..');
+}
+
+/** The button of a folded time row in the feed sheet ("Start: now · change"), whatever time it says. */
+export function foldedTimeButton(sheet: Locator, key: 'feed.startAt' | 'feed.endAt') {
+  const [before, after] = t(key).split('{when}').map(escapeRegExp);
+  return sheet.getByRole('button', { name: new RegExp(`^${before}.+${after}$`) });
+}
+
+/** Opens the feed sheet's start time chips (feed.startAt) and returns them. */
+export async function openFeedStart(sheet: Locator) {
+  await foldedTimeButton(sheet, 'feed.startAt').click();
+  return timeGroup(sheet, t('time.start'));
+}
+
+/** Opens the feed sheet's end time chips in "log afterwards" (feed.endAt) and returns them. */
+export async function openFeedEnd(sheet: Locator) {
+  await foldedTimeButton(sheet, 'feed.endAt').click();
+  return timeGroup(sheet, t('time.ended'));
+}
+
+/** The minutes field of one side in the feed sheet's "log afterwards" (sideMinutes.value). */
+export function sideMinutesField(sheet: Locator, side: 'L' | 'R') {
+  // A spinbutton: the side's chip group carries the same name.
+  return sheet.getByRole('spinbutton', {
+    name: t('sideMinutes.value', { side: t(`side.${side}.button`) }),
+    exact: true,
+  });
+}
+
+/**
+ * Logs a finished feed from an open feed sheet ("log afterwards", feed.later): types the minutes per side
+ * and, when given, picks the end time ("2026-09-25T09:50"), then saves.
+ */
+export async function logFeedAfterwards(
+  sheet: Locator,
+  minutes: { left?: number; right?: number; end?: string },
+) {
+  if (minutes.left !== undefined) await sideMinutesField(sheet, 'L').fill(String(minutes.left));
+  if (minutes.right !== undefined) await sideMinutesField(sheet, 'R').fill(String(minutes.right));
+  if (minutes.end) await pickTime(await openFeedEnd(sheet), minutes.end);
+  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
 }
 
 /** Logs a wet diaper from a card (the first card by default), now or at a picked time. */

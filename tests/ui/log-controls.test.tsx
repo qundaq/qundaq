@@ -65,12 +65,9 @@ describe('chooseTime', () => {
 });
 
 describe('DurationChips', () => {
-  it('offers the type\'s durations and "other", and the minutes field only after "other"', () => {
-    expect(DURATION_CHIPS).toEqual({
-      breastfeed: [5, 10, 15, 20, 30],
-      sleep: [20, 40, 60, 90, 120],
-    });
-    const sleep = render(<DurationChips kind="sleep" value={null} onChange={() => {}} />);
+  it('offers the sleep durations and "other", and the minutes field only after "other"', () => {
+    expect(DURATION_CHIPS).toEqual([20, 40, 60, 90, 120]);
+    const sleep = render(<DurationChips value={null} onChange={() => {}} />);
     for (const text of [
       tt('duration.minutes', { m: 20 }),
       tt('duration.minutes', { m: 40 }),
@@ -83,11 +80,11 @@ describe('DurationChips', () => {
     expect(sleep).toMatch(/role="radiogroup"/);
     expect(sleep).not.toMatch(/aria-checked="true"/);
     expect(sleep).not.toContain(tt('sheet.durationMinutes'));
-    const chip = render(<DurationChips kind="breastfeed" value={15} onChange={() => {}} />);
+    const chip = render(<DurationChips value={40} onChange={() => {}} />);
     expect(chip.match(/aria-checked="true"/g)).toHaveLength(1);
     expect(chip).not.toContain(tt('sheet.durationMinutes'));
     // 17 is not a chip, so "other" is chosen and the field shows it.
-    const custom = render(<DurationChips kind="breastfeed" value={17} onChange={() => {}} />);
+    const custom = render(<DurationChips value={17} onChange={() => {}} />);
     expect(custom).toContain(tt('sheet.durationMinutes'));
     expect(custom).toContain('value="17"');
   });

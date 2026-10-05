@@ -6,6 +6,7 @@ import {
   addBabyInSettings,
   dayPicker,
   enterDuration,
+  logFeedAfterwards,
   logDiaper,
   logRows,
   openOther,
@@ -76,9 +77,7 @@ async function logSleep(
 async function logBreastfeed(page: Page, minutes: number) {
   await cardAction(page, 'breastfeed').click();
   const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-  await enterDuration(sheet, minutes);
-  await sheet.getByRole('radio', { name: t('side.R.button'), exact: true }).click();
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await logFeedAfterwards(sheet, { right: minutes });
   await expect(sheet).toBeHidden();
 }
 

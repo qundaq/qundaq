@@ -1,31 +1,64 @@
 import { describe, expect, it } from 'vitest';
 import { MINUTE } from '../../src/domain/time';
-import { DEFAULT_INPUTS, buildDrafts, initialInput } from '../../src/ui/log/drafts';
+import {
+  DEFAULT_INPUTS,
+  buildDrafts,
+  feedSegments,
+  hasFeedMinutes,
+  initialInput,
+} from '../../src/ui/log/drafts';
 
 const AT = new Date(2026, 8, 25, 8, 0).getTime();
 
 describe('buildDrafts', () => {
-  it('breastfeed without a duration starts a timer on the chosen side', () => {
-    expect(
-      buildDrafts({ kind: 'breastfeed', value: { side: 'R', durationMin: null } }, ['a'], AT),
-    ).toEqual([
+  it('a side button starts a feed timer on that side at the chosen start', () => {
+    expect(buildDrafts({ kind: 'breastfeed', value: { timer: 'R' } }, ['a'], AT)).toEqual([
       { type: 'breastfeed', babyId: 'a', startAt: AT, segments: [{ side: 'R', start: AT }] },
     ]);
   });
 
-  it('breastfeed with a duration is a finished feed that ENDS at the chosen time', () => {
+  it('a feed logged afterwards with one side is one segment that ENDS at the chosen time', () => {
+    const start = AT - 15 * MINUTE;
+    const finished = {
+      type: 'breastfeed',
+      babyId: 'a',
+      startAt: start,
+      endAt: AT,
+      segments: [{ side: 'R', start, end: AT }],
+    };
+    expect(
+      buildDrafts({ kind: 'breastfeed', value: { minLeft: null, minRight: 15 } }, ['a'], AT),
+    ).toEqual([finished]);
+    // 0 minutes counts as "not used", like an empty side.
+    expect(
+      buildDrafts({ kind: 'breastfeed', value: { minLeft: 0, minRight: 15 } }, ['a'], AT),
+    ).toEqual([finished]);
+  });
+
+  it('a feed logged afterwards with both sides: left first, then right, ending at the chosen time', () => {
     const start = AT - 15 * MINUTE;
     expect(
-      buildDrafts({ kind: 'breastfeed', value: { side: 'L', durationMin: 15 } }, ['a'], AT),
+      buildDrafts({ kind: 'breastfeed', value: { minLeft: 10, minRight: 5 } }, ['a'], AT),
     ).toEqual([
       {
         type: 'breastfeed',
         babyId: 'a',
         startAt: start,
         endAt: AT,
-        segments: [{ side: 'L', start, end: AT }],
+        segments: [
+          { side: 'L', start, end: start + 10 * MINUTE },
+          { side: 'R', start: start + 10 * MINUTE, end: AT },
+        ],
       },
     ]);
+  });
+
+  it('a feed with no minutes builds no segments (validation refuses it; the sheet never saves it)', () => {
+    expect(feedSegments(AT, null, null)).toEqual({ startAt: AT, endAt: AT, segments: [] });
+    expect(hasFeedMinutes({ minLeft: null, minRight: null })).toBe(false);
+    expect(hasFeedMinutes({ minLeft: 0, minRight: null })).toBe(false);
+    expect(hasFeedMinutes({ minLeft: null, minRight: 5 })).toBe(true);
+    expect(hasFeedMinutes({ timer: 'L' })).toBe(false);
   });
 
   it('sleep: timer or finished', () => {

@@ -6,6 +6,8 @@ import {
   addBabyInSettings,
   babyCard,
   enterDuration,
+  logFeedAfterwards,
+  openFeedStart,
   feedTile,
   filterGroup,
   logDiaper,
@@ -505,9 +507,7 @@ test.describe('editing and deleting', () => {
     await openTab(page, t('tab.home'));
     await cardAction(page, 'breastfeed').click();
     const feed = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-    await enterDuration(feed, 15);
-    await pickTime(feed, '2026-09-25T09:50');
-    await feed.getByRole('button', { name: t('common.save'), exact: true }).click();
+    await logFeedAfterwards(feed, { left: 15, end: '2026-09-25T09:50' });
     await expect(feed).toBeHidden();
 
     await openTab(page, t('tab.log'));
@@ -563,7 +563,7 @@ test.describe('editing and deleting', () => {
     await openTab(page, t('tab.home'));
     await cardAction(page, 'breastfeed').click();
     const feed = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-    await pickTime(feed, '2026-09-25T09:50');
+    await pickTime(await openFeedStart(feed), '2026-09-25T09:50');
     await feed.getByRole('button', { name: t('side.L.button'), exact: true }).click();
     await expect(feed).toBeHidden();
 

@@ -5,6 +5,7 @@ import {
   addBabyInSettings,
   babyCard,
   cardAction,
+  openFeedStart,
   openOther,
   openTab,
   pickTime,
@@ -174,7 +175,14 @@ test('starting earlier than the running timer is refused', async ({ page }) => {
 
   await cardAction(page, 'breastfeed', 'Ada').click();
   const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-  await sheet.getByRole('radio', { name: t('time.agoChip', { m: 15 }), exact: true }).click();
+  const start = await openFeedStart(sheet);
+  await start.getByRole('radio', { name: t('time.agoChip', { m: 15 }), exact: true }).click();
+  await expect(
+    sheet.getByRole('button', {
+      name: t('feed.startAt', { when: t('time.agoChip', { m: 15 }) }),
+      exact: true,
+    }),
+  ).toBeVisible();
   await sheet.getByRole('button', { name: t('side.L.button'), exact: true }).click();
   await expect(sheet.getByRole('alert')).toHaveText(
     t('rule.running-overlap.named', { names: 'Ada' }),
@@ -210,17 +218,25 @@ test('a time chip and a picked time both store the exact instant chosen', async 
   expect(diapers[1]!.startAt).toBe(at.getTime() - 15 * 60_000);
 });
 
-test('a finished breastfeed needs a duration too', async ({ page }) => {
-  // The same rule is already covered for sleep (tracking.spec.ts, "a finished feed or sleep needs a
-  // duration"); this is the breastfeed branch of it.
+test('a breastfeed logged afterwards cannot be saved without minutes, and says so', async ({
+  page,
+}) => {
   await twoBabies(page);
 
   await cardAction(page, 'breastfeed', 'Ada').click();
   const sheet = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
-  await sheet.getByRole('radio', { name: t('sheet.mode.doneFeed'), exact: true }).click();
-  await sheet.getByRole('button', { name: t('common.save'), exact: true }).click();
-  await expect(sheet.getByRole('alert')).toHaveText(t('sheet.durationRequired'));
-  await expect(sheet).toBeVisible();
+  const save = sheet.getByRole('button', { name: t('common.save'), exact: true });
+  await expect(save).toBeDisabled();
+  await expect(save).toHaveAccessibleDescription(t('sheet.durationRequired'));
+  // Minutes set, then taken away again with the chosen chip: back to disabled.
+  const tenMinutes = sheet
+    .getByRole('group', { name: t('side.L.button'), exact: true })
+    .getByRole('radio', { name: t('time.minutes', { m: 10 }), exact: true });
+  await tenMinutes.click();
+  await expect(save).toBeEnabled();
+  await tenMinutes.click();
+  await expect(save).toBeDisabled();
+  await expect(sheet.getByRole('alert')).toHaveCount(0);
   expect(await readEvents(page)).toHaveLength(0);
 });
 

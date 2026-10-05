@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
-import type { Side } from '../../domain/types';
+import type { BreastSegment, Side } from '../../domain/types';
 import { useLocale, useT } from '../app/I18nProvider';
 import { clockTime } from '../history/describe';
 import { Button } from '../shared/Button';
 import { Icon } from '../shared/Icon';
 import { LiveDuration } from '../shared/LiveDuration';
+import { useSideSwitch } from '../log/forms/timers';
+import { useReportError } from '../shared/ErrorBanner';
 import styles from './Home.module.css';
 
 type Props = {
@@ -13,13 +15,27 @@ type Props = {
   onStop: () => void;
   /** Under the strip: the "forgot to stop?" hint (timer.forgot) when the timer has run suspiciously long. */
   hint?: ReactNode;
-} & ({ kind: 'sleep' } | { kind: 'breastfeed'; side: Side; onSwitch: () => void });
+} & (
+  | { kind: 'sleep' }
+  | {
+      kind: 'breastfeed';
+      side: Side;
+      /** The feed's sides so far: the switch button rests after a switch (useSideSwitch). */
+      segments: readonly BreastSegment[];
+      /** Resolves to whether it switched (switchBreastSide). */
+      onSwitch: () => Promise<boolean>;
+    }
+);
+
+const NO_SEGMENTS: readonly BreastSegment[] = [];
 
 /** One running timer inside its baby's card: what runs, for how long (with seconds), and how to stop it. */
 export function LiveStrip(props: Props) {
   const t = useT();
   const locale = useLocale();
   const { name, since, onStop, hint } = props;
+  const report = useReportError();
+  const sideSwitch = useSideSwitch(props.kind === 'breastfeed' ? props.segments : NO_SEGMENTS);
   const caption =
     props.kind === 'sleep'
       ? t('strip.asleep', { time: clockTime(locale, since) })
@@ -38,7 +54,10 @@ export function LiveStrip(props: Props) {
               <Button
                 icon="arrow-left-right"
                 aria-label={`${name}: ${t('timer.switchSide')}`}
-                onClick={props.onSwitch}
+                disabled={sideSwitch.disabled}
+                onClick={() => {
+                  sideSwitch.run(props.onSwitch).catch((error: unknown) => report(error));
+                }}
               >
                 {t('timer.side')}
               </Button>

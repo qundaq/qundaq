@@ -127,7 +127,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 .side {
   display: flex;
@@ -146,8 +145,15 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+/* The side due next: filled like a chosen chip and outlined twice, so it reads as the one to tap. */
 .next {
-  border-color: var(--primary);
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface-2));
+}
+.sideName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .sideCaption {
   font: var(--font-caption);
@@ -205,4 +211,31 @@
 .otherChevron {
   flex-shrink: 0;
   color: var(--muted);
+}
+.split {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+  color: var(--muted);
+  font: var(--font-caption);
+}
+.sectionTitle {
+  margin: 0 0 var(--space-2);
+  font: var(--font-heading);
+}
+/* A folded time row (FoldedTimeChips): "now" unless changed, a quiet link-style button. */
+.folded {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-1) 0 var(--space-2);
+}
+/* "Log afterwards" is a section of its own, set apart by a rule, never a mode. */
+.later {
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.hint {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font: var(--font-caption);
+  text-align: center;
 }

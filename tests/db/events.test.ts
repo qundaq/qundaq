@@ -5,12 +5,14 @@ import {
   SWITCH_DEBOUNCE_MS,
   deleteEvent,
   hasLiveEvents,
+  lastSwitchAt,
   listEventsOverlapping,
   listRecentEvents,
   listRunningEvents,
   logEvents,
   stopEvent,
   switchBreastSide,
+  switchRestsUntil,
 } from '../../src/db/events';
 import { ValidationError } from '../../src/domain/rules';
 import { DAY, HOUR, MINUTE } from '../../src/domain/time';
@@ -267,6 +269,50 @@ describe('timers', () => {
         { side: 'L', start: NOW + SWITCH_DEBOUNCE_MS },
       ],
     });
+  });
+
+  it('the first switch right after a feed starts always switches; only a second tap is ignored', async () => {
+    const db = freshDb();
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: NOW, segments: [{ side: 'L', start: NOW }] }],
+      NOW,
+    );
+    // A tap one second after the start: before the fix this fell inside the window and did nothing.
+    expect(await switchBreastSide(db, feed!.id, NOW + 1000)).toBe(true);
+    expect(await switchBreastSide(db, feed!.id, NOW + 1500)).toBe(false);
+    expect(await db.events.get(feed!.id)).toMatchObject({
+      segments: [
+        { side: 'L', start: NOW, end: NOW + 1000 },
+        { side: 'R', start: NOW + 1000 },
+      ],
+    });
+  });
+
+  it('lastSwitchAt is the start of a side opened by a switch, never of the first side', () => {
+    expect(lastSwitchAt([{ side: 'L', start: NOW }])).toBeNull();
+    expect(
+      lastSwitchAt([
+        { side: 'L', start: NOW, end: NOW + 5 },
+        { side: 'R', start: NOW + 5 },
+      ]),
+    ).toBe(NOW + 5);
+  });
+
+  it('switchRestsUntil ends the window SWITCH_DEBOUNCE_MS after a switch, exactly when a switch works again', async () => {
+    expect(switchRestsUntil([{ side: 'L', start: NOW }])).toBeNull();
+    const db = freshDb();
+    const [feed] = await logEvents(
+      db,
+      [{ type: 'breastfeed', babyId: 'a', startAt: NOW, segments: [{ side: 'L', start: NOW }] }],
+      NOW,
+    );
+    expect(await switchBreastSide(db, feed!.id, NOW + 1000)).toBe(true);
+    const stored = await db.events.get(feed!.id);
+    const until = switchRestsUntil(stored!.type === 'breastfeed' ? stored!.segments : []);
+    expect(until).toBe(NOW + 1000 + SWITCH_DEBOUNCE_MS);
+    expect(await switchBreastSide(db, feed!.id, until! - 1)).toBe(false);
+    expect(await switchBreastSide(db, feed!.id, until!)).toBe(true);
   });
 
   it('switching a finished feed is a no-op', async () => {

@@ -1,22 +1,29 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
-import { stopTimer, switchBreastSide, type EventChange } from '../../../db/events';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  stopTimer,
+  switchBreastSide,
+  switchRestsUntil,
+  type EventChange,
+} from '../../../db/events';
 import { db } from '../../../db/instance';
 import { lastSideUse } from '../../../domain/defaults';
 import { NOW_CHOICE, resolveTimeChoice, type TimeChoice } from '../../../domain/entryTime';
 import { babyStatus } from '../../../domain/status';
-import type { Baby, Id, Side, TrackerEvent } from '../../../domain/types';
-import { useLocale, useT } from '../../app/I18nProvider';
-import { clockTime, formatNumber } from '../../history/describe';
+import type { Baby, BreastSegment, Id, Side, TrackerEvent } from '../../../domain/types';
+import { useLocale, useT, type TranslateFn } from '../../app/I18nProvider';
+import { clockTime, formatNumber, sideTotals } from '../../history/describe';
 import { Button } from '../../shared/Button';
 import { Chip } from '../../shared/Chip';
 import { cx } from '../../shared/cx';
 import { messageFor, useReportError } from '../../shared/ErrorBanner';
 import { formatAgo } from '../../shared/format';
+import { Icon } from '../../shared/Icon';
 import { LiveDuration } from '../../shared/LiveDuration';
 import { onRadioKeyDown } from '../../shared/radio';
 import { Segmented } from '../../shared/Segmented';
 import { SheetFooter } from '../../shared/Sheet';
 import { useMounted } from '../../shared/useMounted';
+import { whenReached } from '../../shared/whenReached';
 import { useNow } from '../../shared/useNow';
 import { TimeChips } from '../TimeChips';
 import type { SheetInput, SheetKind } from '../drafts';
@@ -25,28 +32,19 @@ import { DurationField } from './fields';
 
 export type TimerKind = 'breastfeed' | 'sleep';
 
-/** A feed or sleep sheet either starts a timer now or records one that has already finished. */
+/** A sleep sheet either starts a timer now or records a sleep that has already finished. */
 export type TimerMode = 'start' | 'done';
 
-/** The duration chips of a finished feed or sleep, in minutes. */
-export const DURATION_CHIPS: Readonly<Record<TimerKind, readonly number[]>> = {
-  breastfeed: [5, 10, 15, 20, 30],
-  sleep: [20, 40, 60, 90, 120],
-};
+/** The duration chips of a finished sleep, in minutes. */
+export const DURATION_CHIPS: readonly number[] = [20, 40, 60, 90, 120];
 
 const SIDES: readonly Side[] = ['L', 'R'];
 
-export type TimerInput = Extract<SheetInput, { kind: TimerKind }>;
-
-function withDuration(input: TimerInput, durationMin: number | null): TimerInput {
-  return input.kind === 'sleep'
-    ? { kind: 'sleep', value: { durationMin } }
-    : { kind: 'breastfeed', value: { ...input.value, durationMin } };
-}
+export type SleepInput = Extract<SheetInput, { kind: 'sleep' }>;
 
 /**
- * A feed or sleep sheet's own fields: "Start now" or a finished one (sheet.mode), and for a finished one
- * its side (a feed) and duration. The mode is form state; a timer is still `durationMin: null`.
+ * A sleep sheet's own fields: "Start now" or a finished one (sheet.mode), and for a finished one its
+ * duration. The mode is form state; a timer is still `durationMin: null`.
  */
 export function TimerFields({
   input,
@@ -54,10 +52,10 @@ export function TimerFields({
   onModeChange,
   onChange,
 }: {
-  input: TimerInput;
+  input: SleepInput;
   mode: TimerMode;
   onModeChange: (mode: TimerMode) => void;
-  onChange: (input: TimerInput) => void;
+  onChange: (input: SleepInput) => void;
 }) {
   const t = useT();
   return (
@@ -67,32 +65,20 @@ export function TimerFields({
         hideLabel
         options={[
           { value: 'start', label: t('sheet.mode.start') },
-          {
-            value: 'done',
-            label: t(input.kind === 'sleep' ? 'sheet.mode.doneSleep' : 'sheet.mode.doneFeed'),
-          },
+          { value: 'done', label: t('sheet.mode.doneSleep') },
         ]}
         value={mode}
         onChange={(next) => {
           if (next === mode) return;
           onModeChange(next);
           // Either way the duration starts empty: a started timer has none, a finished one must be chosen.
-          onChange(withDuration(input, null));
+          onChange({ kind: 'sleep', value: { durationMin: null } });
         }}
       />
-      {mode === 'done' && input.kind === 'breastfeed' && (
-        <Segmented
-          label={t('sheet.side')}
-          options={SIDES.map((side) => ({ value: side, label: t(`side.${side}.button`) }))}
-          value={input.value.side}
-          onChange={(side) => onChange({ kind: 'breastfeed', value: { ...input.value, side } })}
-        />
-      )}
       {mode === 'done' && (
         <DurationChips
-          kind={input.kind}
           value={input.value.durationMin}
-          onChange={(minutes) => onChange(withDuration(input, minutes))}
+          onChange={(durationMin) => onChange({ kind: 'sleep', value: { durationMin } })}
         />
       )}
     </>
@@ -101,11 +87,9 @@ export function TimerFields({
 
 /** The chips' durations and "Other…" (sheet.durationOther), which reveals the minutes field. */
 export function DurationChips({
-  kind,
   value,
   onChange,
 }: {
-  kind: TimerKind;
   value: number | null;
   onChange: (minutes: number | null) => void;
 }) {
@@ -114,9 +98,8 @@ export function DurationChips({
   const labelId = useId();
   // "Other…" stays chosen while its field is empty, so clearing the field does not hide it.
   const [otherPicked, setOtherPicked] = useState(false);
-  const chips = DURATION_CHIPS[kind];
-  const other = otherPicked || (value !== null && !chips.includes(value));
-  const choices: readonly (number | 'other')[] = [...chips, 'other'];
+  const other = otherPicked || (value !== null && !DURATION_CHIPS.includes(value));
+  const choices: readonly (number | 'other')[] = [...DURATION_CHIPS, 'other'];
   const isChosen = (choice: number | 'other') =>
     choice === 'other' ? other : !other && value === choice;
   const focusable = choices.some(isChosen) ? choices.findIndex(isChosen) : 0;
@@ -157,8 +140,8 @@ export function DurationChips({
 }
 
 /**
- * The two big side buttons of "Start now" (sheet.mode.start): a tap starts the feed on that side. The side
- * to offer next is outlined and says so; the other says when it was last used.
+ * The two big side buttons at the top of the feed sheet (feed.start): a tap starts the feed on that side.
+ * The side to offer next is highlighted and says so; the other says when it was last used.
  */
 export function SidePicker({
   events,
@@ -195,12 +178,14 @@ export function SidePicker({
             disabled={disabled}
             onClick={() => onPick(side)}
           >
-            {t(`side.${side}.button`)}
-            {text !== null && (
-              <span id={`${captionId}-${side}`} className={styles.sideCaption}>
-                {text}
-              </span>
-            )}
+            <span className={styles.sideName}>
+              <Icon name="play" size={16} />
+              {t(`side.${side}.button`)}
+            </span>
+            {/* Always one caption line, empty for a side never used, so both names sit level. */}
+            <span id={`${captionId}-${side}`} className={styles.sideCaption}>
+              {text ?? '\u00a0'}
+            </span>
           </button>
         );
       })}
@@ -242,7 +227,13 @@ export function OneTimerNote({
 
 export type RunningTimer =
   | { kind: 'sleep'; eventId: Id; since: number }
-  | { kind: 'breastfeed'; eventId: Id; since: number; side: Side };
+  | {
+      kind: 'breastfeed';
+      eventId: Id;
+      since: number;
+      side: Side;
+      segments: readonly BreastSegment[];
+    };
 
 /** The baby's own running timer of this kind: a feed or sleep sheet opened for it stops that timer. */
 export function runningTimer(
@@ -253,14 +244,75 @@ export function runningTimer(
   const status = babyStatus(events, babyId);
   if (kind === 'sleep' && status.sleep.state === 'asleep')
     return { kind: 'sleep', eventId: status.sleep.eventId, since: status.sleep.since };
-  if (kind === 'breastfeed' && status.runningFeed)
+  if (kind === 'breastfeed' && status.runningFeed) {
+    const { eventId } = status.runningFeed;
+    const feed = events.find((event) => event.id === eventId);
     return {
       kind: 'breastfeed',
-      eventId: status.runningFeed.eventId,
+      eventId,
       since: status.runningFeed.startAt,
       side: status.runningFeed.side,
+      segments: feed?.type === 'breastfeed' ? feed.segments : [],
     };
+  }
   return null;
+}
+
+/** How long a "switch side" button stays disabled after a tap that was still refused. */
+export const SWITCH_REFUSED_MS = 1000;
+
+/**
+ * A "switch side" button's state, read from the feed's data: after a switch it rests (disabled) until
+ * switchRestsUntil, exactly while switchBreastSide would ignore a tap, wherever it shows (Home's strip,
+ * the stop sheet) and across remounts. The first tap of a feed always switches and the new side shows at
+ * once. A tap that is refused all the same (switchBreastSide returns false) disables the button briefly
+ * too, so no tap is ever silently inert.
+ */
+export function useSideSwitch(segments: readonly BreastSegment[]): {
+  disabled: boolean;
+  run: (action: () => Promise<boolean>) => Promise<void>;
+} {
+  const restsUntil = switchRestsUntil(segments);
+  // One render once the window has passed, rather than a clock ticking for the whole feed (useNow ticks
+  // on a fixed interval, which would end the rest up to that interval late). whenReached waits again if
+  // its timer fires early, so the rest always ends.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(
+    () => (restsUntil === null ? undefined : whenReached(restsUntil, setNow)),
+    [restsUntil],
+  );
+  const [refused, setRefused] = useState(false);
+  useEffect(() => {
+    if (!refused) return;
+    const timer = window.setTimeout(() => setRefused(false), SWITCH_REFUSED_MS);
+    return () => window.clearTimeout(timer);
+  }, [refused]);
+  const busy = useRef(false); // set synchronously: a double tap before the next render runs once
+  const disabled = (restsUntil !== null && now < restsUntil) || refused;
+  const run = async (action: () => Promise<boolean>) => {
+    if (busy.current || disabled) return;
+    busy.current = true;
+    try {
+      if (!(await action())) setRefused(true);
+    } finally {
+      busy.current = false;
+    }
+  };
+  return { disabled, run };
+}
+
+/** The minutes per side of a running feed so far ("Left 8 min · Right 3 min"); the open side counts up to `now`. */
+export function runningSplit(
+  t: TranslateFn,
+  segments: readonly BreastSegment[],
+  now: number,
+): string {
+  return sideTotals(
+    t,
+    segments.map((segment) =>
+      segment.end === undefined ? { ...segment, end: Math.max(now, segment.start) } : segment,
+    ),
+  );
 }
 
 /**
@@ -287,6 +339,8 @@ export function StopTimerForm({
   const mounted = useMounted();
   const report = useReportError();
   const sleep = timer.kind === 'sleep';
+  const now = useNow();
+  const sideSwitch = useSideSwitch(timer.kind === 'breastfeed' ? timer.segments : []);
 
   const changeTime = (next: TimeChoice) => {
     setTime(next);
@@ -320,9 +374,9 @@ export function StopTimerForm({
   };
   const switchSide = () => {
     setError(null);
-    switchBreastSide(db, timer.eventId).catch((failure: unknown) =>
-      setError(messageFor(t, failure, babies)),
-    );
+    sideSwitch
+      .run(() => switchBreastSide(db, timer.eventId))
+      .catch((failure: unknown) => setError(messageFor(t, failure, babies)));
   };
 
   return (
@@ -335,9 +389,12 @@ export function StopTimerForm({
         </span>
         <LiveDuration since={timer.since} />
       </p>
+      {timer.kind === 'breastfeed' && timer.segments.length > 1 && (
+        <p className={styles.split}>{runningSplit(t, timer.segments, now)}</p>
+      )}
       {timer.kind === 'breastfeed' && (
         <div className={styles.group}>
-          <Button icon="arrow-left-right" onClick={switchSide}>
+          <Button icon="arrow-left-right" disabled={sideSwitch.disabled} onClick={switchSide}>
             {t('timer.switchSide')}
           </Button>
         </div>

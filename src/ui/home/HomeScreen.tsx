@@ -83,6 +83,11 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
       .finally(() => busy.current.delete(eventId));
   };
 
+  const runningSegments = (eventId: Id) => {
+    const event = byId.get(eventId);
+    return event?.type === 'breastfeed' ? event.segments : [];
+  };
+
   const stop = (eventId: Id) =>
     act(eventId, () => stopTimer(db, eventId).then((change) => change && undoToast([change])));
 
@@ -140,7 +145,8 @@ export function HomeScreen({ settings, onSettingsChange, onImportFile, onBackup 
                   name={baby.name}
                   since={running.startAt}
                   side={running.side}
-                  onSwitch={() => act(running.eventId, () => switchBreastSide(db, running.eventId))}
+                  segments={runningSegments(running.eventId)}
+                  onSwitch={() => switchBreastSide(db, running.eventId)}
                   onStop={() => stop(running.eventId)}
                   hint={forgotHint(baby.name, running.eventId)}
                 />

@@ -1,20 +1,24 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { recordEvents, recentMedicationNames, type EventChange } from '../../db/events';
 import { db } from '../../db/instance';
 import { lastBottle, nextSide } from '../../domain/defaults';
 import { NOW_CHOICE, resolveTimeChoice, type TimeChoice } from '../../domain/entryTime';
-import type { Baby, BottleContents, Id, Side, TrackerEvent } from '../../domain/types';
+import { MAX_DURATION_MS } from '../../domain/rules';
+import { MINUTE } from '../../domain/time';
+import type { Baby, BottleContents, EventDraft, Id, Side, TrackerEvent } from '../../domain/types';
 import { messageFor, useReportError, useReportLoadError } from '../shared/ErrorBanner';
 import { useT } from '../app/I18nProvider';
 import { Sheet, SheetFooter, useSheetSession } from '../shared/Sheet';
 import { Button } from '../shared/Button';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useMounted } from '../shared/useMounted';
-import { TimeChips } from './TimeChips';
+import { FoldedTimeChips, TimeChips } from './TimeChips';
 import { useUndoToast } from './useUndoToast';
 import {
   buildDrafts,
+  hasFeedMinutes,
   initialInput,
+  type BreastfeedInput,
   type InputKind,
   type LogRequest,
   type MedicationInput,
@@ -25,6 +29,7 @@ import { BottleForm, DiaperForm } from './forms/care';
 import { NoteField, type FormProps } from './forms/fields';
 import { OtherList } from './forms/OtherList';
 import { GrowthForm, MedicationForm, PumpForm, TemperatureForm } from './forms/other';
+import { SideMinutes, type SideValues } from './forms/SideMinutes';
 import {
   OneTimerNote,
   SidePicker,
@@ -108,6 +113,16 @@ export function LogSheet({ request, babies, events, onClose }: Props) {
             onClose={onClose}
             onStopped={(change) => undoToast([change])}
           />
+        ) : inputKind === 'breastfeed' && requestBabyId !== null ? (
+          <FeedForm
+            key={session.id}
+            babyId={requestBabyId}
+            babies={babies}
+            events={events}
+            nameOf={nameOf}
+            onClose={onClose}
+            undoToast={undoToast}
+          />
         ) : (
           <LogForm
             key={session.value.kind === 'other' ? `${session.id}-${current?.pick}` : session.id}
@@ -144,13 +159,51 @@ interface FormArgs {
   undoToast: (changes: readonly EventChange[]) => void;
 }
 
-/** The first input of a sheet: a feed starts on the side due next; a bottle starts from the baby's last one. */
+/**
+ * Saving a sheet's drafts: one save at a time (a second submit before the next render is refused), the
+ * error line on a refusal, and the undo toast once saved. `build` runs at the moment of saving, so "now"
+ * and "15 min ago" count from it.
+ */
+function useEntrySave(
+  babies: readonly Baby[],
+  onClose: () => void,
+  undoToast: (changes: readonly EventChange[]) => void,
+) {
+  const t = useT();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false); // only for `disabled`; the ref below is the real guard
+  const submitting = useRef(false); // set synchronously, so a second submit before the next render is refused
+  const mounted = useMounted();
+  const report = useReportError();
+  const save = async (build: (now: number) => EventDraft[], endRunning: boolean) => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setPending(true);
+    const now = Date.now();
+    try {
+      const changes = await recordEvents(db, build(now), now, { endRunning });
+      onClose();
+      undoToast(changes);
+      // The guard stays set: the form is done and only waits for its dialog to close.
+    } catch (failure) {
+      // Dismissed while saving: the form and its error line are gone, so the app's banner says it.
+      if (!mounted()) {
+        report(failure);
+        return;
+      }
+      setError(messageFor(t, failure, babies));
+      submitting.current = false;
+      setPending(false);
+    }
+  };
+  return { error, setError, pending, save };
+}
+
+/** The first input of a sheet: a bottle starts from the baby's last one. */
 function firstInput(
   kind: InputKind,
-  dueSide: Side,
   last: { ml: number; contents: BottleContents } | null,
 ): SheetInput {
-  if (kind === 'breastfeed') return { kind, value: { side: dueSide, durationMin: null } };
   if (kind === 'bottle')
     return { kind, value: { ml: last?.ml ?? null, contents: last?.contents ?? 'breastmilk' } };
   return initialInput(kind);
@@ -168,90 +221,52 @@ function LogForm({
 }: FormArgs) {
   const t = useT();
   const [time, setTime] = useState<TimeChoice>(NOW_CHOICE);
-  // The side due next, and the baby's last bottle, are the opening baby's, taken once, so neither moves
-  // while the sheet is open.
-  const [dueSide] = useState<Side>(() => (babyId === null ? 'L' : nextSide(events, babyId)));
+  // The baby's last bottle is the opening baby's, taken once, so it does not move while the sheet is open.
   const [lastBottleInput] = useState(() =>
     inputKind === 'bottle' && babyId !== null ? lastBottle(events, babyId) : null,
   );
-  const [input, setInput] = useState<SheetInput>(() =>
-    firstInput(inputKind, dueSide, lastBottleInput),
-  );
+  const [input, setInput] = useState<SheetInput>(() => firstInput(inputKind, lastBottleInput));
   const [mode, setMode] = useState<TimerMode>('start');
   const [note, setNote] = useState('');
   // The Other sheet's own tertiary note.add button: once revealed, the note field stays up for the
   // rest of this form's life. A health note shows it from the start instead (never toggled).
   const [noteOpen, setNoteOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false); // only for `disabled`; the ref below is the real guard
-  const submitting = useRef(false); // set synchronously, so a second submit before the next render is refused
-  const mounted = useMounted();
-  const report = useReportError();
+  const { error, setError, pending, save } = useEntrySave(babies, onClose, undoToast);
   // A stale error is cleared the moment the form changes; moving this into every field handler would
   // scatter the rule, so the cascading extra render is accepted.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setError(null), [input, time, note, mode]);
+  useEffect(() => setError(null), [input, time, note, mode, setError]);
 
-  // The Other sheet and the pumping sheet take a note; a card's feed, bottle, sleep and diaper sheets do not.
+  // The Other sheet and the pumping sheet take a note; a card's bottle, sleep and diaper sheets do not.
   const noted = kind === 'other' || kind === 'pump';
-  const timer = input.kind === 'breastfeed' || input.kind === 'sleep' ? input : null;
-  const starting = timer !== null && mode === 'start';
+  const sleep = input.kind === 'sleep' ? input : null;
+  const starting = sleep !== null && mode === 'start';
 
-  const save = async (next: SheetInput) => {
-    if (submitting.current) return;
-    if (
-      (next.kind === 'breastfeed' || next.kind === 'sleep') &&
-      mode === 'done' &&
-      next.value.durationMin === null
-    ) {
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (sleep && mode === 'done' && sleep.value.durationMin === null) {
       setError(t('sheet.durationRequired'));
       return;
     }
-    submitting.current = true;
-    setPending(true);
-    const now = Date.now();
-    try {
-      const changes = await recordEvents(
-        db,
+    void save(
+      (now) =>
         buildDrafts(
-          next,
+          input,
           babyId === null ? [] : [babyId],
           resolveTimeChoice(time, now),
           noted ? note : '',
         ),
-        now,
-        // A started timer ends each baby's other running timer at its start (the one-timer note says so).
-        { endRunning: starting },
-      );
-      onClose();
-      undoToast(changes);
-      // The guard stays set: the form is done and only waits for its dialog to close.
-    } catch (failure) {
-      // Dismissed while saving: the form and its error line are gone, so the app's banner says it.
-      if (!mounted()) {
-        report(failure);
-        return;
-      }
-      setError(messageFor(t, failure, babies));
-      submitting.current = false;
-      setPending(false);
-    }
-  };
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    // Feed start mode has no submit button; the side buttons are the only way to start, so an implicit
-    // submit (e.g. Enter in the time field) must not start a feed on a possibly stale side.
-    if (starting && input.kind === 'breastfeed') return;
-    void save(input);
+      // A started timer ends each baby's other running timer at its start (the one-timer note says so).
+      starting,
+    );
   };
 
   return (
     <form onSubmit={submit} noValidate>
-      {timer && (
-        <TimerFields input={timer} mode={mode} onModeChange={setMode} onChange={setInput} />
+      {sleep && (
+        <TimerFields input={sleep} mode={mode} onModeChange={setMode} onChange={setInput} />
       )}
-      {timer && starting && babyId !== null && (
-        <OneTimerNote kind={timer.kind} babyIds={[babyId]} events={events} nameOf={nameOf} />
+      {starting && babyId !== null && (
+        <OneTimerNote kind="sleep" babyIds={[babyId]} events={events} nameOf={nameOf} />
       )}
       {input.kind === 'bottle' && (
         <BottleForm
@@ -282,7 +297,7 @@ function LogForm({
         />
       )}
       <TimeChips
-        label={t(timer ? (starting ? 'time.start' : 'time.end') : 'time.when')}
+        label={t(sleep ? (starting ? 'time.start' : 'time.end') : 'time.when')}
         value={time}
         onChange={setTime}
       />
@@ -301,22 +316,138 @@ function LogForm({
           {error}
         </p>
       )}
-      {starting && input.kind === 'breastfeed' && babyId !== null ? (
-        // The side buttons are this mode's action, where the footer would be.
+      <SheetFooter>
+        <Button type="submit" variant="primary" size="lg" block disabled={pending}>
+          {t(starting ? 'sheet.startSleep' : 'common.save')}
+        </Button>
+      </SheetFooter>
+    </form>
+  );
+}
+
+/** The longest feed in minutes (rule too-long): "log afterwards" lets both sides together reach it, no more. */
+const FEED_MAX_MIN = MAX_DURATION_MS.breastfeed / MINUTE;
+
+/**
+ * The feed sheet, one screen without modes: on top the two side buttons start the timer at once (the
+ * start time stays "now" unless changed under them); below, set apart, "log afterwards" records a
+ * finished feed from minutes per side, ending at the chosen time.
+ */
+function FeedForm({
+  babyId,
+  babies,
+  events,
+  nameOf,
+  onClose,
+  undoToast,
+}: Omit<FormArgs, 'kind' | 'inputKind' | 'babyId'> & { babyId: Id }) {
+  const t = useT();
+  const ids = useId();
+  // The side due next is the opening baby's, taken once, so it does not move while the sheet is open.
+  const [dueSide] = useState<Side>(() => nextSide(events, babyId));
+  const [startTime, setStartTime] = useState<TimeChoice>(NOW_CHOICE);
+  const [minutes, setMinutes] = useState<SideValues>({ left: null, right: null });
+  const [endTime, setEndTime] = useState<TimeChoice>(NOW_CHOICE);
+  // Which action the error line belongs to: it shows next to that action.
+  const [errorAt, setErrorAt] = useState<'start' | 'later'>('start');
+  const { error, setError, pending, save } = useEntrySave(babies, onClose, undoToast);
+  // As in LogForm: a stale error goes the moment the form changes.
+  useEffect(() => setError(null), [startTime, minutes, endTime, setError]);
+
+  const later: BreastfeedInput = { minLeft: minutes.left, minRight: minutes.right };
+  const ready = hasFeedMinutes(later);
+
+  const start = (side: Side) => {
+    setErrorAt('start');
+    // A started feed ends the baby's running sleep at its start (the one-timer note says so).
+    void save(
+      (now) =>
+        buildDrafts(
+          { kind: 'breastfeed', value: { timer: side } },
+          [babyId],
+          resolveTimeChoice(startTime, now),
+        ),
+      true,
+    );
+  };
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    // An implicit submit (Enter in a field) with no minutes does nothing, as the disabled button.
+    if (!ready) return;
+    setErrorAt('later');
+    void save(
+      (now) =>
+        buildDrafts(
+          { kind: 'breastfeed', value: later },
+          [babyId],
+          resolveTimeChoice(endTime, now),
+        ),
+      false,
+    );
+  };
+  const errorLine = (at: 'start' | 'later') =>
+    error &&
+    errorAt === at && (
+      <p role="alert" className={styles.error}>
+        {error}
+      </p>
+    );
+
+  return (
+    <form onSubmit={submit} noValidate>
+      <section aria-labelledby={`${ids}-start`}>
+        <h3 id={`${ids}-start`} className={styles.sectionTitle}>
+          {t('feed.start')}
+        </h3>
+        <OneTimerNote kind="breastfeed" babyIds={[babyId]} events={events} nameOf={nameOf} />
         <SidePicker
           events={events}
           babyId={babyId}
           next={dueSide}
           disabled={pending}
-          onPick={(side) => void save({ kind: 'breastfeed', value: { side, durationMin: null } })}
+          onPick={start}
         />
-      ) : (
-        <SheetFooter>
-          <Button type="submit" variant="primary" size="lg" block disabled={pending}>
-            {t(starting ? 'sheet.startSleep' : 'common.save')}
-          </Button>
-        </SheetFooter>
-      )}
+        <FoldedTimeChips
+          button={(when) => t('feed.startAt', { when })}
+          label={t('time.start')}
+          value={startTime}
+          onChange={setStartTime}
+        />
+        {errorLine('start')}
+      </section>
+      <section aria-labelledby={`${ids}-later`} className={styles.later}>
+        <h3 id={`${ids}-later`} className={styles.sectionTitle}>
+          {t('feed.later')}
+        </h3>
+        <SideMinutes
+          values={minutes}
+          onChange={setMinutes}
+          max={FEED_MAX_MIN}
+          maxTotal={FEED_MAX_MIN}
+        />
+        <FoldedTimeChips
+          button={(when) => t('feed.endAt', { when })}
+          label={t('time.ended')}
+          value={endTime}
+          onChange={setEndTime}
+        />
+        {errorLine('later')}
+        {!ready && (
+          <p id={`${ids}-hint`} className={styles.hint}>
+            {t('sheet.durationRequired')}
+          </p>
+        )}
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          block
+          disabled={!ready || pending}
+          aria-describedby={ready ? undefined : `${ids}-hint`}
+        >
+          {t('common.save')}
+        </Button>
+      </section>
     </form>
   );
 }
