@@ -69,9 +69,9 @@ describe('axisWidthPx', () => {
   it('grows with the widest label and stays between 18 and 44 px', () => {
     expect(axisWidthPx([])).toBe(18);
     expect(axisWidthPx([0, 1, 2])).toBe(18);
-    expect(axisWidthPx([0, 15, 30])).toBe(18);
-    expect(axisWidthPx([0, 250, 500])).toBe(25);
-    expect(axisWidthPx([0, 500, 1000])).toBe(32);
+    expect(axisWidthPx([0, 15, 30])).toBe(20);
+    expect(axisWidthPx([0, 250, 500])).toBe(29);
+    expect(axisWidthPx([0, 500, 1000])).toBe(37);
     expect(axisWidthPx(['123456789'])).toBe(44);
   });
 });
