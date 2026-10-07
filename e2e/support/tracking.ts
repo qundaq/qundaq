@@ -63,6 +63,22 @@ export function logRows(page: Page) {
   return page.getByRole('list', { name: t('log.list'), exact: true }).getByRole('listitem');
 }
 
+/** The log tab's "by activity" view: the disclosure button heading one type's group (its name, then its totals). */
+export function activityGroupToggle(page: Page, typeName: string) {
+  return page
+    .getByTestId('log-groups')
+    .getByRole('heading', { level: 3 })
+    .getByRole('button', { name: new RegExp(`^${escapeRegExp(typeName)} `) });
+}
+
+/** The rows of one type's group in the log tab's "by activity" view (none while it is collapsed). */
+export function activityGroupRows(page: Page, typeName: string) {
+  return page
+    .getByTestId('log-groups')
+    .getByRole('list', { name: typeName, exact: true })
+    .getByRole('listitem');
+}
+
 /** Opens the edit sheet of the first log row that contains `text`. */
 export async function openRow(page: Page, text: string) {
   await logRows(page).filter({ hasText: text }).first().getByRole('button').click();

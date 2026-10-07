@@ -3,6 +3,8 @@ import { t } from './support/i18n';
 import { HOUR, MINUTE } from '../src/domain/time';
 import { formatDuration } from '../src/ui/shared/format';
 import {
+  activityGroupRows,
+  activityGroupToggle,
   addBabyInSettings,
   babyCard,
   enterDuration,
@@ -397,6 +399,167 @@ test.describe('the log (history) list', () => {
     await sheet.getByLabel(t('range.to')).fill('2026-09-20');
     await expect(page.getByText(t('log.empty'))).toBeVisible();
   });
+});
+
+test('by activity: one collapsible group per type, oldest first, following the range and the filters', async ({
+  page,
+}) => {
+  await addBabyInSettings(page, 'Ada');
+  await openTab(page, t('tab.home'));
+  // Two days: a feed and a pump yesterday; a feed, a sleep and a bottle today.
+  const feed = page.getByRole('dialog', { name: t('sheet.breastfeed.title') });
+  await cardAction(page, 'breastfeed').click();
+  await logFeedAfterwards(feed, { left: 15, end: '2026-09-24T09:50' });
+  await expect(feed).toBeHidden();
+  await cardAction(page, 'breastfeed').click();
+  await logFeedAfterwards(feed, { left: 10, right: 5, end: '2026-09-25T09:30' });
+  await expect(feed).toBeHidden();
+  const pump = await openPump(page);
+  await logPumpAfterwards(pump, { left: 12, right: 10, end: '2026-09-24T20:00' });
+  await expect(pump).toBeHidden();
+  await cardAction(page, 'sleep').click();
+  const sleep = page.getByRole('dialog', { name: t('sheet.sleep.title') });
+  await enterDuration(sleep, 60);
+  await pickTime(sleep, '2026-09-25T08:00');
+  await sleep.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(sleep).toBeHidden();
+  await cardAction(page, 'bottle').click();
+  const bottle = page.getByRole('dialog', { name: t('sheet.bottle.title') });
+  await pickTime(bottle, '2026-09-25T09:45');
+  await bottle.getByRole('radio', { name: t('unit.ml', { ml: 90 }), exact: true }).click();
+  await bottle.getByRole('button', { name: t('common.save'), exact: true }).click();
+  await expect(bottle).toBeHidden();
+
+  await openTab(page, t('tab.log'));
+  const sheet = await openRangeSheet(page);
+  await sheet.getByRole('button', { name: t('range.last7'), exact: true }).click();
+  await page.keyboard.press('Escape');
+  const grouping = page.getByRole('radiogroup', { name: t('log.group.label'), exact: true });
+  await expect(grouping.getByRole('radio', { name: t('log.group.time') })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expect(logRows(page)).toHaveCount(5);
+  await grouping.getByRole('radio', { name: t('log.group.activity') }).click();
+  await expect(logRows(page)).toHaveCount(0);
+
+  const count = (n: number) => (n === 1 ? t('log.group.count.one') : t('log.group.count', { n }));
+  const minutes = (m: number) => t('time.minutes', { m });
+  const headings = page.getByTestId('log-groups').getByRole('heading', { level: 3 });
+  const name = (type: 'breastfeed' | 'bottle' | 'sleep' | 'pump') => t(`sheet.${type}.title`);
+  await expect(headings).toHaveText([
+    `${name('breastfeed')} ${count(2)} · ${minutes(30)}`,
+    `${name('bottle')} ${count(1)} · ${t('unit.ml', { ml: 90 })}`,
+    `${name('sleep')} ${count(1)} · ${formatDuration(t, HOUR)}`,
+    `${name('pump')} ${count(1)} · ${minutes(22)}`,
+  ]);
+  // Oldest first inside a group, under a heading per day.
+  const feeds = activityGroupRows(page, name('breastfeed'));
+  await expect(feeds).toHaveCount(2);
+  await expect(feeds.getByRole('heading', { level: 4 })).toHaveText([
+    t('day.yesterday'),
+    t('day.today'),
+  ]);
+  await expect(feeds.nth(0)).toContainText('09:35 – 09:50');
+  await expect(feeds.nth(1)).toContainText('09:15 – 09:30');
+
+  // Collapsing one group takes its rows away (out of the page, so out of the tab order); the others stay.
+  const bottles = activityGroupToggle(page, name('bottle'));
+  await expect(bottles).toHaveAttribute('aria-expanded', 'true');
+  await bottles.click();
+  await expect(bottles).toHaveAttribute('aria-expanded', 'false');
+  await expect(activityGroupRows(page, name('bottle'))).toHaveCount(0);
+  await expect(page.locator(`[id="${await bottles.getAttribute('aria-controls')}"]`)).toBeHidden();
+  await expect(feeds).toHaveCount(2);
+  await expect(activityGroupRows(page, name('sleep'))).toHaveCount(1);
+
+  // The view and the collapsed group survive a tab switch.
+  await openTab(page, t('tab.home'));
+  await openTab(page, t('tab.log'));
+  await expect(grouping.getByRole('radio', { name: t('log.group.activity') })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expect(bottles).toHaveAttribute('aria-expanded', 'false');
+  await expect(activityGroupRows(page, name('bottle'))).toHaveCount(0);
+
+  // A one-day range: the groups follow it, with no day headings.
+  await openRangeSheet(page);
+  await sheet.getByRole('button', { name: t('range.today'), exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(headings).toHaveText([
+    `${name('breastfeed')} ${count(1)} · ${minutes(15)}`,
+    `${name('bottle')} ${count(1)} · ${t('unit.ml', { ml: 90 })}`,
+    `${name('sleep')} ${count(1)} · ${formatDuration(t, HOUR)}`,
+  ]);
+  await expect(page.getByTestId('log-groups').getByRole('heading', { level: 4 })).toHaveCount(0);
+
+  // A row opens the edit sheet, as in the time view.
+  await activityGroupRows(page, name('sleep')).getByRole('button').click();
+  const edit = page.getByRole('dialog', { name: `${t('edit.title')} · ${name('sleep')}` });
+  await expect(edit).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(edit).toBeHidden();
+
+  // A type filter leaves fewer groups; the pumping filter still shows its report.
+  await openRangeSheet(page);
+  await sheet.getByRole('button', { name: t('range.last7'), exact: true }).click();
+  await page.keyboard.press('Escape');
+  await (
+    await filterGroup(page, 'type')
+  )
+    .getByRole('button', { name: t('log.type.feeding'), exact: true })
+    .click();
+  await page.keyboard.press('Escape');
+  await expect(headings).toHaveText([
+    `${name('breastfeed')} ${count(2)} · ${minutes(30)}`,
+    `${name('bottle')} ${count(1)} · ${t('unit.ml', { ml: 90 })}`,
+  ]);
+  await (
+    await filterGroup(page, 'type')
+  )
+    .getByRole('button', { name: t('log.type.pump'), exact: true })
+    .click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pump-report')).toContainText(t('pump.report.sessions.one'));
+  await expect(headings).toHaveText([`${name('pump')} ${count(1)} · ${minutes(22)}`]);
+  await (
+    await filterGroup(page, 'type')
+  )
+    .getByRole('button', { name: t('log.type.sleep'), exact: true })
+    .click();
+  await page.keyboard.press('Escape');
+  await openRangeSheet(page);
+  await sheet.getByRole('button', { name: t('range.yesterday'), exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByText(t('log.emptyFiltered'))).toBeVisible();
+  await (
+    await filterGroup(page, 'type')
+  )
+    .getByRole('button', { name: t('sheet.all'), exact: true })
+    .click();
+  await page.keyboard.press('Escape');
+
+  // At 320 px: nothing overflows and every control keeps its 48 px.
+  await openRangeSheet(page);
+  await sheet.getByRole('button', { name: t('range.last7'), exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 320, height: 640 });
+  await expect(headings).toHaveCount(4);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    'page overflow at 320px',
+  ).toBe(true);
+  const targets = [
+    ...(await grouping.getByRole('radio').all()),
+    ...(await headings.getByRole('button').all()),
+    page.getByRole('button', { name: t('log.filter.trigger') }),
+  ];
+  for (const target of targets) {
+    const box = await target.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(48);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+  }
 });
 
 test.describe('editing and deleting', () => {

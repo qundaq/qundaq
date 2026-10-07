@@ -6,13 +6,15 @@ import { dayOffset, hourOf, startOfDay } from '../../domain/days';
 import { compareIds } from '../../domain/ids';
 import { matchesFilters, visibleEvents, type TypeFilter } from '../../domain/filters';
 import { DEFAULT_RANGE, isSingleDay, resolveRange, type RangeChoice } from '../../domain/ranges';
-import type { Baby, Id, TrackerEvent } from '../../domain/types';
+import type { Baby, EventType, Id, TrackerEvent } from '../../domain/types';
 import { useReportLoadError } from '../shared/ErrorBanner';
 import { useLocale, useT } from '../app/I18nProvider';
 import { useLiveQuery } from '../shared/useLiveQuery';
 import { useNow } from '../shared/useNow';
+import { Segmented } from '../shared/Segmented';
 import { VisuallyHidden } from '../shared/VisuallyHidden';
 import { pumpReport } from '../../domain/summary';
+import { ActivityGroups, toggleCollapsed } from './ActivityGroups';
 import { EditSheet } from './EditSheet';
 import { EventRow } from './EventRow';
 import { dayHeading, filterSummary, timeOnDay } from './describe';
@@ -25,12 +27,18 @@ export interface LogView {
   range: RangeChoice;
   babyId: Id | null; // null: every baby, pumps included
   type: TypeFilter;
+  /** The list in time order, or one collapsible group per activity. */
+  group: 'time' | 'activity';
+  /** The activity groups folded shut; every other group is open. */
+  collapsed: readonly EventType[];
 }
 
 export const DEFAULT_LOG_VIEW: LogView = {
   range: DEFAULT_RANGE,
   babyId: null,
   type: 'all',
+  group: 'time',
+  collapsed: [],
 };
 
 /** Babies and the range's entries in one live query, so rows never flash in and out. */
@@ -72,6 +80,9 @@ export function LogScreen({
       ? view.babyId
       : null;
   const set = (patch: Partial<LogView>) => onViewChange({ ...view, ...patch });
+  // The tick can be up to 30 s old; data written since then must never look like the future.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Math.max(tick, Date.now());
 
   return (
     <section>
@@ -82,6 +93,16 @@ export function LogScreen({
           {filterSummary(t, babies, babyFilter, view.type)}
         </span>
       </button>
+      <Segmented
+        label={t('log.group.label')}
+        hideLabel
+        options={[
+          { value: 'time', label: t('log.group.time') },
+          { value: 'activity', label: t('log.group.activity') },
+        ]}
+        value={view.group}
+        onChange={(group) => set({ group })}
+      />
       <FilterSheet
         open={filtering}
         onClose={() => setFiltering(false)}
@@ -101,18 +122,31 @@ export function LogScreen({
               multiDay={!isSingleDay(range)}
             />
           )}
-          <DayList
-            events={data.events}
-            babies={data.babies}
-            day={range.from}
-            byDay={!isSingleDay(range)}
-            babyFilter={babyFilter}
-            typeFilter={view.type}
-            // The tick can be up to 30 s old; data written since then must never look like the future.
-            // eslint-disable-next-line react-hooks/purity
-            now={Math.max(tick, Date.now())}
-            onOpen={setEditing}
-          />
+          {view.group === 'activity' ? (
+            <ActivityGroups
+              events={data.events}
+              babies={data.babies}
+              day={range.from}
+              byDay={!isSingleDay(range)}
+              babyFilter={babyFilter}
+              typeFilter={view.type}
+              collapsed={view.collapsed}
+              now={now}
+              onToggle={(type) => set({ collapsed: toggleCollapsed(view.collapsed, type) })}
+              onOpen={setEditing}
+            />
+          ) : (
+            <DayList
+              events={data.events}
+              babies={data.babies}
+              day={range.from}
+              byDay={!isSingleDay(range)}
+              babyFilter={babyFilter}
+              typeFilter={view.type}
+              now={now}
+              onOpen={setEditing}
+            />
+          )}
         </>
       )}
       <EditSheet event={editing} babies={babies} onClose={() => setEditing(null)} />

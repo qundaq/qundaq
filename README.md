@@ -49,6 +49,7 @@ Your entries live only on your phone, and iOS may delete a home-screen app's sto
 - **A baby is never asleep and feeding at once: starting one ends the other.**
 - **Each baby's card logs for that baby: no baby picker in the sheet**
 - **Timeline and daily summaries**, a 7-day overview and a growth chart
+- **The Log tab groups by activity** on request: one collapsible group per entry type for the chosen range, oldest first
 - **Stool color card** with a warning for pale/white/clay colors, an early sign of biliary atresia, one of the few things this app will ever nudge you about
 - **Sleep sounds:** four bundled recordings (white noise, waves, wind chimes, airplane cabin), played one at a time, with a sleep timer and a volume safety cap
 - **Backup & export:** JSON backup to the Files app, CSV export for your pediatrician
@@ -148,6 +149,7 @@ Telefonuna kurulan bir web uygulaması olarak çalışır. Hesap yok, sunucu yok
 - **Bir bebek aynı anda hem uyuyor hem emiyor görünmez: biri başlayınca diğeri biter.**
 - Her bebeğin kartı yalnızca o bebek için kayıt açar; sayfada bebek seçimi yok
 - Günlük, özet ve büyüme grafiği
+- Günlük istenirse aktiviteye göre gruplanır: seçilen aralıkta her tür için açılıp kapanan bir grup, eskiden yeniye
 - Uyarılı kaka renk kartı
 - Uyku sesleri (dört kayıt) ve zamanlayıcı
 - JSON yedek ve CSV çıktısı

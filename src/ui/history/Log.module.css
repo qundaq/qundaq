@@ -154,6 +154,71 @@ li:first-child > .dayHeading {
   font: var(--font-caption);
   color: var(--muted);
 }
+/* The "by activity" view: one disclosure heading per type, its rows below. */
+.groups {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+.groupHeading {
+  margin: 0;
+  font: inherit;
+}
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: var(--font-heading);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+.chevronOpen {
+  transform: rotate(90deg);
+}
+/* The type's name, then its totals; on a narrow screen the totals wrap under the name, between their parts. */
+.groupText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: var(--space-3);
+}
+.groupTotals {
+  font: var(--font-body);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.groupList {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+/* A day inside a group: below the group's heading, like the time view's hour headings but in body text. */
+.groupDay {
+  margin: var(--space-2) 0 2px;
+  font: var(--font-caption);
+  font-weight: 600;
+  color: var(--text);
+}
+li:first-child > .groupDay {
+  margin-top: 0;
+}
 .time {
   display: block;
   color: var(--muted);
