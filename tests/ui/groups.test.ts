@@ -49,7 +49,7 @@ describe('groupByActivity', () => {
       ev({ type: 'bottle', babyId: 'a', startAt: at(9), ml: 90, contents: 'formula' }),
       feed(at(10), [['L', 5 * MINUTE]]),
     ];
-    expect(groupByActivity(events, NOW).map((g) => g.type)).toEqual([
+    expect(groupByActivity(events).map((g) => g.type)).toEqual([
       'breastfeed',
       'bottle',
       'sleep',
@@ -60,11 +60,11 @@ describe('groupByActivity', () => {
       'medication',
       'healthNote',
     ]);
-    expect(groupByActivity(events.slice(0, 2), NOW).map((g) => g.type)).toEqual([
+    expect(groupByActivity(events.slice(0, 2)).map((g) => g.type)).toEqual([
       'medication',
       'healthNote',
     ]);
-    expect(groupByActivity([], NOW)).toEqual([]);
+    expect(groupByActivity([])).toEqual([]);
   });
 
   it('orders oldest first, ties by id, and puts each event in exactly one group', () => {
@@ -74,7 +74,7 @@ describe('groupByActivity', () => {
     const tieA = ev({ type: 'diaper', babyId: 'a', startAt: at(8), wet: true, dirty: false }, 'a');
     const sleep = ev({ type: 'sleep', babyId: 'a', startAt: at(1), endAt: at(2) }, 's');
     const input = [late, tieB, early, sleep, tieA];
-    const groups = groupByActivity(input, NOW);
+    const groups = groupByActivity(input);
     expect(groups.find((g) => g.type === 'diaper')!.events.map((e) => e.id)).toEqual([
       'z',
       'a',
@@ -91,14 +91,14 @@ describe('groupByActivity', () => {
       ...ev({ type: 'sleep', babyId: 'a', startAt: at(1), endAt: at(2) }),
       deletedAt: 5,
     };
-    expect(groupByActivity([gone], NOW)).toEqual([]);
+    expect(groupByActivity([gone])).toEqual([]);
   });
 });
 
 describe('groupSummary', () => {
   const summary = (events: TrackerEvent[], type: TrackerEvent['type']) =>
     groupSummary(
-      groupByActivity(events, NOW).find((g) => g.type === type)!,
+      groupByActivity(events).find((g) => g.type === type)!,
       NOW,
     );
 
@@ -131,9 +131,14 @@ describe('groupSummary', () => {
     expect(summary(feeds, 'breastfeed')).toEqual({ count: 3, minutes: rowMinutes });
   });
 
-  it('a running feed counts up to now', () => {
+  it('a running feed adds to the count only: its row says "ongoing", not minutes', () => {
     const running = feed(at(11, 30), [['L', 10 * MINUTE]], true);
-    expect(summary([running], 'breastfeed')).toEqual({ count: 1, minutes: 30 });
+    expect(describeEvent(tr, 'tr', running, NOW)).toBe(
+      `${tr('side.L.button')} · ${tr('log.ongoing')}`,
+    );
+    expect(summary([running], 'breastfeed')).toEqual({ count: 1, minutes: 0 });
+    const done = feed(at(9), [['L', 12 * MINUTE]]);
+    expect(summary([done, running], 'breastfeed')).toEqual({ count: 2, minutes: 12 });
   });
 
   it('bottle sums ml', () => {

@@ -27,7 +27,7 @@ export interface LogView {
   range: RangeChoice;
   babyId: Id | null; // null: every baby, pumps included
   type: TypeFilter;
-  /** The list in time order, or one collapsible group per activity. */
+  /** One collapsible group per activity (the default), or the list in time order. */
   group: 'time' | 'activity';
   /** The activity groups folded shut; every other group is open. */
   collapsed: readonly EventType[];
@@ -37,7 +37,7 @@ export const DEFAULT_LOG_VIEW: LogView = {
   range: DEFAULT_RANGE,
   babyId: null,
   type: 'all',
-  group: 'time',
+  group: 'activity',
   collapsed: [],
 };
 
@@ -87,22 +87,25 @@ export function LogScreen({
   return (
     <section>
       <VisuallyHidden as="h1">{t('tab.log')}</VisuallyHidden>
+      {/* How the entries are laid out, first and apart from the filter row, which decides which entries show. */}
+      <div className={styles.viewToggle}>
+        <Segmented
+          label={t('log.view.label')}
+          hideLabel
+          options={[
+            { value: 'time', label: t('log.group.time') },
+            { value: 'activity', label: t('log.group.activity') },
+          ]}
+          value={view.group}
+          onChange={(group) => set({ group })}
+        />
+      </div>
       <button type="button" className={styles.filterTrigger} onClick={() => setFiltering(true)}>
         <span>{t('log.filter.trigger')}</span>
         <span className={styles.filterSummary}>
           {filterSummary(t, babies, babyFilter, view.type)}
         </span>
       </button>
-      <Segmented
-        label={t('log.group.label')}
-        hideLabel
-        options={[
-          { value: 'time', label: t('log.group.time') },
-          { value: 'activity', label: t('log.group.activity') },
-        ]}
-        value={view.group}
-        onChange={(group) => set({ group })}
-      />
       <FilterSheet
         open={filtering}
         onClose={() => setFiltering(false)}

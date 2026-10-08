@@ -18,6 +18,7 @@ import {
   readEvents,
   sideMinutesChip,
   sideMinutesField,
+  showTimeView,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -64,6 +65,7 @@ test('a medicine is logged for that baby, and offered again with its dose', asyn
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await expect(logRows(page)).toHaveCount(1);
   await expect(logRows(page).filter({ hasText: 'Vitamin D · 400 IU' })).toHaveCount(1);
 
@@ -93,6 +95,7 @@ test('weight and height for one baby, typed with a comma', async ({ page }) => {
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('sheet.growth.title') });
   await expect(row).toContainText('Cal');
   await expect(row).toContainText(`3,45 kg · ${t('describe.height', { value: '52,5' })}`);
@@ -119,6 +122,7 @@ test('a temperature of 38 °C or more shows the fever hint and marks the row', a
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('describe.temperature', { value: '38,2' }) });
   await expect(row).toHaveCount(1);
   await expect(row.getByRole('button')).toHaveAccessibleName(new RegExp(t('log.warning')));
@@ -151,6 +155,7 @@ test('pumping needs no baby: minutes by default, Save waits for a value, undo re
   await expect(page.getByText(t('toast.pump'))).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await expect(logRows(page)).toHaveCount(0);
 });
 
@@ -160,6 +165,7 @@ test('a pump logged afterwards in minutes reads "Left 10 min" in the log, ending
   await openTab(page, t('tab.home'));
   await logPumpAfterwards(await openPump(page), { left: 10, end: '2026-09-25T09:30' });
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
   await expect(row).toContainText('09:20 – 09:30');
   await expect(row.locator('span').filter({ hasText: `${left} ${minutes(10)}` })).toHaveText(
@@ -176,6 +182,7 @@ test('ml are added on demand: minutes first, then the ml total', async ({ page }
   await logPumpAfterwards(sheet, { left: 12, right: 10, mlLeft: 50, mlRight: 40 });
   await expect(sheet).toBeHidden();
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await expect(logRows(page).first()).toContainText('09:38 – 10:00');
   await expect(logRows(page).first()).toContainText(
     `${left} ${minutes(12)} · ${right} ${minutes(10)} · ${t('unit.ml', { ml: 90 })}`,
@@ -222,6 +229,7 @@ test('the pump timer: Left starts it, the strip replaces the button and runs bes
   await expect(babyCard(page, 'Ada')).toContainText(t('strip.feeding', { side: right }));
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
   await expect(row).toContainText('10:00 – 10:12');
   await expect(row).toContainText(`${left} ${minutes(12)}`);
@@ -239,6 +247,7 @@ test('both at once records the minutes on both sides; a running pump reads like 
     .click();
   await expect(pumpStrip(page)).toContainText(t('strip.pumping', { side: t('side.B.button') }));
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
   await expect(row).toContainText(t('log.range.running', { start: '10:00' }));
   await expect(row).toContainText(`${t('side.B.button')} · ${t('log.ongoing')}`);
@@ -290,6 +299,7 @@ test('the strip survives tab changes and a reload; its sheet corrects the minute
   await expect(page.getByRole('button', { name: t('home.pump'), exact: true })).toBeFocused();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await expect(logRows(page).first()).toContainText(
     `${right} ${minutes(15)} · ${t('unit.ml', { ml: 80 })}`,
   );
@@ -402,6 +412,7 @@ test('the pumping sheet and the strip fit a 320 px screen: nothing overflows, ev
     .click();
   // The edit sheet of the finished pump: end time, minutes and ml fields fit too.
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await openRow(page, t('sheet.pump.title'));
   const edit = page.getByRole('dialog', {
     name: `${t('edit.title')} · ${t('sheet.pump.title')}`,
@@ -434,6 +445,7 @@ test('pumping has no baby and shows under "all babies" only', async ({ page }) =
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('sheet.pump.title') });
   await expect(row).toContainText(t('log.mother'));
   await expect(row).toContainText(`${t('side.L.button')} ${t('unit.ml', { ml: 60 })}`);
@@ -460,6 +472,7 @@ test('a health note needs text and is shown from the start', async ({ page }) =>
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: t('sheet.healthNote.title') });
   await expect(row).toContainText('09:15');
   await expect(row).toContainText('Vaccine day, cranky');
@@ -481,6 +494,7 @@ test("another entry's note is added only when the note button is tapped, and is 
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   const row = logRows(page).filter({ hasText: 'Vitamin D' });
   await expect(row).toContainText('Given with food');
 });

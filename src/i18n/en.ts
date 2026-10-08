@@ -368,7 +368,7 @@ export const en: Record<MessageKey, string> = {
   'log.type.diaper': 'Diaper',
   'log.type.pump': 'Pumping',
   'log.type.other': 'Other',
-  'log.group.label': 'Grouping',
+  'log.view.label': 'View',
   'log.group.time': 'By time',
   'log.group.activity': 'By activity',
   'log.group.count': '{n} entries',

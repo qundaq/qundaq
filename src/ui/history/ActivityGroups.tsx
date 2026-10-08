@@ -21,16 +21,16 @@ export function toggleCollapsed(collapsed: readonly EventType[], type: EventType
 }
 
 /**
- * A group header's totals: "5 entries · 90 min", "3 entries · 270 ml", "2 entries · 7 h 30 min", "6 entries".
+ * The parts of a group header's totals: ["5 entries", "90 min"], ["3 entries", "270 ml"], ["6 entries"].
  * Sleep reads as a duration; breastfeeding and pumping in plain minutes like the pumping report. A zero
- * total (a feed or sleep that has only just started) is left out.
+ * total (a sleep that has only just started, or only running feeds) is left out.
  */
-export function groupTotalsText(
+export function groupTotalsParts(
   t: TranslateFn,
   locale: Locale,
   type: EventType,
   summary: GroupSummary,
-): string {
+): string[] {
   const parts = [
     summary.count === 1
       ? t('log.group.count.one')
@@ -43,7 +43,7 @@ export function groupTotalsText(
         : t('time.minutes', { m: formatNumber(locale, summary.minutes) }),
     );
   if (summary.ml) parts.push(t('unit.ml', { ml: formatNumber(locale, summary.ml) }));
-  return parts.join(' · ');
+  return parts;
 }
 
 export interface ActivityGroupsProps {
@@ -79,7 +79,7 @@ export function ActivityGroups({
   const shown = visibleEvents(events, new Set(byId.keys())).filter((event) =>
     matchesFilters(event, babyFilter, typeFilter),
   );
-  const groups = groupByActivity(shown, now);
+  const groups = groupByActivity(shown);
   if (groups.length === 0) {
     return (
       <p className={styles.muted}>
@@ -129,7 +129,7 @@ function Group({
   const locale = useLocale();
   const panelId = useId();
   const title = typeLabel(t, group.type);
-  const totals = groupTotalsText(t, locale, group.type, groupSummary(group, now)).split(' · ');
+  const totals = groupTotalsParts(t, locale, group.type, groupSummary(group, now));
   return (
     <div>
       <h3 className={styles.groupHeading}>
@@ -180,6 +180,7 @@ function Group({
                     baby={event.babyId === null ? null : (byId.get(event.babyId) ?? null)}
                     day={rowDay}
                     now={now}
+                    compact
                     onOpen={() => onOpen(event)}
                   />
                 </li>

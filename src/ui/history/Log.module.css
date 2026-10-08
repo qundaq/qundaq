@@ -87,6 +87,12 @@
   width: 100%;
   min-width: 0;
 }
+/* The view toggle: the first control, with more room below it than the filter row has, so the two read as
+   separate things (how the entries are laid out, which entries show). Its own field's margin collapses
+   into this one. */
+.viewToggle {
+  margin-bottom: var(--space-5);
+}
 .filterTrigger {
   display: flex;
   align-items: center;
@@ -179,6 +185,10 @@ li:first-child > .dayHeading {
   text-align: left;
   cursor: pointer;
 }
+.groupToggle:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}
 .chevron {
   flex: none;
   color: var(--muted);
@@ -224,6 +234,14 @@ li:first-child > .groupDay {
   color: var(--muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+/* A grouped row's first line: the time, then the baby; it wraps between the two when they do not fit. */
+.compactHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 2px;
 }
 .main {
   display: flex;

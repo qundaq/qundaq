@@ -58,9 +58,30 @@ export function cardAction(page: Page, kind: CardActionKind, baby?: string) {
   return card.getByRole('button', { name: new RegExp(`: ${t(`quick.${kind}`)}$`) });
 }
 
-/** The rows of the log (history) list. */
+/** The rows of the log (history) tab's time-ordered list (switch to it first with showTimeView). */
 export function logRows(page: Page) {
   return page.getByRole('list', { name: t('log.list'), exact: true }).getByRole('listitem');
+}
+
+/** The log tab's view toggle (log.view.label): by activity (the default) or by time. */
+export function logViewToggle(page: Page) {
+  return page.getByRole('radiogroup', { name: t('log.view.label'), exact: true });
+}
+
+/**
+ * Switches the log tab to its time-ordered list, which the tab keeps until the app restarts (a reload
+ * opens the default by-activity view again). Harmless when the time view is already on.
+ */
+export async function showTimeView(page: Page) {
+  const time = logViewToggle(page).getByRole('radio', { name: t('log.group.time'), exact: true });
+  await time.click();
+  await expect(time).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('log-groups')).toHaveCount(0);
+}
+
+/** Every row of every expanded group in the log tab's by-activity view (the default view). */
+export function groupedRows(page: Page) {
+  return page.getByTestId('log-groups').getByRole('list').getByRole('listitem');
 }
 
 /** The log tab's "by activity" view: the disclosure button heading one type's group (its name, then its totals). */

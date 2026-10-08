@@ -19,6 +19,7 @@ import {
   summaryCard,
   summaryTileLines,
   type SummaryTileKey,
+  showTimeView,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -500,6 +501,7 @@ test('every record type shows up in the log and the summary, without CSP violati
   await expect(sheet).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await expect(logRows(page)).toHaveCount(9);
   for (const text of [
     `${t('side.R.button')} ${t('time.minutes', { m: 15 })}`,

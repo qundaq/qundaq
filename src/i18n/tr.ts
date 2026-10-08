@@ -366,7 +366,7 @@ export const tr = {
   'log.type.diaper': 'Bez',
   'log.type.pump': 'Sağım',
   'log.type.other': 'Diğer',
-  'log.group.label': 'Gruplama',
+  'log.view.label': 'Görünüm',
   'log.group.time': 'Zamana göre',
   'log.group.activity': 'Aktiviteye göre',
   'log.group.count': '{n} kayıt',

@@ -18,6 +18,7 @@ import {
   openOther,
   openRow,
   openTab,
+  showTimeView,
 } from './support/tracking';
 
 // The browser may re-check the app's own sw.js for updates on navigation. That is the single request
@@ -113,6 +114,7 @@ test('makes no network requests after the first load', async ({ page, context, b
   await expect(other).toBeHidden();
 
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await openRow(page, t('sheet.bottle.title'));
   const edit = page.getByRole('dialog', {
     name: `${t('edit.title')} · ${t('sheet.bottle.title')}`,

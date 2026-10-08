@@ -16,6 +16,8 @@ import {
   logRows,
   openRow,
   openTab,
+  showTimeView,
+  groupedRows,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -82,6 +84,7 @@ test('a crashing screen shows the fallback; its backup works, and the log can re
 
   // The other tabs work, and the log shows the bad entry, so it can be deleted.
   await openTab(page, t('tab.log'));
+  await showTimeView(page);
   await expect(logRows(page)).toHaveCount(2);
   await openRow(page, t('sheet.breastfeed.title'));
   const edit = page.getByRole('dialog', {
@@ -121,7 +124,7 @@ test("the crash screen's backup restores its good entries; the bad one is named 
   await openTab(page, t('tab.home'));
   await expect(babyCard(page, 'Ada')).toContainText(t('diaper.wet'));
   await openTab(page, t('tab.log'));
-  await expect(logRows(page)).toHaveCount(1);
+  await expect(groupedRows(page)).toHaveCount(1);
 });
 
 test('a restore from the crash screen that replaces the bad entry brings the screen back at once', async ({

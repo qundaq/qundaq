@@ -13,6 +13,8 @@ import {
   openTab,
   pickTime,
   readEvents,
+  showTimeView,
+  groupedRows,
 } from './support/tracking';
 import { DELETE_CONFIRM_MAX_MS } from '../src/ui/shared/confirm';
 
@@ -702,6 +704,7 @@ test.describe('timers and feeds', () => {
     await expect(sheet).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page).first()).toContainText('07:45 – 08:00');
     await expect(logRows(page).first()).toContainText(
       `${left} ${t('time.minutes', { m: 10 })} · ${right} ${t('time.minutes', { m: 5 })}`,
@@ -817,8 +820,8 @@ test.describe('sheet defaults and saved fields', () => {
     await expect(sheet).toBeHidden();
 
     await openTab(page, t('tab.log'));
-    await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(2);
-    await expect(logRows(page).filter({ hasText: 'Cal' })).toHaveCount(1);
+    await expect(groupedRows(page).filter({ hasText: 'Ada' })).toHaveCount(2);
+    await expect(groupedRows(page).filter({ hasText: 'Cal' })).toHaveCount(1);
   });
 
   test('turning "Dirty" off again saves no stool details', async ({ page }) => {

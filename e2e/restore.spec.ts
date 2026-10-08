@@ -5,9 +5,9 @@ import {
   addBabyInSettings,
   babyCard,
   logDiaper,
-  logRows,
   openTab,
   cardAction,
+  groupedRows,
 } from './support/tracking';
 import { clockTime, shortDate } from '../src/ui/history/describe';
 
@@ -65,7 +65,7 @@ test('a backup restores into an emptied app', async ({ page }) => {
   await expect(babyCard(page, 'Ada')).toContainText(t('diaper.wet'));
   await expect(babyCard(page, 'Cal')).toContainText(t('diaper.wet'));
   await openTab(page, t('tab.log'));
-  await expect(logRows(page)).toHaveCount(2);
+  await expect(groupedRows(page)).toHaveCount(2);
 });
 
 test('merging into a phone with other data: the preview counts match, and the same baby is recognised', async ({
@@ -113,7 +113,7 @@ test('merging into a phone with other data: the preview counts match, and the sa
   await expect(babyCard(page, 'Ada')).toBeVisible();
   await expect(babyCard(page, 'Ben')).toBeVisible();
   await openTab(page, t('tab.log'));
-  await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(3);
+  await expect(groupedRows(page).filter({ hasText: 'Ada' })).toHaveCount(3);
 });
 
 test('entries logged on a baby that the other phone combined follow it to the baby kept there', async ({
@@ -160,7 +160,7 @@ test('entries logged on a baby that the other phone combined follow it to the ba
   await openTab(page, t('tab.home'));
   await expect(page.getByRole('article')).toHaveCount(1);
   await openTab(page, t('tab.log'));
-  await expect(logRows(page).filter({ hasText: 'Ada' })).toHaveCount(1);
+  await expect(groupedRows(page).filter({ hasText: 'Ada' })).toHaveCount(1);
 });
 
 test('replace shows what it would lose, can back up first without losing the choice, and needs the checkbox', async ({
@@ -207,8 +207,8 @@ test('replace shows what it would lose, can back up first without losing the cho
   );
   await sheet.getByRole('button', { name: t('common.ok'), exact: true }).click();
   await openTab(page, t('tab.log'));
-  await expect(logRows(page)).toHaveCount(1);
-  await expect(logRows(page)).toContainText(['08:00']);
+  await expect(groupedRows(page)).toHaveCount(1);
+  await expect(groupedRows(page)).toContainText(['08:00']);
 });
 
 test('broken files are refused with the right message, and nothing is written', async ({

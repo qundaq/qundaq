@@ -25,6 +25,8 @@ import {
   pickTime,
   pumpMlField,
   sideMinutesField,
+  showTimeView,
+  logViewToggle,
 } from './support/tracking';
 
 test.use({ timezoneId: 'Europe/Istanbul' });
@@ -54,6 +56,7 @@ test.describe('the log (history) list', () => {
     await expect(bottle).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(rangeLabel(page)).toHaveText(t('range.today'));
     await expect(rangePicker(page).getByRole('button', { name: t('day.next') })).toBeDisabled();
     const rows = logRows(page);
@@ -79,6 +82,7 @@ test.describe('the log (history) list', () => {
     await logDiaper(page, { at: '2026-09-25T09:45' }); // shares 09:xx with the previous entry
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     const headings = page.getByRole('heading', { level: 3 });
     await expect(headings).toHaveCount(2);
     // Newest first: 09:00 (covering both 09:05 and 09:45) before 08:00.
@@ -94,6 +98,7 @@ test.describe('the log (history) list', () => {
     await logDiaper(page, { at: '2026-09-24T21:00' });
     await logDiaper(page, { at: '2026-09-25T09:00' });
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page)).toHaveCount(1);
     await expect(logRows(page).first()).toContainText('09:00');
 
@@ -159,6 +164,7 @@ test.describe('the log (history) list', () => {
     await expect(bottle).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page)).toHaveCount(3);
     await (
       await filterGroup(page, 'baby')
@@ -247,6 +253,7 @@ test.describe('the log (history) list', () => {
     await expect(sheet).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page).first()).toContainText(
       `22:10 ${t('log.suffix.previousDay')} – 06:30`,
     );
@@ -327,6 +334,7 @@ test.describe('the log (history) list', () => {
     await logDiaper(page, { at: '2026-09-24T21:00' });
     await logDiaper(page, { at: '2026-09-25T09:00' });
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     const picker = rangePicker(page);
     const label = rangeLabel(page);
     const dayHeadings = page.getByRole('list', { name: t('log.list') }).getByRole('heading', {
@@ -430,22 +438,36 @@ test('by activity: one collapsible group per type, oldest first, following the r
   await bottle.getByRole('button', { name: t('common.save'), exact: true }).click();
   await expect(bottle).toBeHidden();
 
+  // The Log tab opens by activity, every group expanded; there is no time-ordered list.
   await openTab(page, t('tab.log'));
+  const grouping = logViewToggle(page);
+  const byActivity = grouping.getByRole('radio', { name: t('log.group.activity'), exact: true });
+  const byTime = grouping.getByRole('radio', { name: t('log.group.time'), exact: true });
+  await expect(byActivity).toHaveAttribute('aria-checked', 'true');
+  await expect(byTime).toHaveAttribute('aria-checked', 'false');
+  const headings = page.getByTestId('log-groups').getByRole('heading', { level: 3 });
+  await expect(headings).toHaveCount(3);
+  for (const toggle of await headings.getByRole('button').all())
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(logRows(page)).toHaveCount(0);
+
   const sheet = await openRangeSheet(page);
   await sheet.getByRole('button', { name: t('range.last7'), exact: true }).click();
   await page.keyboard.press('Escape');
-  const grouping = page.getByRole('radiogroup', { name: t('log.group.label'), exact: true });
-  await expect(grouping.getByRole('radio', { name: t('log.group.time') })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
+  // The view toggle switches to the time-ordered list and back; the filters stay as they were.
+  await byTime.click();
+  await expect(byTime).toHaveAttribute('aria-checked', 'true');
   await expect(logRows(page)).toHaveCount(5);
-  await grouping.getByRole('radio', { name: t('log.group.activity') }).click();
+  await expect(page.getByTestId('log-groups')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: t('log.filter.trigger') })).toContainText(
+    t('sheet.all'),
+  );
+  await byActivity.click();
+  await expect(byActivity).toHaveAttribute('aria-checked', 'true');
   await expect(logRows(page)).toHaveCount(0);
 
   const count = (n: number) => (n === 1 ? t('log.group.count.one') : t('log.group.count', { n }));
   const minutes = (m: number) => t('time.minutes', { m });
-  const headings = page.getByTestId('log-groups').getByRole('heading', { level: 3 });
   const name = (type: 'breastfeed' | 'bottle' | 'sleep' | 'pump') => t(`sheet.${type}.title`);
   await expect(headings).toHaveText([
     `${name('breastfeed')} ${count(2)} · ${minutes(30)}`,
@@ -462,6 +484,11 @@ test('by activity: one collapsible group per type, oldest first, following the r
   ]);
   await expect(feeds.nth(0)).toContainText('09:35 – 09:50');
   await expect(feeds.nth(1)).toContainText('09:15 – 09:30');
+  // Compact rows: the baby and the time, but not the type the group heading already names.
+  await expect(feeds.nth(0)).toContainText('Ada');
+  await expect(feeds.nth(0)).not.toContainText(name('breastfeed'));
+  await expect(activityGroupRows(page, name('pump'))).toContainText(t('log.mother'));
+  await expect(activityGroupRows(page, name('pump'))).not.toContainText(name('pump'));
 
   // Collapsing one group takes its rows away (out of the page, so out of the tab order); the others stay.
   const bottles = activityGroupToggle(page, name('bottle'));
@@ -476,10 +503,7 @@ test('by activity: one collapsible group per type, oldest first, following the r
   // The view and the collapsed group survive a tab switch.
   await openTab(page, t('tab.home'));
   await openTab(page, t('tab.log'));
-  await expect(grouping.getByRole('radio', { name: t('log.group.activity') })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
+  await expect(byActivity).toHaveAttribute('aria-checked', 'true');
   await expect(bottles).toHaveAttribute('aria-expanded', 'false');
   await expect(activityGroupRows(page, name('bottle'))).toHaveCount(0);
 
@@ -560,6 +584,12 @@ test('by activity: one collapsible group per type, oldest first, following the r
     expect(box!.height).toBeGreaterThanOrEqual(48);
     expect(box!.x + box!.width).toBeLessThanOrEqual(320);
   }
+  // The view toggle comes first, apart from the filter row below it.
+  const toggleBox = (await grouping.boundingBox())!;
+  const filterBox = (await page
+    .getByRole('button', { name: t('log.filter.trigger') })
+    .boundingBox())!;
+  expect(toggleBox.y + toggleBox.height + 16).toBeLessThanOrEqual(filterBox.y);
 });
 
 test.describe('editing and deleting', () => {
@@ -574,6 +604,7 @@ test.describe('editing and deleting', () => {
     await expect(bottle).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await openRow(page, t('sheet.bottle.title'));
     const sheet = page.getByRole('dialog', {
       name: `${t('edit.title')} · ${t('sheet.bottle.title')}`,
@@ -603,6 +634,7 @@ test.describe('editing and deleting', () => {
     await expect(feedTile(page, 'Ada')).toContainText('90 ml');
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await openRow(page, t('sheet.bottle.title'));
     const sheet = page.getByRole('dialog', {
       name: `${t('edit.title')} · ${t('sheet.bottle.title')}`,
@@ -631,6 +663,7 @@ test.describe('editing and deleting', () => {
     await openTab(page, t('tab.home'));
     await logDiaper(page, { at: '2026-09-25T09:40' });
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await openRow(page, t('sheet.diaper.title'));
     const sheet = page.getByRole('dialog', {
       name: `${t('edit.title')} · ${t('sheet.diaper.title')}`,
@@ -677,6 +710,7 @@ test.describe('editing and deleting', () => {
     await expect(feed).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page).first()).toContainText('09:35 – 09:50');
     await expect(logRows(page).first()).toContainText(
       `${t('side.L.button')} ${t('time.minutes', { m: 15 })}`,
@@ -713,6 +747,7 @@ test.describe('editing and deleting', () => {
     await expect(sleep).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await openRow(page, t('sheet.sleep.title'));
     const sheet = page.getByRole('dialog', {
       name: `${t('edit.title')} · ${t('sheet.sleep.title')}`,
@@ -735,6 +770,7 @@ test.describe('editing and deleting', () => {
       end: '2026-09-25T09:30',
     });
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     const left = t('side.L.button');
     const right = t('side.R.button');
     const min = (m: number) => t('time.minutes', { m });
@@ -788,6 +824,7 @@ test.describe('editing and deleting', () => {
     await expect(feed).toBeHidden();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page).first()).toContainText(`09:50 – ${t('log.ongoing')}`);
     await expect(logRows(page).first()).toContainText(
       `${t('side.L.button')} · ${t('log.ongoing')}`,
@@ -825,6 +862,7 @@ test.describe('editing and deleting', () => {
       .click();
 
     await openTab(page, t('tab.log'));
+    await showTimeView(page);
     await expect(logRows(page).first()).toContainText(new RegExp(`10:0\\d – ${t('log.ongoing')}`));
     await openRow(page, t('sheet.sleep.title'));
     let sheet = page.getByRole('dialog', {
@@ -936,7 +974,8 @@ test('the pumping filter reports the range in minutes, with the ml beside them; 
     totals(ml, 70, 70, 0),
     t('pump.report.average', { amount: `${minutes(11)} · ${ml(10)}` }),
   ]);
-  await expect(logRows(page)).toHaveCount(3);
+  // The default by-activity view lists all three, the running one included.
+  await expect(activityGroupRows(page, t('sheet.pump.title'))).toHaveCount(3);
 
   // Stopped, it counts: 12 minutes on the right.
   await page.clock.fastForward('12:00');
